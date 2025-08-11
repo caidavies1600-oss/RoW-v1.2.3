@@ -90,7 +90,7 @@ from .config import (
     FEATURE_FLAGS,
     PERFORMANCE_THRESHOLDS
 )
-from .base_manager import BaseSheetsManager
+from .base_manager import BaseGoogleSheetsManager as BaseSheetsManager
 from .template_creator import SheetsTemplateCreator
 from .worksheet_handlers import WorksheetHandlers
 
