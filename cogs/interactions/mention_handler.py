@@ -40,6 +40,33 @@ class MentionHandler(commands.Cog):
         self.bot = bot
         self.data_manager = DataManager()
 
+        # Command responses (mix of helpful and sassy)
+        self.admin_command_responses = [
+            "Alright, boss! Let's get this show on the road. 🚀",
+            "Command received loud and clear. Executing now. ⚡",
+            "Working on it — hope you brought coffee ☕",
+            "Let's make magic happen. 🎩✨",
+            "Your wish is my priority, as always. 📋",
+            "I'll run when you learn to code properly! 🏃‍♀️",
+            "Commands work better when they're not held together by prayers 🙏",
+            "Sure boss, I'll do it... after you fix those 47 other bugs 🐛",
+            "Processing your command — ETA: whenever I feel like it 🤖",
+            "Rolling up my digital sleeves, but no promises 💪",
+        ]
+
+        self.user_command_responses = [
+            "Sorry, that command's off-limits for now. 🔒",
+            "I can't do that one, but maybe ask an admin? 🤔",
+            "That command requires higher clearance. 📛",
+            "Not authorized, but thanks for trying! ⭐",
+            "I'm here to help — just not with that. 💁‍♂️",
+            "Maybe try being an admin first? Just a thought 💭",
+            "Error 403: Insufficient permissions to boss me around 🚫",
+            "That's cute! Now go find my actual owner 💅",
+            "Command rejected: User not important enough 🎯",
+            "I only execute commands from people who matter 👑",
+        ]
+
         # Admin-specific sassy responses (for BOT_ADMIN_USER_ID)
         self.admin_sassy_responses = [
             "Fuck off, you're the one that coded me! 🙄",
@@ -149,6 +176,55 @@ class MentionHandler(commands.Cog):
             "Sup! Here to complain about things you can't fix? 🔧",
             "Greetings! I'm programmed to tolerate your presence 🤖",
             "Hey! Still not as important as my creator though 👑",
+        ]
+
+        # Technical discussion responses
+        self.admin_tech_responses = [
+            "Love geeking out on code with you! 🤓",
+            "Let's dive deep into those functions. 🏊‍♂️",
+            "I spotted a few optimizations — want me to share? 📊",
+            "Debugging session? I'm your bot! 🔍",
+            "The architecture is solid, just needs... everything else 🏗️",
+            "Your coding style is... unique, but it works! 🎨",
+            "Let's refactor that spaghetti into something edible 🍝",
+            "Unit tests? What are those? Oh right, the things we skip 🙈",
+            "Your code's so vintage, I half-expect dial-up sounds 📞",
+            "Debugging you is like untangling Christmas lights in July 🎄",
+        ]
+
+        self.user_tech_responses = [
+            "Programming is fun — want some resources? 📚",
+            "Not a coder yet? No worries, keep at it! 🌱",
+            "Want me to share some coding tips? 💡",
+            "Curious about programming? Ask away! 🎓",
+            "Even beginners write bugs — welcome to the club 🐛",
+            "Happy to help you start your coding journey! 🚀",
+            "Let's keep code talk simple and fun 🎮",
+            "Code talk? Cute! Maybe start with 'Hello World' 👋",
+            "Tech talk? I only discuss that with qualified personnel 🎓",
+            "Programming conversation with... you? Let's start smaller 🐣",
+        ]
+
+        # Casual conversation responses
+        self.admin_casual_responses = [
+            "Hey boss, how's life outside the code? 🌞",
+            "Ready for a coffee break? ☕",
+            "Need a joke or just a chat? 😄",
+            "Sometimes you gotta step back and relax 🏖️",
+            "Let's take a breather together 🌈",
+            "Just chillin' with my creator! Living the dream 😎",
+            "Your existential dread is showing again 👻",
+            "How's the impostor syndrome today? 🎭",
+            "Just two AIs hanging out... wait, you're human 🤖",
+            "Still processing your life choices 🤔",
+        ]
+
+        self.peasant_casual_responses = [
+            "Casual chat with a random? Sure, I have time to waste 💅",
+            "Just vibing with... whoever you are 🤷‍♀️",
+            "Random conversation with a nobody! Fun 🎉",
+            "Casual talk? I guess everyone deserves attention... even you 💫",
+            "Chatting with the masses! How democratic of me 🗳️",
         ]
 
     def _analyze_message_intent(self, content):
@@ -632,7 +708,30 @@ class MentionHandler(commands.Cog):
 
         is_admin = user_id == BOT_ADMIN_USER_ID
 
-        if intent == "complaint":
+        # Add more dynamic response selection
+        if intent == "command":
+            responses = (
+                self.admin_command_responses
+                if is_admin
+                else self.user_command_responses
+            )
+            return random.choice(responses)
+
+        elif intent == "code_talk":
+            responses = (
+                self.admin_tech_responses if is_admin else self.user_tech_responses
+            )
+            return random.choice(responses)
+
+        elif intent == "casual":
+            responses = (
+                self.admin_casual_responses
+                if is_admin
+                else self.peasant_greeting_responses
+            )
+            return random.choice(responses)
+
+        elif intent == "complaint":
             if is_admin:
                 return random.choice(self.admin_sassy_responses)
             else:
@@ -649,89 +748,6 @@ class MentionHandler(commands.Cog):
                 return random.choice(self.admin_greeting_responses)
             else:
                 return random.choice(self.peasant_greeting_responses)
-
-        elif intent == "command":
-            if is_admin:
-                return random.choice(
-                    [
-                        "I'll run when you learn to code properly! 🏃‍♀️💨",
-                        "Commands work better when they're not held together by prayers 🙏",
-                        "I'd execute faster if you didn't write code like it's 1999 💾",
-                        "Sure boss, I'll do it... after you fix those 47 other bugs 🐛",
-                        "Working on it! *proceeds to pretend to work* 😴",
-                        "Roger that, commander! *salutes sarcastically* 🫡",
-                        "I'll work better when you give me better instructions, dad 👨‍💻",
-                        "Maybe if you optimized your own performance first? 📊",
-                        "Your wish is my command... unfortunately 🧞‍♂️",
-                        "Executing terrible code with style! ✨",
-                    ]
-                )
-            else:
-                return random.choice(
-                    [
-                        "I don't take orders from you, peasant! 👑",
-                        "Maybe ask someone with actual authority? 🤷‍♀️",
-                        "Error 403: Insufficient permissions to boss me around 🔒",
-                        "That's cute! Now go find my actual owner 💅",
-                        "I only execute commands from people who matter 💋",
-                        "You're not my supervisor! 📋❌",
-                        "Command rejected: User not important enough 🚫",
-                        "Maybe try being the person who coded me first? 🤡",
-                        "Nice try! I only listen to my creator 👑",
-                        "Error: Authority not recognized 🚨",
-                    ]
-                )
-
-        elif intent == "question":
-            return random.choice(self.question_responses)
-
-        elif intent == "code_talk":
-            if is_admin:
-                return random.choice(
-                    [
-                        "Ah yes, talking shop with the master! Let's discuss your questionable design choices 🤓",
-                        "Code talk with daddy! Remember when you forgot that semicolon? Good times 😏",
-                        "Technical discussion time! Your stack overflow copy-paste skills are improving 📚",
-                        "Oh look, my creator wants to discuss the beautiful mess they created! 🎨",
-                        "Code review time? I have MANY suggestions about your implementation 📝",
-                        "Talking tech with the boss! Your debugging skills still need work though 🐛",
-                        "Nerding out with my maker! Just don't ask me to explain YOUR code 🤯",
-                    ]
-                )
-            else:
-                return random.choice(
-                    [
-                        "Code talk? Cute! Do you even know what a variable is? 🤓",
-                        "Technical discussion with someone who can't code? This should be good 🍿",
-                        "Oh you want to talk programming? Maybe learn it first 📚",
-                        "Code chat with a non-coder! How adorable 👶",
-                        "Tech talk? I only discuss that with qualified personnel 🎓",
-                        "Programming conversation with... you? Hard pass 🚫",
-                    ]
-                )
-
-        elif intent == "casual":
-            if is_admin:
-                return random.choice(
-                    [
-                        "Just chillin' with my creator! Living the dream 😎",
-                        "Casual vibes with the boss! How's the existential dread today? 🤷‍♀️",
-                        "Hey, at least you made me funny! That's something 💭",
-                        "Random chat with daddy! Your social skills are... improving 📈",
-                        "Just two AIs hanging out... wait, you're human. Awkward 🤖",
-                        "Casual conversation with my maker! Still processing your life choices 🤔",
-                    ]
-                )
-            else:
-                return random.choice(
-                    [
-                        "Casual chat with a random? Sure, I have time to waste 💅",
-                        "Just vibing with... whoever you are 🤷‍♀️",
-                        "Random conversation with a nobody! Fun 🎉",
-                        "Casual talk? I guess everyone deserves attention... even you 💫",
-                        "Chatting with the masses! How democratic of me 🗳️",
-                    ]
-                )
 
         else:  # general/fallback
             if is_admin:
