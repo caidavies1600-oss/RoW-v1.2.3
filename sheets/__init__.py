@@ -1,8 +1,7 @@
-
 """
 Google Sheets Integration Module for Discord RoW Bot.
 
-This module provides comprehensive Google Sheets integration capabilities:
+This module provides comprehensive Google integration capabilities:
 - Rate-limited Google Sheets access with exponential backoff
 - Template creation and advanced formatting
 - Real-time data synchronization between bot and sheets
@@ -37,11 +36,11 @@ Key Features:
 Usage Examples:
     # Basic initialization
     sheets_manager = SheetsManager(spreadsheet_id="your_sheet_id")
-    
+
     # Check connection status
     if sheets_manager.is_connected():
         print("✅ Connected to Google Sheets")
-    
+
     # Create all templates with data
     all_data = {
         "events": events_data,
@@ -49,10 +48,10 @@ Usage Examples:
         "player_stats": player_statistics
     }
     success = sheets_manager.create_all_templates(all_data)
-    
+
     # Sync Discord members
     sync_result = await sheets_manager.scan_and_sync_all_members(bot, guild_id)
-    
+
     # Get performance metrics
     metrics = sheets_manager.get_performance_summary()
 
@@ -102,7 +101,7 @@ logger = setup_logger("sheets_manager")
 class SheetsManager(BaseSheetsManager):
     """
     Comprehensive Google Sheets manager with advanced functionality.
-    
+
     This class extends BaseSheetsManager to provide a complete Google Sheets
     integration solution for Discord bots. It includes all the features needed
     for production deployment including rate limiting, error handling, template
@@ -135,16 +134,16 @@ class SheetsManager(BaseSheetsManager):
     Usage:
         # Initialize with automatic connection
         sheets_manager = SheetsManager()
-        
+
         # Or with specific spreadsheet
         sheets_manager = SheetsManager(spreadsheet_id="your_sheet_id")
-        
+
         # Create all templates
         success = sheets_manager.create_all_templates(bot_data)
-        
+
         # Sync Discord members
         result = await sheets_manager.scan_and_sync_all_members(bot, guild_id)
-        
+
         # Get comprehensive statistics
         stats = sheets_manager.get_comprehensive_stats()
 
@@ -172,14 +171,14 @@ class SheetsManager(BaseSheetsManager):
         """
         # Initialize base manager with all core functionality
         super().__init__(spreadsheet_id)
-        
+
         # Initialize advanced components
         self.template_creator = SheetsTemplateCreator(self)
         self.worksheet_handlers = WorksheetHandlers(self)
-        
+
         # Thread pool for concurrent operations
         self.thread_pool = ThreadPoolExecutor(max_workers=3, thread_name_prefix="SheetsOp")
-        
+
         # Advanced performance tracking
         self.performance_metrics = {
             "session_start_time": time.time(),
@@ -196,17 +195,17 @@ class SheetsManager(BaseSheetsManager):
             "sync_operations": 0,
             "batch_operations": 0
         }
-        
+
         # Operation cache for performance optimization
         self.operation_cache = {}
         self.cache_timestamps = {}
         self.cache_ttl = kwargs.get("cache_ttl", 300)  # 5 minutes default
-        
+
         # Error tracking and recovery
         self.error_history = []
         self.max_error_history = kwargs.get("max_error_history", 100)
         self.recovery_attempts = {}
-        
+
         # Advanced configuration options
         self.config = {
             "enable_caching": kwargs.get("enable_caching", True),
@@ -216,7 +215,7 @@ class SheetsManager(BaseSheetsManager):
             "auto_retry_failed_operations": kwargs.get("auto_retry_failed_operations", True),
             "max_concurrent_operations": kwargs.get("max_concurrent_operations", 3)
         }
-        
+
         # Batch operation queues
         self.batch_queues = {
             "member_updates": [],
@@ -224,7 +223,12 @@ class SheetsManager(BaseSheetsManager):
             "stats_updates": [],
             "result_updates": []
         }
-        
+
+        # Initialize the connection with debug logging
+        logger.debug(f"🔄 Initializing connection for spreadsheet ID: {spreadsheet_id}")
+        self.initialize_client()
+        logger.debug(f"✅ Initialization complete. Connected: {self.is_connected()}")
+
         logger.info("✅ Advanced SheetsManager initialized with comprehensive functionality")
         logger.info(f"📊 Performance monitoring: {'Enabled' if self.config['enable_performance_monitoring'] else 'Disabled'}")
         logger.info(f"💾 Caching: {'Enabled' if self.config['enable_caching'] else 'Disabled'}")
@@ -233,15 +237,15 @@ class SheetsManager(BaseSheetsManager):
     def rate_limited_request(self, func, *args, **kwargs):
         """
         Execute request with advanced rate limiting and performance tracking.
-        
+
         Args:
             func: Function to execute
             *args: Function arguments
             **kwargs: Function keyword arguments
-            
+
         Returns:
             Function result
-            
+
         Features:
         - Intelligent rate limiting with exponential backoff
         - Comprehensive error handling and retry logic
@@ -250,7 +254,7 @@ class SheetsManager(BaseSheetsManager):
         - Operation logging and monitoring
         """
         operation_start = time.time()
-        
+
         # Check cache first if enabled
         cache_key = self._generate_cache_key(func, args, kwargs)
         if self.config["enable_caching"] and cache_key in self.operation_cache:
@@ -263,52 +267,52 @@ class SheetsManager(BaseSheetsManager):
                 # Remove expired cache entry
                 del self.operation_cache[cache_key]
                 del self.cache_timestamps[cache_key]
-        
+
         self.performance_metrics["cache_misses"] += 1
-        
+
         try:
             # Execute the base rate limited request
             result = super().rate_limited_request(func, *args, **kwargs)
-            
+
             # Update performance metrics
             operation_time = time.time() - operation_start
             self._update_performance_metrics(operation_time, True)
-            
+
             # Cache successful result if enabled
             if self.config["enable_caching"] and cache_key:
                 self.operation_cache[cache_key] = result
                 self.cache_timestamps[cache_key] = time.time()
-                
+
                 # Clean up old cache entries periodically
                 if len(self.operation_cache) > 100:
                     self._cleanup_cache()
-            
+
             return result
-            
+
         except Exception as e:
             operation_time = time.time() - operation_start
             self._update_performance_metrics(operation_time, False)
             self._log_operation_error(func.__name__, e)
-            
+
             # Retry if configured
             if self.config["auto_retry_failed_operations"]:
                 logger.warning(f"⚠️ Retrying failed operation: {func.__name__}")
                 time.sleep(1)  # Brief delay before retry
                 return super().rate_limited_request(func, *args, **kwargs)
-            
+
             raise
 
     async def scan_and_sync_all_members(self, bot, guild_id: Optional[int] = None) -> Dict[str, Any]:
         """
         Comprehensive Discord member scanning and synchronization.
-        
+
         Args:
             bot: Discord bot instance
             guild_id: Optional specific guild ID to scan
-            
+
         Returns:
             dict: Comprehensive sync results with statistics
-            
+
         Features:
         - Complete Discord member directory creation
         - Role and permission tracking
@@ -345,9 +349,9 @@ class SheetsManager(BaseSheetsManager):
                 if member.bot:
                     bot_member_count += 1
                     continue
-                
+
                 human_member_count += 1
-                
+
                 # Extract comprehensive member information
                 member_info = {
                     "user_id": str(member.id),
@@ -367,7 +371,7 @@ class SheetsManager(BaseSheetsManager):
                     "synced_at": datetime.utcnow().isoformat(),
                     "sync_version": "2.1.0"
                 }
-                
+
                 members_data.append(member_info)
 
             # Sync to Google Sheets using worksheet handler
@@ -423,13 +427,13 @@ class SheetsManager(BaseSheetsManager):
     def create_all_templates(self, all_data: Dict[str, Any]) -> bool:
         """
         Create comprehensive sheet templates with data population.
-        
+
         Args:
             all_data: Dictionary containing all bot data for templates
-            
+
         Returns:
             bool: True if template creation was successful
-            
+
         Features:
         - Creates all supported sheet templates
         - Populates templates with existing data
@@ -442,29 +446,29 @@ class SheetsManager(BaseSheetsManager):
             return False
 
         logger.info("🚀 Starting comprehensive template creation with data population...")
-        
+
         # Use the template creator for comprehensive template creation
         success = self.template_creator.create_all_templates(all_data)
-        
+
         if success:
             # Update performance metrics
             self.performance_metrics["template_operations"] += 1
             logger.info("✅ All templates created successfully with comprehensive data population")
         else:
             logger.error("❌ Template creation completed with some failures")
-        
+
         return success
 
     def sync_current_teams(self, events_data: Dict[str, List]) -> bool:
         """
         Sync current team signups with enhanced analytics.
-        
+
         Args:
             events_data: Dictionary containing team signup data
-            
+
         Returns:
             bool: True if sync was successful
-            
+
         Features:
         - Real-time team status tracking
         - Fill rate calculations and analytics
@@ -493,13 +497,13 @@ class SheetsManager(BaseSheetsManager):
     def sync_results_history(self, results_data: Dict[str, Any]) -> bool:
         """
         Sync results history with comprehensive analysis.
-        
+
         Args:
             results_data: Dictionary containing match results
-            
+
         Returns:
             bool: True if sync was successful
-            
+
         Features:
         - Comprehensive match result tracking
         - Performance analysis and ratings
@@ -528,13 +532,13 @@ class SheetsManager(BaseSheetsManager):
     def sync_events_history(self, history_data: List[Dict[str, Any]]) -> bool:
         """
         Sync events history with trend analysis.
-        
+
         Args:
             history_data: List of historical event data
-            
+
         Returns:
             bool: True if sync was successful
-            
+
         Features:
         - Chronological event tracking
         - Participation trend analysis
@@ -563,13 +567,13 @@ class SheetsManager(BaseSheetsManager):
     def sync_blocked_users(self, blocked_data: Dict[str, Any]) -> bool:
         """
         Sync blocked users with moderation tracking.
-        
+
         Args:
             blocked_data: Dictionary containing blocked user information
-            
+
         Returns:
             bool: True if sync was successful
-            
+
         Features:
         - Comprehensive moderation tracking
         - Status management and updates
@@ -598,15 +602,15 @@ class SheetsManager(BaseSheetsManager):
     async def full_sync_and_create_templates(self, bot, all_data: Dict[str, Any], guild_id: Optional[int] = None) -> Dict[str, Any]:
         """
         Perform comprehensive full synchronization and template creation.
-        
+
         Args:
             bot: Discord bot instance
             all_data: Complete bot data dictionary
             guild_id: Optional guild ID for member sync
-            
+
         Returns:
             dict: Comprehensive sync results
-            
+
         Features:
         - Complete template creation with data
         - Full Discord member synchronization
@@ -679,10 +683,10 @@ class SheetsManager(BaseSheetsManager):
     def get_comprehensive_stats(self) -> Dict[str, Any]:
         """
         Get comprehensive statistics from all sheets and operations.
-        
+
         Returns:
             dict: Comprehensive statistics and performance metrics
-            
+
         Features:
         - Complete spreadsheet statistics
         - Performance metrics and analytics
@@ -791,11 +795,11 @@ class SheetsManager(BaseSheetsManager):
         try:
             # Create a simple cache key based on function name and arguments
             key_parts = [func.__name__]
-            
+
             # Add string representations of args (limit to prevent huge keys)
             for arg in args[:3]:  # Limit to first 3 args
                 key_parts.append(str(arg)[:50])  # Limit each arg to 50 chars
-            
+
             return "|".join(key_parts)
         except:
             return None
@@ -807,23 +811,23 @@ class SheetsManager(BaseSheetsManager):
             key for key, timestamp in self.cache_timestamps.items()
             if current_time - timestamp > self.cache_ttl
         ]
-        
+
         for key in expired_keys:
             self.operation_cache.pop(key, None)
             self.cache_timestamps.pop(key, None)
-        
+
         logger.debug(f"🧹 Cleaned up {len(expired_keys)} expired cache entries")
 
     def _update_performance_metrics(self, operation_time: float, success: bool):
         """Update performance metrics for completed operation."""
         self.performance_metrics["total_operations"] += 1
         self.performance_metrics["total_processing_time"] += operation_time
-        
+
         if success:
             self.performance_metrics["successful_operations"] += 1
         else:
             self.performance_metrics["failed_operations"] += 1
-        
+
         # Calculate new average
         total_ops = self.performance_metrics["total_operations"]
         self.performance_metrics["average_operation_time"] = (
@@ -838,22 +842,22 @@ class SheetsManager(BaseSheetsManager):
             "error_type": type(error).__name__,
             "timestamp": datetime.utcnow().isoformat()
         }
-        
+
         self.error_history.append(error_info)
-        
+
         # Keep error history within bounds
         if len(self.error_history) > self.max_error_history:
             self.error_history = self.error_history[-self.max_error_history:]
-        
+
         logger.error(f"❌ Operation {operation_name} failed: {error}")
 
     def smart_delay(self, delay_type: str = "small"):
         """
         Smart delay implementation with performance optimization.
-        
+
         Args:
             delay_type: Type of delay ('small', 'medium', 'large')
-            
+
         Features:
         - Configurable delay periods
         - Performance-based delay adjustment
@@ -865,13 +869,13 @@ class SheetsManager(BaseSheetsManager):
             "medium": 0.5,
             "large": 1.0
         }
-        
+
         base_delay = delay_map.get(delay_type, 0.1)
-        
+
         # Adjust delay based on recent rate limiting
         if self.performance_metrics["rate_limit_hits"] > 5:
             base_delay *= 1.5  # Increase delay if we've hit rate limits
-        
+
         time.sleep(base_delay)
 
     def __del__(self):

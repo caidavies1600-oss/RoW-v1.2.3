@@ -241,25 +241,49 @@ class RowBot(commands.Bot):
 
                     self.sheets = SheetsManager(sheets_id_env)
                     print(
-                        f"DEBUG: SheetsManager created, connected: {self.sheets.is_connected()}"
+                        f"DEBUG: SheetsManager created, checking connection..."
                     )
 
-                    if self.sheets.is_connected() and self.sheets.spreadsheet:
-                        logger.info(
-                            f"✅ Google Sheets connected: {self.sheets.spreadsheet.url}"
-                        )
-                        print("DEBUG: Google Sheets connected successfully")
-                        if MONITORING_AVAILABLE:
-                            await notify_startup_milestone("Google Sheets connected")
-                    else:
-                        logger.warning(
-                            "⚠️ Google Sheets credentials found but connection failed"
-                        )
-                        print("DEBUG: Google Sheets connection failed")
-                        self.sheets = None
+                    # Give the connection a moment to establish
+                    import asyncio
+                    await asyncio.sleep(0.5)
+
+                    # Check connection status with error details
+                    try:
+                        connection_status = self.sheets.is_connected()
+                        print(f"DEBUG: Connection status: {connection_status}")
+                        
+                        if connection_status and self.sheets.spreadsheet:
+                            logger.info(
+                                f"✅ Google Sheets connected: {self.sheets.spreadsheet.url}"
+                            )
+                            print("DEBUG: Google Sheets connected successfully")
+                            if MONITORING_AVAILABLE:
+                                await notify_startup_milestone("Google Sheets connected")
+                        else:
+                            # Get more detailed error information
+                            error_details = "Unknown connection issue"
+                            if hasattr(self.sheets, 'gc') and not self.sheets.gc:
+                                error_details = "Failed to authorize Google Sheets client"
+                            elif hasattr(self.sheets, 'spreadsheet') and not self.sheets.spreadsheet:
+                                error_details = "Failed to open spreadsheet - check GOOGLE_SHEETS_ID"
+                            
+                            logger.warning(
+                                f"⚠️ Google Sheets connection failed: {error_details}"
+                            )
+                            print(f"DEBUG: Google Sheets connection failed: {error_details}")
+                            
+                            # Keep the sheets manager for debugging but note the failure
+                            if MONITORING_AVAILABLE:
+                                await notify_startup_milestone(
+                                    f"Google Sheets connection failed: {error_details}", "⚠️"
+                                )
+                    except Exception as sheets_error:
+                        logger.error(f"❌ Error checking Google Sheets connection: {sheets_error}")
+                        print(f"DEBUG: Exception during connection check: {sheets_error}")
                         if MONITORING_AVAILABLE:
                             await notify_startup_milestone(
-                                "Google Sheets connection failed", "⚠️"
+                                f"Google Sheets error: {sheets_error}", "❌"
                             )
                 else:
                     logger.info("ℹ️ Google Sheets credentials not configured")

@@ -142,8 +142,10 @@ class BaseGoogleSheetsManager:
         # Thread pool for async operations
         self.thread_pool = ThreadPoolExecutor(max_workers=3)
 
-        # Initialize the connection
+        # Initialize the connection with debug logging
+        logger.debug(f"🔧 BaseGoogleSheetsManager initializing with spreadsheet_id: {spreadsheet_id}")
         self.initialize_client()
+        logger.debug(f"🔧 BaseGoogleSheetsManager initialization complete. gc: {self.gc is not None}, spreadsheet: {self.spreadsheet is not None}")
 
     def initialize_client(self):
         """
@@ -184,14 +186,18 @@ class BaseGoogleSheetsManager:
             creds_json = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
             if creds_json:
                 try:
+                    logger.debug(f"🔐 Found credentials environment variable (length: {len(creds_json)})")
                     creds_dict = json.loads(creds_json)
+                    logger.debug(f"🔐 Parsed credentials JSON successfully")
                     creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
                     credential_source = "environment variable"
                     logger.info("✅ Loaded Google Sheets credentials from environment variable")
                 except json.JSONDecodeError as e:
                     logger.error(f"❌ Invalid JSON in GOOGLE_SHEETS_CREDENTIALS: {e}")
+                    logger.debug(f"🔐 First 100 chars of credentials: {creds_json[:100]}...")
                 except Exception as e:
                     logger.error(f"❌ Failed to parse credentials from environment: {e}")
+                    logger.exception("Full credential parsing error:")
 
             # Fallback source: Local credentials file
             if not creds:
