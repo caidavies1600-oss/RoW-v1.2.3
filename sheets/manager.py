@@ -448,3 +448,107 @@ class SheetsManager(SheetsOperations):
         except Exception as e:
             logger.error(f"❌ {operation_name} failed: {e}")
             return None
+
+    # ==========================================
+    # DISCORD MEMBER SYNCING
+    # ==========================================
+
+    async def scan_and_sync_all_members(self, bot, guild_id: int) -> Dict[str, Any]:
+        """
+        Scan Discord guild and sync all members to Google Sheets.
+
+        Args:
+            bot: Discord bot instance
+            guild_id: Guild ID to scan
+
+        Returns:
+            Dictionary with sync results
+        """
+        if not self.is_connected():
+            return {"success": False, "error": "Sheets not connected"}
+
+        try:
+            logger.info(f"🔍 Scanning Discord guild {guild_id} for members...")
+
+            # Get the guild
+            guild = bot.get_guild(guild_id)
+            if not guild:
+                return {"success": False, "error": f"Guild {guild_id} not found"}
+
+            # Get or create Discord Members worksheet
+            worksheet = self.get_or_create_worksheet("Discord Members", 1000, 8)
+            if not worksheet:
+                return {"success": False, "error": "Failed to create Discord Members worksheet"}
+
+            # Headers for Discord Members sheet
+            headers = ["👤 User ID", "📝 Display Name", "🏷️ Username", "🎭 Nickname", "📅 Joined", "🏆 Roles", "🤖 Bot", "📊 Status"]
+
+            # Clear and add headers
+            if not self._safe_batch_operation(worksheet, "clear Discord Members", worksheet.clear):
+                return {"success": False, "error": "Failed to clear worksheet"}
+
+            if not self._safe_batch_operation(worksheet, "add Discord Members headers",
+                                            worksheet.append_row, headers):
+                return {"success": False, "error": "Failed to add headers"}
+
+            # Collect member data
+            member_data = []
+            new_members_added = 0
+            existing_members_updated = 0
+
+            for member in guild.members:
+                # Skip bots if desired
+                if member.bot:
+                    continue
+
+                roles = [role.name for role in member.roles if role.name != "@everyone"]
+                roles_str = ", ".join(roles[:5])  # Limit to first 5 roles
+
+                row = [
+                    str(member.id),
+                    member.display_name,
+                    member.name,
+                    member.nick or "No nickname",
+                    member.joined_at.strftime("%Y-%m-%d") if member.joined_at else "Unknown",
+                    roles_str,
+                    "Yes" if member.bot else "No",
+                    str(member.status).title()
+                ]
+                member_data.append(row)
+                new_members_added += 1
+
+            # Add members in chunks to avoid API limits
+            chunk_size = 50
+            for i in range(0, len(member_data), chunk_size):
+                chunk = member_data[i:i + chunk_size]
+                
+                for row in chunk:
+                    time.sleep(0.5)  # Rate limiting
+                    result = self.safe_worksheet_operation(worksheet, worksheet.append_row, row)
+                    if result is None:
+                        logger.warning(f"Failed to add member: {row[1]}")
+
+                logger.info(f"Added member chunk {i//chunk_size + 1}/{(len(member_data) + chunk_size - 1)//chunk_size}")
+
+                # Longer delay between chunks
+                if i + chunk_size < len(member_data):
+                    time.sleep(3)
+
+            # Apply formatting
+            time.sleep(2)
+            self._apply_header_formatting(worksheet, len(headers), "blue")
+
+            logger.info(f"✅ Successfully synced {len(member_data)} Discord members")
+
+            return {
+                "success": True,
+                "guild_name": guild.name,
+                "total_discord_members": len(member_data),
+                "new_members_added": new_members_added,
+                "existing_members_updated": existing_members_updated,
+                "spreadsheet_url": self.get_spreadsheet_url()
+            }
+
+        except Exception as e:
+            logger.error(f"❌ Failed to sync Discord members: {e}")
+            return {"success": False, "error": str(e)}

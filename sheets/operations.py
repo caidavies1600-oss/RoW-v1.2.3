@@ -672,12 +672,20 @@ class SheetsOperations(SheetsClient):
         templates = [
             ("current_teams", "Current Teams", 
              lambda: self.sync_current_teams(bot_data.get("events", {}))),
-            ("player_stats", "Player Stats Template", 
+            ("player_stats", "Player Stats (all Discord members)", 
              lambda: self.create_player_stats_template(bot_data.get("player_stats", {}))),
-            ("alliance_tracking", "Alliance Tracking Template", 
+            ("results_history", "Results History", 
+             lambda: self.create_results_history_template(bot_data.get("results", {}))),
+            ("match_statistics", "Match Statistics", 
+             lambda: self.create_match_statistics_template()),
+            ("alliance_tracking", "Alliance Tracking", 
              lambda: self.create_alliance_tracking_template()),
-            ("dashboard", "Dashboard Template", 
-             lambda: self.create_dashboard_template())
+            ("dashboard", "Dashboard", 
+             lambda: self.create_dashboard_template()),
+            ("notification_preferences", "Notification Preferences", 
+             lambda: self.create_notification_preferences_template()),
+            ("error_summary", "Error Summary", 
+             lambda: self.create_error_summary_template())
         ]
 
         for template_key, template_name, create_func in templates:
@@ -813,4 +821,99 @@ class SheetsOperations(SheetsClient):
 
         except Exception as e:
             logger.error(f"❌ Failed to create error summary template: {e}")
+            return False
+
+    def create_results_history_template(self, results_data: Dict = None) -> bool:
+        """Create Results History sheet template."""
+        if not self.is_connected():
+            return False
+
+        try:
+            # Create worksheet
+            worksheet = self.get_or_create_worksheet("Results History", 200, 8)
+            if not worksheet:
+                return False
+
+            logger.info("Creating Results History template...")
+
+            # Clear worksheet first
+            if not self._safe_batch_operation(worksheet, "clear Results History", worksheet.clear):
+                return False
+
+            # Headers with emojis
+            headers = ["📅 Date", "👥 Team", "🎯 Result", "🎮 Players", "👤 Recorded By", "🏆 Match Score", "📊 Running Total", "💪 Performance"]
+            
+            if not self._safe_batch_operation(worksheet, "add Results History headers",
+                                            worksheet.append_row, headers):
+                return False
+
+            # Add sample data
+            sample_results = [
+                ["2025-01-15", "Main Team", "Win", "Player1,Player2,Player3", "Admin", "🏆 WIN", "1W - 0L", "🔥 Great start!"],
+                ["2025-01-14", "Team 2", "Loss", "Player4,Player5,Player6", "Admin", "❌ LOSS", "0W - 1L", "💪 Next time!"],
+                ["2025-01-13", "Team 3", "Win", "Player7,Player8,Player9", "Admin", "🏆 WIN", "1W - 0L", "🎯 Excellent!"]
+            ]
+
+            for i, result_data in enumerate(sample_results):
+                time.sleep(1)
+                result = self.safe_worksheet_operation(worksheet, worksheet.append_row, result_data)
+                if result is None:
+                    logger.warning(f"Failed to add sample result {i}")
+
+            # Apply formatting
+            time.sleep(1)
+            self._apply_header_formatting(worksheet, len(headers), "blue")
+
+            logger.info("✅ Created Results History template")
+            return True
+
+        except Exception as e:
+            logger.error(f"❌ Failed to create results history template: {e}")
+            return False
+
+    def create_notification_preferences_template(self, notification_data: Dict = None) -> bool:
+        """Create Notification Preferences sheet template."""
+        if not self.is_connected():
+            return False
+
+        try:
+            # Create worksheet
+            worksheet = self.get_or_create_worksheet("Notification Preferences", 100, 9)
+            if not worksheet:
+                return False
+
+            logger.info("Creating Notification Preferences template...")
+
+            # Clear worksheet first
+            if not self._safe_batch_operation(worksheet, "clear Notification Preferences", worksheet.clear):
+                return False
+
+            # Headers
+            headers = ["👤 User ID", "📝 Display Name", "📢 Event Alerts", "🏆 Result Notifications", "⚠️ Error Alerts", "📱 DM Notifications", "🕐 Reminder Time", "🌍 Timezone", "📅 Last Updated"]
+            
+            if not self._safe_batch_operation(worksheet, "add Notification Preferences headers",
+                                            worksheet.append_row, headers):
+                return False
+
+            # Add sample notification preferences
+            sample_preferences = [
+                ["123456789", "TestUser1", "✅ Enabled", "✅ Enabled", "❌ Disabled", "✅ Enabled", "30 minutes", "UTC-5", datetime.utcnow().strftime("%Y-%m-%d")],
+                ["987654321", "TestUser2", "✅ Enabled", "❌ Disabled", "✅ Enabled", "❌ Disabled", "1 hour", "UTC+0", datetime.utcnow().strftime("%Y-%m-%d")],
+            ]
+
+            for i, pref_data in enumerate(sample_preferences):
+                time.sleep(1)
+                result = self.safe_worksheet_operation(worksheet, worksheet.append_row, pref_data)
+                if result is None:
+                    logger.warning(f"Failed to add sample preference {i}")
+
+            # Apply formatting
+            time.sleep(1)
+            self._apply_header_formatting(worksheet, len(headers), "green")
+
+            logger.info("✅ Created Notification Preferences template")
+            return True
+
+        except Exception as e:
+            logger.error(f"❌ Failed to create notification preferences template: {e}")
             return False
