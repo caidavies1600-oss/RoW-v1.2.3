@@ -34,6 +34,7 @@ class Results(commands.Cog):
         self.bot = bot
         self.data_manager = data_manager
         self.results = {"wins": 0, "losses": 0, "history": []}
+        self.player_stats = {}  # Initialize player stats locally
 
     def calculate_win_rate(self, wins: int, losses: int) -> float:
         """Calculate win rate percentage from wins and losses."""
@@ -391,22 +392,32 @@ class Results(commands.Cog):
 
             # Gather current player data for template creation
             all_data = {
-                "events": self.data_manager.load_json(FILES["EVENTS"], {}),
-                "blocked": self.data_manager.load_json(FILES["BLOCKED"], {}),
+                "events": await self.data_manager.load_data(FILES["EVENTS"], {}),
+                "blocked": await self.data_manager.load_data(FILES["BLOCKED"], {}),
                 "results": self.results,
-                "player_stats": self.data_manager.player_stats,
-                "ign_map": self.data_manager.load_json(FILES["IGN_MAP"], {}),
-                "absent": self.data_manager.load_json(FILES["ABSENT"], {}),
-                "notification_preferences": self.data_manager.load_json("data/notification_preferences.json", {})
+                "player_stats": await self.data_manager.load_data("data/player_stats.json", {}),
+                "ign_map": await self.data_manager.load_data(FILES["IGN_MAP"], {}),
+                "absent": await self.data_manager.load_data(FILES["ABSENT"], {}),
+                "notification_preferences": await self.data_manager.load_data("data/notification_preferences.json", {})
             }
 
             # Create templates with detailed results
             if hasattr(self.data_manager.sheets_manager, 'setup_templates'):
                 results = self.data_manager.sheets_manager.setup_templates(all_data)
+            elif hasattr(self.data_manager.sheets_manager, 'create_all_templates'):
+                template_results = self.data_manager.sheets_manager.create_all_templates(all_data)
+                # Convert to expected format
+                results = {
+                    "connected": template_results.get("connected", False),
+                    "summary": {
+                        "success_count": sum(1 for v in template_results.values() if v is True),
+                        "total_count": len([k for k in template_results.keys() if k != "connected"])
+                    }
+                }
+                # Copy individual template results
+                results.update(template_results)
             else:
-                # Fallback to old method if setup_templates doesn't exist
-                success = self.data_manager.sheets_manager.create_all_templates(all_data)
-                results = {"connected": success, "summary": {"success_count": 1 if success else 0, "total_count": 1}}
+                results = {"connected": False, "summary": {"success_count": 0, "total_count": 0}}
 
             if not results.get("connected", False):
                 await status_msg.edit(content="❌ Could not connect to Google Sheets. Check credentials.")

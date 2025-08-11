@@ -192,10 +192,10 @@ class SheetsOperations(SheetsClient):
                 recorded_by = result.get("recorded_by", "Bot")
 
                 row = [
-                    date, team, outcome, 
+                    date, team, outcome,
                     "", "",  # Enemy alliance info (manual entry)
                     "", "",  # Power info (manual entry)
-                    recorded_by, 
+                    recorded_by,
                     ""  # Notes (manual entry)
                 ]
                 all_rows.append(row)
@@ -579,11 +579,13 @@ class SheetsOperations(SheetsClient):
 
         # Count successes
         success_count = sum(1 for k, v in results.items() if k != "connected" and v)
-        total_count = len(templates)
+        # Add summary data
+        results["summary"] = {
+            "success_count": success_count,
+            "total_count": len(templates)
+        }
 
-        logger.info(f"📊 Template creation complete: {success_count}/{total_count} successful")
-        results["summary"] = {"success_count": success_count, "total_count": total_count}
-
+        logger.info(f"Template creation completed: {success_count}/{len(templates)} successful")
         return results
 
     def get_spreadsheet_url(self) -> Optional[str]:
