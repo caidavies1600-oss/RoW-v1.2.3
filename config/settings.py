@@ -47,7 +47,7 @@ ADMIN_ROLE_IDS: List[int] = [
 RESTRICT_MAIN_TEAM: bool = False  # Set to True to enable role restriction
 MAIN_TEAM_ROLE_ID: int = 0  # Set to actual role ID when RESTRICT_MAIN_TEAM is True
 ROW_NOTIFICATION_ROLE_ID: int = (
-    1395129965405540452  # Role: RoW Notification for @MFD Members
+    1235729244605120572  # Role: RoW Notification for @MFD Members
 )
 
 # Channel IDs (these will be different per server)
