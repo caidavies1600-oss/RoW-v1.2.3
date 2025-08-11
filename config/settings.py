@@ -46,7 +46,9 @@ ADMIN_ROLE_IDS: List[int] = [
 # Main team access control
 RESTRICT_MAIN_TEAM: bool = False  # Set to True to enable role restriction
 MAIN_TEAM_ROLE_ID: int = 0  # Set to actual role ID when RESTRICT_MAIN_TEAM is True
-ROW_NOTIFICATION_ROLE_ID: int = 1235729244605120572
+ROW_NOTIFICATION_ROLE_ID: int = (
+    1395129965405540452  # Role: RoW Notification for @MFD Members
+)
 
 # Channel IDs (these will be different per server)
 ALERT_CHANNEL_ID: int = 1311377465087885314
@@ -68,8 +70,8 @@ TEAMS = ["main_team", "team_2", "team_3"]
 # Event Scheduling (UTC times)
 DEFAULT_TIMES = {
     "main_team": "20:00 UTC Sunday",
-    "team_2": "20:00 UTC Saturday",
-    "team_3": "14:00 UTC Sunday",
+    "team_2": "14:00 UTC Sunday",
+    "team_3": "20:00 UTC Saturday",
 }
 
 # Rate Limiting
