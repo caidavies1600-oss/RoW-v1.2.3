@@ -1,0 +1,171 @@
+#!/bin/bash
+set -e  # Exit immediately on error
+
+# Configuration
+REPO_URL="https://github.com/caidavies1600-oss/RoW-v1.2.3.git"
+GIT_USER="caidavies1600-oss"
+EMAIL="ci@replitpush.com"
+VERSION_FILE="version.txt"
+ARCHIVE_DIR="previous_versions"
+
+# Check for required environment variable
+if [ -z "$GH_TOKEN" ]; then
+  echo "❌ GH_TOKEN is not set. Add it to Replit Secrets."
+  exit 1
+fi
+
+echo "🚀 Starting deployment process..."
+
+# Get current version and bump it
+if [ ! -f "$VERSION_FILE" ]; then
+    echo "v1.0.0" > "$VERSION_FILE"
+fi
+
+CURRENT_VERSION=$(cat "$VERSION_FILE")
+IFS='.' read -r MAJOR MINOR PATCH <<< "${CURRENT_VERSION#v}"
+PATCH=$((PATCH + 1))
+NEW_VERSION="v$MAJOR.$MINOR.$PATCH"
+echo "$NEW_VERSION" > "$VERSION_FILE"
+
+echo "🔧 Bumping version: $CURRENT_VERSION → $NEW_VERSION"
+
+# Create a clean deployment directory
+DEPLOY_DIR="deploy_temp"
+rm -rf "$DEPLOY_DIR"
+mkdir -p "$DEPLOY_DIR"
+
+echo "📦 Copying bot files to deployment directory..."
+
+# Copy all directories we want to deploy
+for dir in bot cogs config services utils sheets data; do
+    if [ -d "$dir" ]; then
+        cp -r "$dir/" "$DEPLOY_DIR/" && echo "✅ Copied $dir/"
+    else
+        echo "⚠️ $dir/ directory not found"
+    fi
+done
+
+# Remove logs from data directory if it exists
+if [ -d "$DEPLOY_DIR/data/logs" ]; then
+    rm -rf "$DEPLOY_DIR/data/logs"
+    echo "🗑️ Removed logs from data directory"
+fi
+
+echo "⏭️ Skipping dashboard/ directory (excluded from deployment)"
+echo "⏭️ Skipping attached_assets/ directory (excluded from deployment)"
+
+# Copy individual files
+cp main.py "$DEPLOY_DIR/" 2>/dev/null || echo "⚠️ main.py not found"
+cp requirements.txt "$DEPLOY_DIR/" 2>/dev/null || echo "⚠️ requirements.txt not found"
+cp README.md "$DEPLOY_DIR/" 2>/dev/null || echo "⚠️ README.md not found"
+cp "$VERSION_FILE" "$DEPLOY_DIR/"
+
+# Create .gitignore for the deployment
+cat > "$DEPLOY_DIR/.gitignore" << 'EOF'
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+data/logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+deploy_temp/
+
+# Secrets (should use environment variables)
+.env
+token.txt
+
+# Replit specific
+.replit
+replit.nix
+.upm/
+EOF
+
+# Change to deployment directory
+cd "$DEPLOY_DIR"
+
+# Git setup
+git config --global user.email "$EMAIL"
+git config --global user.name "$GIT_USER"
+
+# Check if this is a fresh deployment or update
+if [ -d .git ]; then
+    echo "📥 Updating existing repository..."
+    git fetch origin main || echo "⚠️ Could not fetch from origin"
+else
+    echo "🎯 Initializing new repository..."
+    git init
+fi
+
+# Add GitHub remote
+git remote remove origin 2>/dev/null || true
+git remote add origin https://"$GH_TOKEN"@github.com/caidavies1600-oss/RoW-v1.2.3.git
+
+# Create previous versions directory structure on first run
+if [ ! -d "$ARCHIVE_DIR" ]; then
+    mkdir -p "$ARCHIVE_DIR"
+    echo "📁 Created archive directory for previous versions"
+fi
+
+# Stage all deployment files
+git add .
+git commit -m "🚀 Deploy $NEW_VERSION - $(date -u '+%Y-%m-%d %H:%M:%S UTC')" || {
+    echo "ℹ️ No changes to commit"
+    cd ..
+    rm -rf "$DEPLOY_DIR"
+    exit 0
+}
+
+# Push to main branch (current version)
+echo "📤 Pushing to main branch..."
+git checkout -B main
+git push origin main --force
+
+# Create and push version branch for history
+echo "📚 Creating version branch for history..."
+git checkout -B "$NEW_VERSION"
+git push origin "$NEW_VERSION" --force
+
+# Cleanup
+cd ..
+rm -rf "$DEPLOY_DIR"
+
+echo "✅ Deployment complete!"
+echo "📍 Main branch updated with version $NEW_VERSION"
+echo "🏷️ Version branch '$NEW_VERSION' created for history"
+echo "🌐 Repository: $REPO_URL"
+
+# Show summary
+echo ""
+echo "📊 Deployment Summary:"
+echo "  • Version: $CURRENT_VERSION → $NEW_VERSION"
+echo "  • Main branch: Updated"
+echo "  • History branch: $NEW_VERSION created"
+echo "  • Archive strategy: Each version gets its own branch"
+echo ""
+echo "🎯 Next steps:"
+echo "  • Your Railway deployment should auto-deploy from the main branch"
+echo "  • Previous versions are preserved in their respective branches"
+echo "  • Check the GitHub repository to verify the clean structure"
