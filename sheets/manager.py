@@ -3,7 +3,9 @@ Main Google Sheets manager class - the primary interface for the bot.
 """
 
 from typing import Dict, List, Any, Optional
+from datetime import datetime
 from .operations import SheetsOperations
+from .config import SHEET_CONFIGS
 from utils.logger import setup_logger
 
 logger = setup_logger("sheets_manager")
@@ -312,6 +314,34 @@ class SheetsManager(SheetsOperations):
             info["worksheets"] = self.get_worksheet_list()
 
         return info
+
+    def get_spreadsheet_url(self) -> str:
+        """
+        Get the URL of the connected spreadsheet.
+
+        Returns:
+            str: Spreadsheet URL or empty string if not connected
+        """
+        if self.is_connected() and self.spreadsheet:
+            return self.spreadsheet.url
+        return ""
+
+    def get_worksheet_list(self) -> List[str]:
+        """
+        Get list of all worksheet titles in the spreadsheet.
+
+        Returns:
+            List[str]: List of worksheet titles
+        """
+        if not self.is_connected() or not self.spreadsheet:
+            return []
+
+        try:
+            worksheets = self.spreadsheet.worksheets()
+            return [ws.title for ws in worksheets]
+        except Exception as e:
+            logger.error(f"Failed to get worksheet list: {e}")
+            return []
 
     # ==========================================
     # BACKWARDS COMPATIBILITY

@@ -487,6 +487,177 @@ class SheetsOperations(SheetsClient):
             return False
 
     # ==========================================
+    # DATA LOADING METHODS
+    # ==========================================
+
+    def load_data_from_sheets(self) -> Optional[Dict[str, Any]]:
+        """
+        Load all bot data from Google Sheets.
+
+        Returns:
+            Dictionary containing bot data, or None if loading failed
+        """
+        if not self.is_connected():
+            logger.warning("Cannot load data - sheets not connected")
+            return None
+
+        try:
+            logger.info("🔍 Loading data from Google Sheets...")
+            
+            # Initialize data structure
+            bot_data = {
+                "events": {"main_team": [], "team_2": [], "team_3": []},
+                "player_stats": {},
+                "results": {"total_wins": 0, "total_losses": 0, "history": []},
+                "blocked": {},
+                "ign_map": {},
+                "absent": {},
+                "notification_preferences": {"users": {}, "default_settings": {}},
+                "events_history": {"history": []}
+            }
+
+            # Try to load from each sheet
+            self._load_current_teams_data(bot_data)
+            self._load_player_stats_data(bot_data)
+            self._load_results_data(bot_data)
+
+            logger.info("✅ Successfully loaded data from Google Sheets")
+            return bot_data
+
+        except Exception as e:
+            logger.error(f"❌ Failed to load data from sheets: {e}")
+            return None
+
+    def _load_current_teams_data(self, bot_data: Dict[str, Any]):
+        """Load current teams data from sheets."""
+        try:
+            worksheet = self.get_or_create_worksheet("Current Teams", 50, 10)
+            if not worksheet:
+                return
+
+            data = self.safe_worksheet_operation(worksheet, worksheet.get_all_values)
+            if not data or len(data) < 2:  # Need at least headers + 1 row
+                return
+
+            # Parse team data (skip header row)
+            for row in data[1:]:
+                if len(row) >= 4:
+                    team_name = row[1].strip()
+                    players_str = row[3].strip()
+                    
+                    if players_str and players_str != "":
+                        players = [p.strip() for p in players_str.split(",")]
+                        
+                        # Map team names back to keys
+                        if "Main" in team_name:
+                            bot_data["events"]["main_team"] = players
+                        elif "Team 2" in team_name:
+                            bot_data["events"]["team_2"] = players
+                        elif "Team 3" in team_name:
+                            bot_data["events"]["team_3"] = players
+
+            logger.info("✅ Loaded current teams data from sheets")
+
+        except Exception as e:
+            logger.warning(f"Could not load current teams data: {e}")
+
+    def _load_player_stats_data(self, bot_data: Dict[str, Any]):
+        """Load player stats data from sheets."""
+        try:
+            worksheet = self.get_or_create_worksheet("Player Stats", 200, 15)
+            if not worksheet:
+                return
+
+            data = self.safe_worksheet_operation(worksheet, worksheet.get_all_values)
+            if not data or len(data) < 2:
+                return
+
+            # Parse player stats (skip header row)
+            for row in data[1:]:
+                if len(row) >= 12:
+                    user_id = row[0].strip()
+                    if not user_id or user_id == "":
+                        continue
+
+                    bot_data["player_stats"][user_id] = {
+                        "name": row[1].strip() if len(row) > 1 else "Unknown",
+                        "power_rating": row[2] if len(row) > 2 and row[2] != "ENTER_POWER_HERE" else 0,
+                        "team_results": {
+                            "main_team": {
+                                "wins": int(row[3]) if len(row) > 3 and row[3].isdigit() else 0,
+                                "losses": int(row[4]) if len(row) > 4 and row[4].isdigit() else 0
+                            },
+                            "team_2": {
+                                "wins": int(row[5]) if len(row) > 5 and row[5].isdigit() else 0,
+                                "losses": int(row[6]) if len(row) > 6 and row[6].isdigit() else 0
+                            },
+                            "team_3": {
+                                "wins": int(row[7]) if len(row) > 7 and row[7].isdigit() else 0,
+                                "losses": int(row[8]) if len(row) > 8 and row[8].isdigit() else 0
+                            }
+                        },
+                        "total_events": int(row[9]) if len(row) > 9 and row[9].isdigit() else 0,
+                        "last_active": row[10] if len(row) > 10 else "Never",
+                        "specializations": {
+                            "cavalry": False,
+                            "mages": False,
+                            "archers": False,
+                            "infantry": False,
+                            "whale": False
+                        },
+                        "absents": 0,
+                        "blocked": False
+                    }
+
+            logger.info(f"✅ Loaded {len(bot_data['player_stats'])} player stats from sheets")
+
+        except Exception as e:
+            logger.warning(f"Could not load player stats data: {e}")
+
+    def _load_results_data(self, bot_data: Dict[str, Any]):
+        """Load results data from sheets."""
+        try:
+            worksheet = self.get_or_create_worksheet("Match Results", 200, 10)
+            if not worksheet:
+                return
+
+            data = self.safe_worksheet_operation(worksheet, worksheet.get_all_values)
+            if not data or len(data) < 2:
+                return
+
+            # Parse results data (skip header row)
+            wins = 0
+            losses = 0
+            history = []
+
+            for row in data[1:]:
+                if len(row) >= 3:
+                    result = {
+                        "date": row[0] if len(row) > 0 else "",
+                        "team": row[1] if len(row) > 1 else "",
+                        "result": row[2] if len(row) > 2 else "",
+                        "recorded_by": row[7] if len(row) > 7 else "Unknown"
+                    }
+                    
+                    if "win" in result["result"].lower():
+                        wins += 1
+                    elif "loss" in result["result"].lower():
+                        losses += 1
+                    
+                    history.append(result)
+
+            bot_data["results"] = {
+                "total_wins": wins,
+                "total_losses": losses,
+                "history": history
+            }
+
+            logger.info(f"✅ Loaded {len(history)} match results from sheets")
+
+        except Exception as e:
+            logger.warning(f"Could not load results data: {e}")
+
+    # ==========================================
     # ENHANCED UTILITY METHODS
     # ==========================================
 
