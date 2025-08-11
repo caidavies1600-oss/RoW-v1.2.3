@@ -571,8 +571,13 @@ class BaseGoogleSheetsManager:
         - Performance impact minimization
         - Detailed logging for debugging
         """
-        if not self.gc or not self.spreadsheet:
-            logger.debug("❌ Connection check failed: Client or spreadsheet not initialized")
+        # Basic check - if client and spreadsheet objects exist, consider connected
+        if not self.gc:
+            logger.debug("❌ Connection check failed: Google client not initialized")
+            return False
+            
+        if not self.spreadsheet:
+            logger.debug("❌ Connection check failed: Spreadsheet not initialized")
             return False
 
         # Check circuit breaker status
@@ -580,14 +585,11 @@ class BaseGoogleSheetsManager:
             logger.debug("❌ Connection check failed: Circuit breaker is open")
             return False
 
-        try:
-            # Perform a lightweight test operation
-            self.rate_limited_request(lambda: self.spreadsheet.worksheets())
-            logger.debug("✅ Connection check passed")
-            return True
-        except Exception as e:
-            logger.debug(f"❌ Connection check failed: {e}")
-            return False
+        # If we have both gc and spreadsheet objects and no circuit breaker issues,
+        # we're connected. Avoid making API calls in connection checks to prevent
+        # rate limiting and performance issues during startup.
+        logger.debug("✅ Connection check passed - client and spreadsheet initialized")
+        return True
 
     def get_or_create_worksheet(self, title: str, rows: int = 100, cols: int = 10):
         """

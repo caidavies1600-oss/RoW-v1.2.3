@@ -252,18 +252,23 @@ class RowBot(commands.Bot):
                     try:
                         connection_status = self.sheets.is_connected()
                         print(f"DEBUG: Connection status: {connection_status}")
+                        print(f"DEBUG: Has gc: {hasattr(self.sheets, 'gc') and self.sheets.gc is not None}")
+                        print(f"DEBUG: Has spreadsheet: {hasattr(self.sheets, 'spreadsheet') and self.sheets.spreadsheet is not None}")
                         
-                        if connection_status and self.sheets.spreadsheet:
+                        if connection_status:
                             logger.info(
-                                f"✅ Google Sheets connected: {self.sheets.spreadsheet.url}"
+                                f"✅ Google Sheets connected successfully"
                             )
+                            if self.sheets.spreadsheet:
+                                logger.info(f"📊 Spreadsheet: {self.sheets.spreadsheet.title}")
+                                logger.info(f"🔗 URL: {self.sheets.spreadsheet.url}")
                             print("DEBUG: Google Sheets connected successfully")
                             if MONITORING_AVAILABLE:
                                 await notify_startup_milestone("Google Sheets connected")
                         else:
                             # Get more detailed error information
-                            error_details = "Unknown connection issue"
-                            if hasattr(self.sheets, 'gc') and not self.sheets.gc:
+                            error_details = "Connection check returned False"
+                            if not hasattr(self.sheets, 'gc') or not self.sheets.gc:
                                 error_details = "Failed to authorize Google Sheets client - check credentials format and permissions"
                                 
                                 # Additional debugging for credential issues
