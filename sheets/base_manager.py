@@ -23,6 +23,8 @@ Features:
 - Security-first design with credential management
 """
 
+import gspread
+from google.oauth2.service_account import Credentials
 import json
 import os
 import time
@@ -30,12 +32,6 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Union, Tuple
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-
-import gspread
-from google.oauth2.service_account import Credentials
-from google.auth.exceptions import RefreshError
-from google.auth.transport.requests import Request
-import gspread.exceptions
 
 from utils.logger import setup_logger
 from .config import (
@@ -263,6 +259,7 @@ class BaseGoogleSheetsManager:
                         self.gc = None
                         self.spreadsheet = None
                         return
+                        
                 except Exception as test_error:
                     logger.warning(f"⚠️ Authorization test had issues: {test_error}")
                     # Don't fail here unless it's clearly an auth error
