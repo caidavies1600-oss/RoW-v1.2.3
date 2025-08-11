@@ -1,0 +1,13 @@
+{
+  "users": {},
+  "default_settings": {
+    "event_reminders": true,
+    "result_notifications": true,
+    "team_updates": true,
+    "reminder_times": ["30m", "5m"],
+    "quiet_hours": {
+      "start": "22:00",
+      "end": "08:00"
+    }
+  }
+}
