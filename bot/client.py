@@ -189,22 +189,31 @@ class RowBot(commands.Bot):
 
             print("DEBUG: Starting scheduler...")
             if MONITORING_AVAILABLE:
-                await notify_startup_milestone("Starting background tasks...", "🔄")
-            if start_scheduler:
-                start_scheduler(self)
-                logger.info("Scheduler started")
-                if MONITORING_AVAILABLE:
-                    await notify_startup_milestone("Background scheduler started")
-            else:
-                logger.warning("Scheduler not available - continuing without it")
-                if MONITORING_AVAILABLE:
-                    await notify_startup_milestone(
-                        "Scheduler unavailable", "⚠️", "Background tasks disabled"
-                    )
+                await notify_startup_milestone("Starting scheduler...", "⚙️")
 
-            print("DEBUG: Initializing Google Sheets...")
+            try:
+                from services.scheduler import Scheduler
+                self.scheduler = Scheduler(self)
+                await self.scheduler.start()
+                if MONITORING_AVAILABLE:
+                    await notify_startup_milestone("Scheduler started", "✅")
+            except Exception as e:
+                logger.error(f"Failed to start scheduler: {e}")
+                if MONITORING_AVAILABLE:
+                    await notify_startup_milestone("Scheduler failed", "❌")
+
+            # Initialize Google Sheets with clean architecture
+            print("DEBUG: Initializing Google Sheets integration...")
             if MONITORING_AVAILABLE:
                 await notify_startup_milestone("Initializing Google Sheets...", "📊")
+
+            await self._initialize_sheets_manager()
+
+            if MONITORING_AVAILABLE:
+                if hasattr(self, 'sheets') and self.sheets and self.sheets.is_connected():
+                    await notify_startup_milestone("Google Sheets connected", "✅")
+                else:
+                    await notify_startup_milestone("Google Sheets disabled", "⚠️")
 
             # Initialize DataManager
             print("DEBUG: Initializing DataManager...")
@@ -228,130 +237,6 @@ class RowBot(commands.Bot):
                         "DataManager initialization error", "❌", str(e)
                     )
 
-            # Initialize Google Sheets if credentials are available
-            try:
-                creds_env = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
-                sheets_id_env = os.getenv("GOOGLE_SHEETS_ID")
-
-                print("DEBUG: Checking Google Sheets environment variables...")
-                print(
-                    f"DEBUG: GOOGLE_SHEETS_CREDENTIALS: {'Found' if creds_env else 'Missing'}"
-                )
-                print(
-                    f"DEBUG: GOOGLE_SHEETS_ID: {'Found' if sheets_id_env else 'Missing'}"
-                )
-
-                if creds_env and sheets_id_env:
-                    print(
-                        "DEBUG: Both environment variables found, initializing SheetsManager..."
-                    )
-                    from sheets import SheetsManager
-
-                    self.sheets = SheetsManager(sheets_id_env)
-                    print(
-                        f"DEBUG: SheetsManager created, checking connection..."
-                    )
-
-                    # Give the connection a moment to establish
-                    import asyncio
-                    await asyncio.sleep(0.5)
-
-                    # Check connection status with error details
-                    try:
-                        connection_status = self.sheets.is_connected()
-                        print(f"DEBUG: Connection status: {connection_status}")
-                        print(f"DEBUG: Has gc: {hasattr(self.sheets, 'gc') and self.sheets.gc is not None}")
-                        print(f"DEBUG: Has spreadsheet: {hasattr(self.sheets, 'spreadsheet') and self.sheets.spreadsheet is not None}")
-
-                        if connection_status:
-                            logger.info(
-                                f"✅ Google Sheets connected successfully"
-                            )
-                            if self.sheets.spreadsheet:
-                                logger.info(f"📊 Spreadsheet: {self.sheets.spreadsheet.title}")
-                                logger.info(f"🔗 URL: {self.sheets.spreadsheet.url}")
-                            print("DEBUG: Google Sheets connected successfully")
-                            if MONITORING_AVAILABLE:
-                                await notify_startup_milestone("Google Sheets connected")
-                        else:
-                            # Get more detailed error information
-                            error_details = "Connection check returned False"
-                            if not hasattr(self.sheets, 'gc') or not self.sheets.gc:
-                                error_details = "Failed to authorize Google Sheets client - check credentials format and permissions"
-
-                                # Additional debugging for credential issues
-                                creds_env = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
-                                if creds_env:
-                                    try:
-                                        import json
-                                        creds_data = json.loads(creds_env)
-                                        print(f"DEBUG: Credentials type: {creds_data.get('type', 'unknown')}")
-                                        print(f"DEBUG: Service account email: {creds_data.get('client_email', 'not found')}")
-                                        if creds_data.get('type') != 'service_account':
-                                            error_details = "Credentials are not service account type"
-                                    except json.JSONDecodeError:
-                                        error_details = "Invalid JSON in GOOGLE_SHEETS_CREDENTIALS"
-                                    except Exception as cred_error:
-                                        print(f"DEBUG: Credential parsing error: {cred_error}")
-                                        creds_data = json.loads(creds_env)
-                                        required_fields = ["type", "project_id", "private_key_id", "private_key", "client_email", "client_id", "auth_uri", "token_uri"]
-                                        missing_fields = [field for field in required_fields if field not in creds_data]
-
-                                        if missing_fields:
-                                            error_details += f" - Missing credential fields: {', '.join(missing_fields)}"
-                                        elif creds_data.get("type") != "service_account":
-                                            error_details += f" - Invalid credential type: {creds_data.get('type')} (expected 'service_account')"
-                                        else:
-                                            error_details += " - Credentials appear valid but authorization failed"
-
-                                    except json.JSONDecodeError:
-                                        error_details += " - Invalid JSON format in GOOGLE_SHEETS_CREDENTIALS"
-                                    except Exception as e:
-                                        error_details += f" - Error analyzing credentials: {str(e)}"
-                                else:
-                                    error_details += " - GOOGLE_SHEETS_CREDENTIALS not found"
-
-                            elif hasattr(self.sheets, 'spreadsheet') and not self.sheets.spreadsheet:
-                                error_details = "Failed to open spreadsheet - check GOOGLE_SHEETS_ID"
-
-                            logger.warning(
-                                f"⚠️ Google Sheets connection failed: {error_details}"
-                            )
-                            print(f"DEBUG: Google Sheets connection failed: {error_details}")
-
-                            # Keep the sheets manager for debugging but note the failure
-                            if MONITORING_AVAILABLE:
-                                await notify_startup_milestone(
-                                    f"Google Sheets connection failed: {error_details}", "⚠️"
-                                )
-                    except Exception as sheets_error:
-                        logger.error(f"❌ Error checking Google Sheets connection: {sheets_error}")
-                        print(f"DEBUG: Exception during connection check: {sheets_error}")
-                        if MONITORING_AVAILABLE:
-                            await notify_startup_milestone(
-                                f"Google Sheets error: {sheets_error}", "❌"
-                            )
-                else:
-                    logger.info("ℹ️ Google Sheets credentials not configured")
-                    print("DEBUG: Google Sheets credentials not configured")
-                    self.sheets = None
-                    if MONITORING_AVAILABLE:
-                        await notify_startup_milestone(
-                            "Google Sheets not configured", "ℹ️"
-                        )
-
-            except Exception as e:
-                logger.error(f"❌ Error initializing Google Sheets: {e}")
-                print(f"DEBUG: Google Sheets initialization error: {e}")
-                import traceback
-
-                print(f"DEBUG: Google Sheets traceback: {traceback.format_exc()}")
-                self.sheets = None
-                if MONITORING_AVAILABLE:
-                    await notify_startup_milestone(
-                        "Google Sheets initialization error", "❌", str(e)
-                    )
-
             logger.info("Bot setup complete!")
             if MONITORING_AVAILABLE:
                 await notify_startup_milestone("Setup complete!")
@@ -363,6 +248,64 @@ class RowBot(commands.Bot):
             if MONITORING_AVAILABLE:
                 await notify_error("Setup Error", e, "Critical error during bot setup")
             raise
+
+    async def _initialize_sheets_manager(self):
+        """Initialize Google Sheets integration with clean architecture."""
+        print("DEBUG: Initializing Google Sheets manager...")
+
+        try:
+            # Clean import from sheets directory
+            from sheets import SheetsManager
+
+            # Initialize sheets manager
+            self.sheets = SheetsManager()
+
+            # Test connection and provide detailed feedback
+            if self.sheets.is_connected():
+                logger.info("✅ Google Sheets integration initialized successfully")
+                if self.sheets.spreadsheet:
+                    logger.info(f"📊 Spreadsheet URL: {self.sheets.spreadsheet.url}")
+                    logger.info(f"📊 Spreadsheet ID: {self.sheets.spreadsheet.id}")
+
+                    # Test basic operations
+                    try:
+                        worksheets = [ws.title for ws in self.sheets.spreadsheet.worksheets()]
+                        logger.info(f"📋 Available worksheets: {', '.join(worksheets)}")
+                    except Exception as e:
+                        logger.warning(f"⚠️ Could not list worksheets: {e}")
+                else:
+                    logger.warning("⚠️ Sheets manager connected but no spreadsheet available")
+
+            else:
+                logger.error("❌ Google Sheets integration failed to initialize")
+                if hasattr(self.sheets, 'get_connection_status'):
+                    status = self.sheets.get_connection_status()
+                    logger.error(f"Connection status: {status}")
+
+                    if not status.get("client_initialized", False):
+                        logger.error("❌ Check GOOGLE_SHEETS_CREDENTIALS environment variable")
+                    if not status.get("spreadsheet_connected", False):
+                        logger.error("❌ Check GOOGLE_SHEETS_ID environment variable (optional)")
+                    if status.get("last_error"):
+                        logger.error(f"❌ Last error: {status['last_error']}")
+
+                # Still attach the manager for graceful degradation
+                logger.info("📋 Sheets manager attached but not connected (graceful degradation)")
+
+            print("DEBUG: Sheets manager initialization completed")
+
+        except ImportError as e:
+            logger.error(f"❌ Failed to import SheetsManager: {e}")
+            logger.error("❌ Google Sheets integration disabled")
+            self.sheets = None
+            print("DEBUG: Sheets manager import failed")
+        except Exception as e:
+            logger.error(f"❌ Unexpected error setting up sheets: {e}")
+            import traceback
+            logger.error(f"Sheets setup traceback: {traceback.format_exc()}")
+            self.sheets = None
+            print("DEBUG: Sheets manager setup failed")
+
 
     async def _load_cogs(self):
         """

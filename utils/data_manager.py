@@ -108,8 +108,12 @@ class DataManager:
         """Initialize Google Sheets manager if credentials are available."""
         try:
             if os.getenv("GOOGLE_SHEETS_CREDENTIALS") and SHEETS_AVAILABLE:
-                self.sheets_manager = ExternalSheetsManager()
-                logger.info("✅ Google Sheets integration enabled")
+                from sheets import SheetsManager  # Clean import from sheets directory
+                self.sheets_manager = SheetsManager()
+                if self.sheets_manager.is_connected():
+                    logger.info("✅ DataManager connected to Google Sheets")
+                else:
+                    logger.warning("⚠️ DataManager: Google Sheets not connected")
             else:
                 logger.info("ℹ️ Running without Google Sheets integration")
                 self.sheets_manager = SheetsManager()  # Use local fallback

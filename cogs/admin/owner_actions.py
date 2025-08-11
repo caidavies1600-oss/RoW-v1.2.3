@@ -188,6 +188,113 @@ class OwnerActions(commands.Cog):
     # GOOGLE SHEETS COMMANDS
     # ============================================
 
+    @commands.command(name="debugsheets", help="Debug Google Sheets connection - Clean Architecture")
+    @commands.check(lambda ctx: ctx.author.id == BOT_ADMIN_USER_ID)
+    async def debug_sheets_clean(self, ctx: commands.Context):
+        """Debug Google Sheets connection with clean architecture details."""
+        try:
+            embed = discord.Embed(
+                title="🧹 Google Sheets Debug - Clean Architecture",
+                color=COLORS["INFO"]
+            )
+
+            # Check bot sheets attribute
+            if not hasattr(self.bot, "sheets"):
+                embed.add_field(
+                    name="❌ Critical Error",
+                    value="Bot does not have 'sheets' attribute",
+                    inline=False
+                )
+                return await ctx.send(embed=embed)
+
+            # Check sheets manager
+            if self.bot.sheets is None:
+                embed.add_field(
+                    name="❌ Sheets Manager",
+                    value="Sheets manager is None",
+                    inline=False
+                )
+            else:
+                embed.add_field(
+                    name="✅ Sheets Manager",
+                    value=f"Type: {type(self.bot.sheets).__name__}",
+                    inline=False
+                )
+
+                # Test connection
+                connected = self.bot.sheets.is_connected()
+                embed.add_field(
+                    name="🔗 Connection",
+                    value=f"{'✅ Connected' if connected else '❌ Not connected'}",
+                    inline=False
+                )
+
+                # Get detailed status
+                status = self.bot.sheets.get_connection_status()
+                status_lines = [
+                    f"• Client: {'✅' if status.get('client_initialized') else '❌'}",
+                    f"• Spreadsheet: {'✅' if status.get('spreadsheet_connected') else '❌'}",
+                    f"• Architecture: Clean (sheets/ directory)",
+                    f"• Legacy removed: ✅"
+                ]
+
+                if status.get('spreadsheet_url'):
+                    status_lines.append(f"• URL: [Open Sheet]({status['spreadsheet_url']})")
+
+                embed.add_field(
+                    name="📊 Architecture Status",
+                    value="\n".join(status_lines),
+                    inline=False
+                )
+
+                # Test method availability
+                methods_to_test = [
+                    'sync_player_stats', 'sync_results_history', 
+                    'sync_notification_preferences', 'create_all_templates'
+                ]
+                
+                method_status = []
+                for method in methods_to_test:
+                    has_method = hasattr(self.bot.sheets, method)
+                    method_status.append(f"• {method}: {'✅' if has_method else '❌'}")
+
+                embed.add_field(
+                    name="🔧 Method Availability",
+                    value="\n".join(method_status),
+                    inline=False
+                )
+
+                if status.get('last_error'):
+                    embed.add_field(
+                        name="❌ Last Error",
+                        value=f"```{status['last_error'][:400]}```",
+                        inline=False
+                    )
+
+            # Environment check
+            import os
+            env_lines = [
+                f"• GOOGLE_SHEETS_CREDENTIALS: {'✅ Set' if os.getenv('GOOGLE_SHEETS_CREDENTIALS') else '❌ Missing'}",
+                f"• GOOGLE_SHEETS_ID: {'✅ Set' if os.getenv('GOOGLE_SHEETS_ID') else '⚠️ Optional'}"
+            ]
+
+            embed.add_field(
+                name="🔐 Environment",
+                value="\n".join(env_lines),
+                inline=False
+            )
+
+            embed.set_footer(text="Clean architecture: All sheets code in sheets/ directory")
+            await ctx.send(embed=embed)
+
+        except Exception as e:
+            logger.exception("Error in debug_sheets_clean")
+            await ctx.send(f"❌ **Debug Error:** {str(e)[:500]}")
+
+    # ============================================
+    # GOOGLE SHEETS COMMANDS (CONTINUED)
+    # ============================================
+
     @commands.command(name="syncmembers", help="Sync Discord members to Google Sheets")
     @commands.check(lambda ctx: ctx.author.id == BOT_ADMIN_USER_ID)
     async def sync_discord_members(self, ctx: commands.Context, guild_id: int = None):
