@@ -16,7 +16,7 @@ Hey everyone! Our Discord bot is here to make RoW event management super easy. H
 4. **Battle Day** - Show up and fight!
 
 ### 🔘 **Using the Signup Buttons**
-- **🏆 Join Main Team** - Open to all skill levels
+- **🏆 Join Main Team** - **Competitive players only** (requires role)
 - **🔸 Join Team 2** - Open to all skill levels  
 - **🔸 Join Team 3** - Open to all skill levels  
 - **🔴 Leave Team** - Remove yourself from your current team
@@ -43,7 +43,8 @@ Configure your notification preferences:
 - `!notifications test` - Test your notification delivery
 
 ### 🏅 **Team Information**
-- **All teams:** Open to everyone, great for all skill levels!
+- **Main Team:** Competitive players only - requires special role
+- **Team 2 & 3:** Open to everyone, great for all skill levels!
 - **Max 40 players per team**
 - Teams are balanced for competitive play
 
