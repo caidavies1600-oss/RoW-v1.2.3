@@ -176,7 +176,8 @@ class BaseGoogleSheetsManager:
             # Define the required scopes for Google Sheets and Drive access
             scope = [
                 "https://www.googleapis.com/auth/spreadsheets",
-                "https://www.googleapis.com/auth/drive",
+                "https://www.googleapis.com/auth/drive.file",
+                "https://www.googleapis.com/auth/drive.readonly"
             ]
 
             # Attempt to load credentials from multiple sources
@@ -246,11 +247,47 @@ class BaseGoogleSheetsManager:
 
             # Authorize the client with the loaded credentials
             try:
+                logger.debug(f"🔐 Attempting authorization with scopes: {scope}")
                 self.gc = gspread.authorize(creds)
                 logger.info(f"✅ Google Sheets client authorized using {credential_source}")
+                
+                # Test the authorization with a simple API call
+                try:
+                    # This will fail if authorization isn't working
+                    logger.debug("🧪 Testing authorization with API call...")
+                    test_result = self.gc.list_permissions("test")  # This should fail gracefully if unauthorized
+                    logger.debug("✅ Authorization test successful")
+                except Exception as test_error:
+                    logger.debug(f"🧪 Authorization test failed (expected): {test_error}")
+                    # This is expected to fail, but if it fails with auth errors, we have a problem
+                    if "unauthorized" in str(test_error).lower() or "forbidden" in str(test_error).lower():
+                        logger.error(f"❌ Authorization failed - credentials may be invalid or lack permissions")
+                        self.gc = None
+                        self.spreadsheet = None
+                        return
+                        
+            except RefreshError as refresh_error:
+                logger.error(f"❌ Credential refresh error during authorization: {refresh_error}")
+                logger.error(f"🔐 This usually means the service account key is invalid or expired")
+                logger.error(f"🔐 Credential source: {credential_source}")
+                self.gc = None
+                self.spreadsheet = None
+                return
             except Exception as auth_error:
                 logger.error(f"❌ Failed to authorize Google Sheets client: {auth_error}")
+                logger.error(f"🔐 Error type: {type(auth_error).__name__}")
                 logger.error(f"🔐 Credential source: {credential_source}")
+                
+                # Check for common authorization issues
+                error_msg = str(auth_error).lower()
+                if "403" in error_msg or "forbidden" in error_msg:
+                    logger.error("💡 Hint: Service account may not have access to Google Sheets API")
+                    logger.error("💡 Enable Google Sheets API in Google Cloud Console")
+                elif "401" in error_msg or "unauthorized" in error_msg:
+                    logger.error("💡 Hint: Service account credentials may be invalid")
+                elif "quota" in error_msg or "limit" in error_msg:
+                    logger.error("💡 Hint: API quota exceeded - try again later")
+                
                 logger.exception("Full authorization error:")
                 self.gc = None
                 self.spreadsheet = None
@@ -261,6 +298,7 @@ class BaseGoogleSheetsManager:
             if spreadsheet_id:
                 # Attempt to open existing spreadsheet
                 try:
+                    logger.debug(f"🔍 Attempting to open spreadsheet with ID: {spreadsheet_id}")
                     self.spreadsheet = self.rate_limited_request(
                         lambda: self.gc.open_by_key(spreadsheet_id)
                     )
@@ -270,12 +308,35 @@ class BaseGoogleSheetsManager:
                     logger.info(f"📋 Spreadsheet Title: {self.spreadsheet.title}")
                 except gspread.SpreadsheetNotFound:
                     logger.error(f"❌ Spreadsheet with ID {spreadsheet_id} not found")
-                    logger.info("💡 Check if the spreadsheet ID is correct and the service account has access")
+                    logger.error("💡 Possible causes:")
+                    logger.error("   - Spreadsheet ID is incorrect")
+                    logger.error("   - Service account doesn't have access to the spreadsheet")
+                    logger.error("   - Spreadsheet has been deleted")
+                    logger.error(f"💡 To fix: Share the spreadsheet with {creds.service_account_email if hasattr(creds, 'service_account_email') else 'the service account'}")
+                    self.gc = None
+                    self.spreadsheet = None
+                    return
+                except gspread.exceptions.APIError as api_error:
+                    error_details = getattr(api_error, 'response', {})
+                    status_code = error_details.get('status', 'unknown')
+                    
+                    if status_code == 403:
+                        logger.error(f"❌ Access forbidden to spreadsheet {spreadsheet_id}")
+                        logger.error("💡 The service account needs permission to access this spreadsheet")
+                        logger.error(f"💡 Share the spreadsheet with: {creds.service_account_email if hasattr(creds, 'service_account_email') else 'the service account email'}")
+                    elif status_code == 404:
+                        logger.error(f"❌ Spreadsheet {spreadsheet_id} not found")
+                        logger.error("💡 Check that the spreadsheet ID is correct")
+                    else:
+                        logger.error(f"❌ API Error {status_code} accessing spreadsheet: {api_error}")
+                        
                     self.gc = None
                     self.spreadsheet = None
                     return
                 except Exception as e:
                     logger.error(f"❌ Failed to open spreadsheet {spreadsheet_id}: {e}")
+                    logger.error(f"🔧 Error type: {type(e).__name__}")
+                    logger.exception("Full spreadsheet access error:")
                     self.gc = None
                     self.spreadsheet = None
                     return

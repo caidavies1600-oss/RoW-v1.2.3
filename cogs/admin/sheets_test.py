@@ -147,8 +147,225 @@ class SheetsTest(commands.Cog):
     async def validate_credentials(self, ctx):
         """
         Validate Google Sheets credentials for debugging connection issues.
+        
+        This command performs comprehensive validation of:
+        - Environment variable presence and format
+        - JSON credential structure and required fields
+        - Service account authentication
+        - Google Sheets API access
+        - Specific spreadsheet permissions
+        """
+        embed = discord.Embed(
+            title="🔐 Google Sheets Credentials Validation",
+            color=0x3498db,
+            timestamp=datetime.utcnow()
+        )
 
-        Args:
+        try:
+            import json
+            import os
+            from google.oauth2.service_account import Credentials
+            import gspread
+            
+            # Step 1: Check environment variables
+            creds_env = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
+            sheets_id_env = os.getenv("GOOGLE_SHEETS_ID")
+            
+            embed.add_field(
+                name="📋 Environment Variables",
+                value=f"**GOOGLE_SHEETS_CREDENTIALS:** {'Found' if creds_env else 'Missing'}\n"
+                      f"**GOOGLE_SHEETS_ID:** {'Found' if sheets_id_env else 'Missing'}",
+                inline=False
+            )
+            
+            if not creds_env or not sheets_id_env:
+                embed.add_field(
+                    name="❌ Validation Failed",
+                    value="Missing required environment variables",
+                    inline=False
+                )
+                await ctx.send(embed=embed)
+                return
+                
+            # Step 2: Validate JSON format
+            try:
+                creds_data = json.loads(creds_env)
+                embed.add_field(
+                    name="✅ JSON Format",
+                    value="Valid JSON structure",
+                    inline=True
+                )
+            except json.JSONDecodeError as e:
+                embed.add_field(
+                    name="❌ JSON Format",
+                    value=f"Invalid JSON: {str(e)[:100]}",
+                    inline=True
+                )
+                await ctx.send(embed=embed)
+                return
+                
+            # Step 3: Check required fields
+            required_fields = [
+                "type", "project_id", "private_key_id", "private_key", 
+                "client_email", "client_id", "auth_uri", "token_uri"
+            ]
+            missing_fields = [field for field in required_fields if field not in creds_data]
+            
+            if missing_fields:
+                embed.add_field(
+                    name="❌ Required Fields",
+                    value=f"Missing: {', '.join(missing_fields)}",
+                    inline=True
+                )
+                await ctx.send(embed=embed)
+                return
+            else:
+                embed.add_field(
+                    name="✅ Required Fields",
+                    value="All required fields present",
+                    inline=True
+                )
+                
+            # Step 4: Check credential type
+            if creds_data.get("type") != "service_account":
+                embed.add_field(
+                    name="❌ Credential Type",
+                    value=f"Expected 'service_account', got '{creds_data.get('type')}'",
+                    inline=True
+                )
+                await ctx.send(embed=embed)
+                return
+            else:
+                embed.add_field(
+                    name="✅ Credential Type",
+                    value="Service Account (correct)",
+                    inline=True
+                )
+                
+            # Step 5: Test authentication
+            try:
+                scope = [
+                    "https://www.googleapis.com/auth/spreadsheets",
+                    "https://www.googleapis.com/auth/drive.file",
+                    "https://www.googleapis.com/auth/drive.readonly"
+                ]
+                
+                creds = Credentials.from_service_account_info(creds_data, scopes=scope)
+                embed.add_field(
+                    name="✅ Authentication",
+                    value=f"Service Account: {creds_data.get('client_email', 'Unknown')[:30]}...",
+                    inline=False
+                )
+                
+                # Step 6: Test Google Sheets API access
+                try:
+                    gc = gspread.authorize(creds)
+                    embed.add_field(
+                        name="✅ API Authorization", 
+                        value="Successfully authorized with Google Sheets API",
+                        inline=False
+                    )
+                    
+                    # Step 7: Test specific spreadsheet access
+                    try:
+                        spreadsheet = gc.open_by_key(sheets_id_env)
+                        embed.add_field(
+                            name="✅ Spreadsheet Access",
+                            value=f"Successfully accessed: {spreadsheet.title}",
+                            inline=False
+                        )
+                        
+                        # Test worksheet access
+                        try:
+                            worksheets = spreadsheet.worksheets()
+                            worksheet_names = [ws.title for ws in worksheets[:5]]  # First 5 sheets
+                            embed.add_field(
+                                name="📋 Available Worksheets",
+                                value=f"Found {len(worksheets)} worksheets: {', '.join(worksheet_names)}",
+                                inline=False
+                            )
+                            
+                            embed.color = 0x00ff00  # Green for success
+                            embed.add_field(
+                                name="🎉 Validation Result",
+                                value="All validations passed! Google Sheets integration is working correctly.",
+                                inline=False
+                            )
+                            
+                        except Exception as worksheet_error:
+                            embed.add_field(
+                                name="⚠️ Worksheet Access",
+                                value=f"Could not list worksheets: {str(worksheet_error)[:100]}",
+                                inline=False
+                            )
+                            
+                    except gspread.SpreadsheetNotFound:
+                        embed.add_field(
+                            name="❌ Spreadsheet Access",
+                            value=f"Spreadsheet not found or no access to ID: {sheets_id_env}",
+                            inline=False
+                        )
+                        embed.add_field(
+                            name="💡 Fix",
+                            value=f"Share the spreadsheet with: `{creds_data.get('client_email', 'service account')}`",
+                            inline=False
+                        )
+                        
+                    except gspread.exceptions.APIError as api_error:
+                        error_details = getattr(api_error, 'response', {})
+                        status_code = error_details.get('status', 'unknown')
+                        
+                        embed.add_field(
+                            name="❌ Spreadsheet API Error",
+                            value=f"Status {status_code}: {str(api_error)[:100]}",
+                            inline=False
+                        )
+                        
+                        if status_code == 403:
+                            embed.add_field(
+                                name="💡 Fix",
+                                value=f"Share spreadsheet with: `{creds_data.get('client_email')}`",
+                                inline=False
+                            )
+                            
+                except Exception as auth_error:
+                    embed.add_field(
+                        name="❌ API Authorization Failed",
+                        value=f"Could not authorize with Google Sheets API: {str(auth_error)[:100]}",
+                        inline=False
+                    )
+                    
+                    # Check for common issues
+                    error_msg = str(auth_error).lower()
+                    if "403" in error_msg:
+                        embed.add_field(
+                            name="💡 Likely Cause",
+                            value="Google Sheets API not enabled in Google Cloud Console",
+                            inline=False
+                        )
+                    elif "quota" in error_msg:
+                        embed.add_field(
+                            name="💡 Likely Cause", 
+                            value="API quota exceeded - try again later",
+                            inline=False
+                        )
+                        
+            except Exception as cred_error:
+                embed.add_field(
+                    name="❌ Credential Creation Failed",
+                    value=f"Could not create credentials: {str(cred_error)[:100]}",
+                    inline=False
+                )
+                
+        except Exception as e:
+            embed.add_field(
+                name="❌ Validation Error",
+                value=f"Unexpected error during validation: {str(e)[:100]}",
+                inline=False
+            )
+            
+        embed.set_footer(text="Use this information to debug Google Sheets connection issues")
+        await ctx.send(embed=embed)gs:
             ctx: Command context
 
         Returns:
