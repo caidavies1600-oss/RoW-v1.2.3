@@ -19,20 +19,22 @@ Components:
 - Alert system
 """
 
-import asyncio
+from datetime import datetime
+from typing import Any, Dict
+
 import discord
-from datetime import datetime, timedelta
-from typing import Dict, List, Any
-from discord.ext import tasks, commands
-from utils.logger import setup_logger
+from discord.ext import commands, tasks
+
 from utils.data_manager import DataManager
+from utils.logger import setup_logger
 
 logger = setup_logger("health_monitor")
+
 
 class HealthMonitor:
     """
     Monitors bot health and performance.
-    
+
     Features:
     - Command tracking
     - Error monitoring
@@ -40,7 +42,7 @@ class HealthMonitor:
     - Cog status validation
     - Task monitoring
     - Health scoring
-    
+
     Attributes:
         bot: Discord bot instance
         data_manager: Data management interface
@@ -58,7 +60,7 @@ class HealthMonitor:
             "guild_count": 0,
             "channel_access": {},
             "cog_status": {},
-            "task_status": {}
+            "task_status": {},
         }
 
     def record_command(self, command_name: str, success: bool = True):
@@ -68,19 +70,19 @@ class HealthMonitor:
             self.health_data["error_count"] += 1
             self.health_data["last_error"] = {
                 "command": command_name,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.utcnow().isoformat(),
             }
 
     def test_channel_access(self) -> Dict[str, bool]:
         """
         Test access to configured channels.
-        
+
         Checks:
         - Channel existence
         - Bot permissions
         - Message sending rights
         - Embed permissions
-        
+
         Returns:
             dict: Channel access status by channel ID
         """
@@ -97,14 +99,14 @@ class HealthMonitor:
                     "accessible": True,
                     "can_send": can_send,
                     "guild": channel.guild.name,
-                    "name": channel.name
+                    "name": channel.name,
                 }
             else:
                 results[str(channel_id)] = {
                     "accessible": False,
                     "can_send": False,
                     "guild": None,
-                    "name": None
+                    "name": None,
                 }
 
         self.health_data["channel_access"] = results
@@ -113,12 +115,12 @@ class HealthMonitor:
     def check_cog_status(self) -> Dict[str, bool]:
         """
         Check status of critical cogs.
-        
+
         Validates:
         - Critical cog availability
         - Optional cog status
         - Cog loading state
-        
+
         Returns:
             dict: Cog status information
         """
@@ -130,7 +132,7 @@ class HealthMonitor:
             cog = self.bot.get_cog(cog_name)
             status[cog_name] = {
                 "loaded": cog is not None,
-                "critical": cog_name in critical_cogs
+                "critical": cog_name in critical_cogs,
             }
 
         self.health_data["cog_status"] = status
@@ -144,24 +146,28 @@ class HealthMonitor:
             "event_signup": {
                 "running": post_event_signup.is_running(),
                 "failed": post_event_signup.failed(),
-                "next_iteration": None
+                "next_iteration": None,
             },
             "weekly_summary": {
                 "running": post_weekly_summary.is_running(),
                 "failed": post_weekly_summary.failed(),
-                "next_iteration": None
-            }
+                "next_iteration": None,
+            },
         }
 
         try:
             if post_event_signup.is_running():
-                status["event_signup"]["next_iteration"] = post_event_signup.next_iteration
+                status["event_signup"]["next_iteration"] = (
+                    post_event_signup.next_iteration
+                )
         except:
             pass
 
         try:
             if post_weekly_summary.is_running():
-                status["weekly_summary"]["next_iteration"] = post_weekly_summary.next_iteration
+                status["weekly_summary"]["next_iteration"] = (
+                    post_weekly_summary.next_iteration
+                )
         except:
             pass
 
@@ -172,7 +178,9 @@ class HealthMonitor:
         """Generate comprehensive health report."""
         # Update current stats
         self.health_data["guild_count"] = len(self.bot.guilds)
-        self.health_data["uptime"] = datetime.utcnow() - self.health_data["startup_time"]
+        self.health_data["uptime"] = (
+            datetime.utcnow() - self.health_data["startup_time"]
+        )
 
         # Run checks
         channel_status = self.test_channel_access()
@@ -183,23 +191,28 @@ class HealthMonitor:
         score = 100
 
         # Deduct for critical cogs not loaded
-        critical_cogs_down = sum(1 for name, status in cog_status.items() 
-                               if status["critical"] and not status["loaded"])
+        critical_cogs_down = sum(
+            1
+            for name, status in cog_status.items()
+            if status["critical"] and not status["loaded"]
+        )
         score -= critical_cogs_down * 25
 
         # Deduct for inaccessible channels
-        inaccessible_channels = sum(1 for status in channel_status.values() 
-                                  if not status["accessible"])
+        inaccessible_channels = sum(
+            1 for status in channel_status.values() if not status["accessible"]
+        )
         score -= inaccessible_channels * 15
 
         # Deduct for failed tasks
-        failed_tasks = sum(1 for status in task_status.values() 
-                          if status["failed"])
+        failed_tasks = sum(1 for status in task_status.values() if status["failed"])
         score -= failed_tasks * 20
 
         # Deduct for high error rate
         if self.health_data["command_count"] > 0:
-            error_rate = self.health_data["error_count"] / self.health_data["command_count"]
+            error_rate = (
+                self.health_data["error_count"] / self.health_data["command_count"]
+            )
             if error_rate > 0.1:  # More than 10% error rate
                 score -= int(error_rate * 100)
 
@@ -208,11 +221,17 @@ class HealthMonitor:
         return {
             **self.health_data,
             "health_score": score,
-            "status": "healthy" if score >= 80 else "warning" if score >= 60 else "critical"
+            "status": "healthy"
+            if score >= 80
+            else "warning"
+            if score >= 60
+            else "critical",
         }
+
 
 # Global health monitor instance
 health_monitor = None
+
 
 def setup_health_monitoring(bot):
     """Setup health monitoring for the bot."""
@@ -220,15 +239,17 @@ def setup_health_monitoring(bot):
     health_monitor = HealthMonitor(bot)
     logger.info("✅ Health monitoring configured")
 
+
 def record_command_execution(command_name: str, success: bool = True):
     """Record command execution for health monitoring."""
     if health_monitor:
         health_monitor.record_command(command_name, success)
 
+
 class HealthCommands(commands.Cog):
     """
     Health monitoring commands and tasks.
-    
+
     Features:
     - Health check commands
     - Automated monitoring
@@ -248,7 +269,7 @@ class HealthCommands(commands.Cog):
     async def health_check_task(self):
         """
         Periodic health check task.
-        
+
         Performs:
         - Health score calculation
         - Status validation
@@ -272,33 +293,53 @@ class HealthCommands(commands.Cog):
                     # Try to notify admin
                     try:
                         from config.settings import BOT_ADMIN_USER_ID
+
                         admin = self.bot.get_user(BOT_ADMIN_USER_ID)
                         if admin:
                             embed = discord.Embed(
                                 title="🚨 Bot Health Alert",
                                 description=f"Bot health is critical (score: {score}/100)",
-                                color=0xED4245
+                                color=0xED4245,
                             )
 
                             # Add problem details
                             problems = []
-                            cog_issues = [name for name, status in report["cog_status"].items() 
-                                        if status["critical"] and not status["loaded"]]
+                            cog_issues = [
+                                name
+                                for name, status in report["cog_status"].items()
+                                if status["critical"] and not status["loaded"]
+                            ]
                             if cog_issues:
-                                problems.append(f"Critical cogs down: {', '.join(cog_issues)}")
+                                problems.append(
+                                    f"Critical cogs down: {', '.join(cog_issues)}"
+                                )
 
-                            channel_issues = [cid for cid, status in report["channel_access"].items() 
-                                            if not status["accessible"]]
+                            channel_issues = [
+                                cid
+                                for cid, status in report["channel_access"].items()
+                                if not status["accessible"]
+                            ]
                             if channel_issues:
-                                problems.append(f"Channels inaccessible: {len(channel_issues)}")
+                                problems.append(
+                                    f"Channels inaccessible: {len(channel_issues)}"
+                                )
 
-                            task_issues = [name for name, status in report["task_status"].items() 
-                                         if status["failed"]]
+                            task_issues = [
+                                name
+                                for name, status in report["task_status"].items()
+                                if status["failed"]
+                            ]
                             if task_issues:
-                                problems.append(f"Tasks failed: {', '.join(task_issues)}")
+                                problems.append(
+                                    f"Tasks failed: {', '.join(task_issues)}"
+                                )
 
                             if problems:
-                                embed.add_field(name="Issues", value="\n".join(problems), inline=False)
+                                embed.add_field(
+                                    name="Issues",
+                                    value="\n".join(problems),
+                                    inline=False,
+                                )
 
                             await admin.send(embed=embed)
                     except Exception as e:
@@ -332,17 +373,17 @@ class HealthCommands(commands.Cog):
             embed = discord.Embed(
                 title=f"{emoji_map[status]} Bot Health Report",
                 description=f"**Status:** {status.title()}\n**Health Score:** {score}/100",
-                color=color_map[status]
+                color=color_map[status],
             )
 
             # Basic stats
             uptime = report["uptime"]
-            uptime_str = f"{uptime.days}d {uptime.seconds//3600}h {(uptime.seconds%3600)//60}m"
+            uptime_str = f"{uptime.days}d {uptime.seconds // 3600}h {(uptime.seconds % 3600) // 60}m"
 
             embed.add_field(
                 name="📊 Statistics",
                 value=f"Uptime: {uptime_str}\nGuilds: {report['guild_count']}\nCommands: {report['command_count']}\nErrors: {report['error_count']}",
-                inline=True
+                inline=True,
             )
 
             # Cog status
@@ -355,7 +396,7 @@ class HealthCommands(commands.Cog):
             embed.add_field(
                 name="🔧 Cogs",
                 value="\n".join(cog_lines) if cog_lines else "None",
-                inline=True
+                inline=True,
             )
 
             # Channel access
@@ -368,7 +409,7 @@ class HealthCommands(commands.Cog):
             embed.add_field(
                 name="📡 Channels",
                 value="\n".join(channel_lines) if channel_lines else "None",
-                inline=True
+                inline=True,
             )
 
             # Task status
@@ -385,16 +426,19 @@ class HealthCommands(commands.Cog):
             embed.add_field(
                 name="⚙️ Tasks",
                 value="\n".join(task_lines) if task_lines else "None",
-                inline=True
+                inline=True,
             )
 
-            embed.set_footer(text=f"Last updated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC")
+            embed.set_footer(
+                text=f"Last updated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC"
+            )
 
             await ctx.send(embed=embed)
 
-        except Exception as e:
+        except Exception:
             logger.exception("Error in health command:")
             await ctx.send("❌ Failed to generate health report.")
+
 
 async def setup(bot):
     await bot.add_cog(HealthCommands(bot))

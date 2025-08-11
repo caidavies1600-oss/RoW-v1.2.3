@@ -18,13 +18,16 @@ Features:
 
 import re
 from typing import Optional
+
 import discord
+
 from config.settings import ADMIN_ROLE_IDS, MAIN_TEAM_ROLE_ID
+
 
 class Validators:
     """
     Collection of validation functions for bot input.
-    
+
     Features:
     - Permission validation
     - Role checking
@@ -37,13 +40,13 @@ class Validators:
     def is_admin(user: discord.Member) -> bool:
         """
         Check if user has admin permissions.
-        
+
         Args:
             user: Discord member to check
-            
+
         Returns:
             bool: True if user has admin role
-            
+
         Checks:
             - Admin role presence
             - Role ID validation
@@ -54,13 +57,13 @@ class Validators:
     def can_join_main_team(user: discord.Member) -> bool:
         """
         Check if user can join main team.
-        
+
         Args:
             user: Discord member to check
-            
+
         Returns:
             bool: True if user has main team role
-            
+
         Validates:
             - Main team role presence
             - Role ID match
@@ -71,13 +74,13 @@ class Validators:
     def validate_ign(ign: str) -> tuple[bool, Optional[str]]:
         """
         Validate an in-game name.
-        
+
         Args:
             ign: In-game name to validate
-            
+
         Returns:
             tuple: (valid: bool, error_message: Optional[str])
-            
+
         Validates:
         - Non-empty string
         - Length (2-20 chars)
@@ -95,7 +98,7 @@ class Validators:
             return False, "IGN must be 20 characters or less"
 
         # Allow alphanumeric, spaces, underscores, hyphens
-        if not re.match(r'^[a-zA-Z0-9\s_-]+$', ign):
+        if not re.match(r"^[a-zA-Z0-9\s_-]+$", ign):
             return False, "IGN contains invalid characters"
 
         return True, None
@@ -104,13 +107,13 @@ class Validators:
     def validate_team_name(team: str) -> Optional[str]:
         """
         Validate and normalize team name.
-        
+
         Args:
             team: Team name/identifier to validate
-            
+
         Returns:
             Optional[str]: Normalized team name or None if invalid
-            
+
         Features:
         - Case insensitive matching
         - Alias support (team1 -> main_team)
@@ -122,14 +125,12 @@ class Validators:
             "team1": "main_team",
             "team_1": "main_team",
             "1": "main_team",
-
             "team2": "team_2",
-            "team_2": "team_2", 
+            "team_2": "team_2",
             "2": "team_2",
-
             "team3": "team_3",
             "team_3": "team_3",
-            "3": "team_3"
+            "3": "team_3",
         }
         return team_mapping.get(team.lower().strip())
 
@@ -137,13 +138,13 @@ class Validators:
     def validate_days(days: int) -> tuple[bool, Optional[str]]:
         """
         Validate day count for blocking users.
-        
+
         Args:
             days: Number of days to validate
-            
+
         Returns:
             tuple: (valid: bool, error_message: Optional[str])
-            
+
         Validates:
         - Positive integer
         - Maximum 365 days

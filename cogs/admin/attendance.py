@@ -1,15 +1,17 @@
+from datetime import datetime
+
 import discord
 from discord.ext import commands
-from datetime import datetime
+
 from config.constants import FILES
 from config.settings import ADMIN_ROLE_IDS
-from utils.helpers import Helpers
 from utils.data_manager import DataManager
+
 
 class Attendance(commands.Cog):
     """
     Manages RoW event attendance tracking and reporting.
-    
+
     Features:
     - Track player absences with reasons
     - Remove absence marks
@@ -32,7 +34,7 @@ class Attendance(commands.Cog):
     def load_absent_data(self):
         """
         Load absent data using DataManager.
-        
+
         Returns:
             dict: Dictionary containing absence records
                   Format: {user_id: {reason, timestamp, marked_by}}
@@ -42,18 +44,22 @@ class Attendance(commands.Cog):
     def save_absent_data(self):
         """
         Save absent data and sync with Google Sheets.
-        
+
         Updates player statistics to reflect absences.
-        
+
         Returns:
             bool: True if save was successful, False otherwise
         """
-        success = self.data_manager.save_json(FILES["ABSENT"], self.absent_data, sync_to_sheets=True)
+        success = self.data_manager.save_json(
+            FILES["ABSENT"], self.absent_data, sync_to_sheets=True
+        )
         if success:
             # Update player stats for absents count
             for user_id in self.absent_data.keys():
                 if user_id in self.data_manager.player_stats:
-                    self.data_manager.player_stats[user_id]["absents"] = self.data_manager.player_stats[user_id].get("absents", 0) + 1
+                    self.data_manager.player_stats[user_id]["absents"] = (
+                        self.data_manager.player_stats[user_id].get("absents", 0) + 1
+                    )
                 else:
                     # Initialize player stats if not exists
                     self.data_manager.player_stats[user_id] = {
@@ -61,14 +67,14 @@ class Attendance(commands.Cog):
                         "team_results": {
                             "main_team": {"wins": 0, "losses": 0},
                             "team_2": {"wins": 0, "losses": 0},
-                            "team_3": {"wins": 0, "losses": 0}
+                            "team_3": {"wins": 0, "losses": 0},
                         },
                         "absents": 1,
-                        "blocked": False
+                        "blocked": False,
                     }
             self.data_manager.save_player_stats()
         else:
-            print(f"❌ Failed to save absent data")
+            print("❌ Failed to save absent data")
         return success
 
     @commands.command(name="absent")
@@ -93,11 +99,13 @@ class Attendance(commands.Cog):
         self.absent_data[user_id] = {
             "reason": reason,
             "timestamp": datetime.utcnow().isoformat(),
-            "marked_by": str(ctx.author)
+            "marked_by": str(ctx.author),
         }
-        
+
         if self.save_absent_data():
-            await ctx.send(f"✅ {ctx.author.mention} marked as absent. Reason: *{reason}*")
+            await ctx.send(
+                f"✅ {ctx.author.mention} marked as absent. Reason: *{reason}*"
+            )
             print(f"📌 {ctx.author} marked themselves absent. Reason: {reason}")
         else:
             await ctx.send("❌ Failed to save absence record. Please try again.")
@@ -126,7 +134,9 @@ class Attendance(commands.Cog):
             removed = self.absent_data.pop(user_id)
             if self.save_absent_data():
                 await ctx.send(f"✅ Removed absence mark for {member.mention}")
-                print(f"🧹 {ctx.author} removed absence for {member} (was marked: {removed})")
+                print(
+                    f"🧹 {ctx.author} removed absence for {member} (was marked: {removed})"
+                )
             else:
                 await ctx.send("❌ Failed to save changes. Please try again.")
         else:
@@ -150,7 +160,7 @@ class Attendance(commands.Cog):
             - Who marked each absence
         """
         self.absent_data = self.load_absent_data()
-        
+
         if not self.absent_data:
             await ctx.send("✅ No absentees recorded for this week.")
             return
@@ -162,7 +172,7 @@ class Attendance(commands.Cog):
                 name = user.mention if user else f"<@{uid}>"
             except (ValueError, TypeError):
                 name = f"Invalid User ID: {uid}"
-            
+
             reason = entry.get("reason", "No reason")
             marked_by = entry.get("marked_by", "Unknown")
             lines.append(f"- {name} ({reason}) — marked by **{marked_by}**")
@@ -170,9 +180,10 @@ class Attendance(commands.Cog):
         embed = discord.Embed(
             title="📥 Absentees This Week",
             description="\n".join(lines),
-            color=discord.Color.orange()
+            color=discord.Color.orange(),
         )
         await ctx.send(embed=embed)
+
 
 async def setup(bot):
     """

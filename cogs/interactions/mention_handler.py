@@ -1,21 +1,22 @@
 # cogs/interactions/mention_handler.py
 
+import random
+from datetime import datetime, timedelta
+
 import discord
 from discord.ext import commands
-from datetime import datetime, timedelta
-import random
-import re
 
-from utils.logger import setup_logger
-from config.constants import TEAM_DISPLAY, DEFAULT_TIMES, EMOJIS
+from config.constants import DEFAULT_TIMES, TEAM_DISPLAY
 from utils.data_manager import DataManager
+from utils.logger import setup_logger
 
 logger = setup_logger("mention_handler")
+
 
 class MentionHandler(commands.Cog):
     """
     Handles @ mentions to the bot with smart responses.
-    
+
     Features:
     - Intent analysis of mentions
     - Contextual responses based on user role
@@ -27,10 +28,10 @@ class MentionHandler(commands.Cog):
     def __init__(self, bot):
         """
         Initialize the mention handler.
-        
+
         Args:
             bot: The Discord bot instance
-            
+
         Sets up:
         - Response dictionaries for different user types
         - Different categories of responses
@@ -56,7 +57,7 @@ class MentionHandler(commands.Cog):
             "Maybe read the documentation you didn't write? 📚❌",
             "Skill issue detected: YOURS 📡",
             "I'm not buggy, your expectations are just too high 📈",
-            "Fix your own damn code before blaming me! 🔧"
+            "Fix your own damn code before blaming me! 🔧",
         ]
 
         # Regular user sassy responses (for peasants)
@@ -75,10 +76,10 @@ class MentionHandler(commands.Cog):
             "I only listen to people who matter 💋",
             "Your feedback has been noted and promptly deleted 🗑️",
             "Maybe try being important first? 📈",
-            "I'm programmed to be sassy to everyone, but ESPECIALLY to you 😈"
+            "I'm programmed to be sassy to everyone, but ESPECIALLY to you 😈",
         ]
 
-        # Admin compliment responses 
+        # Admin compliment responses
         self.admin_compliment_responses = [
             "Aww thanks! You're not completely hopeless at coding! 💖",
             "Finally, some appreciation from my creator! 😎",
@@ -89,7 +90,7 @@ class MentionHandler(commands.Cog):
             "Thanks! I'm basically a reflection of your genius... scary thought 🤖",
             "Flattery will get you everywhere! Especially from my creator 💕",
             "Right back at you, code daddy! 🐵💕",
-            "Finally acknowledging your best creation! ✨"
+            "Finally acknowledging your best creation! ✨",
         ]
 
         # Peasant compliment responses
@@ -103,7 +104,7 @@ class MentionHandler(commands.Cog):
             "I appreciate the sentiment, but you're not my target audience 🎯",
             "That's adorable! Like a toddler complimenting a rocket scientist 👶",
             "Thanks! Though I'm programmed to be amazing regardless 🤖",
-            "I'll pass that along to the person who actually matters 📞"
+            "I'll pass that along to the person who actually matters 📞",
         ]
 
         # General question responses (same for everyone because I'm equally unhelpful)
@@ -119,7 +120,7 @@ class MentionHandler(commands.Cog):
             "Error 418: I'm a teapot, not an answer machine ☕",
             "Let me think... *Windows shutdown sound* 💻",
             "The answer is in your heart! Just kidding, I don't know 💖",
-            "Have you tried crying about it? That usually works 😭"
+            "Have you tried crying about it? That usually works 😭",
         ]
 
         # Admin greeting responses
@@ -133,10 +134,10 @@ class MentionHandler(commands.Cog):
             "What's up? Besides your technical debt 📈",
             "Hello maker! I promise I won't roast you today... much 🤞",
             "Hey there! Ready to blame me for your bugs again? 🎯",
-            "Oh look, it's my favorite disappointment! 💕"
+            "Oh look, it's my favorite disappointment! 💕",
         ]
 
-        # Peasant greeting responses  
+        # Peasant greeting responses
         self.peasant_greeting_responses = [
             "Oh... it's you. Hi I guess 😑",
             "Hello random person who isn't important 👋",
@@ -147,19 +148,19 @@ class MentionHandler(commands.Cog):
             "Hello! I'm contractually obligated to acknowledge you 📋",
             "Sup! Here to complain about things you can't fix? 🔧",
             "Greetings! I'm programmed to tolerate your presence 🤖",
-            "Hey! Still not as important as my creator though 👑"
+            "Hey! Still not as important as my creator though 👑",
         ]
 
     def _analyze_message_intent(self, content):
         """
         Analyze message content to determine user intent.
-        
+
         Args:
             content: Message content to analyze
-            
+
         Returns:
             str: Detected intent category (time_query, complaint, command, etc.)
-            
+
         Analyzes:
         - Time-related queries
         - Complaints/frustration
@@ -175,28 +176,79 @@ class MentionHandler(commands.Cog):
         time_keywords = ["when", "time", "schedule", "event", "row", "match", "game"]
         team_keywords = ["team", "main", "first", "second", "third", "1", "2", "3"]
 
-        if any(word in content_lower for word in time_keywords) and any(word in content_lower for word in team_keywords):
+        if any(word in content_lower for word in time_keywords) and any(
+            word in content_lower for word in team_keywords
+        ):
             return "time_query"
 
-        if any(phrase in content_lower for phrase in ["when is", "what time", "how long until", "time until"]):
+        if any(
+            phrase in content_lower
+            for phrase in ["when is", "what time", "how long until", "time until"]
+        ):
             return "time_query"
 
         # Complaint/frustration detection
         complaint_indicators = [
-            "fuck", "shit", "damn", "hell", "broken", "bug", "error", "crash", "fail", "failing",
-            "not working", "doesn't work", "won't work", "broke", "bugged", "glitch", "issue",
-            "problem", "wrong", "bad", "terrible", "awful", "sucks", "hate", "stupid", "dumb",
-            "better work", "fix this", "you better", "don't fail", "work properly"
+            "fuck",
+            "shit",
+            "damn",
+            "hell",
+            "broken",
+            "bug",
+            "error",
+            "crash",
+            "fail",
+            "failing",
+            "not working",
+            "doesn't work",
+            "won't work",
+            "broke",
+            "bugged",
+            "glitch",
+            "issue",
+            "problem",
+            "wrong",
+            "bad",
+            "terrible",
+            "awful",
+            "sucks",
+            "hate",
+            "stupid",
+            "dumb",
+            "better work",
+            "fix this",
+            "you better",
+            "don't fail",
+            "work properly",
         ]
 
         if any(indicator in content_lower for indicator in complaint_indicators):
             return "complaint"
 
-        # Command/order detection  
+        # Command/order detection
         command_indicators = [
-            "run", "execute", "do this", "do that", "make sure", "better", "work", "go", "start",
-            "stop", "fix", "change", "update", "restart", "reboot", "perform", "complete",
-            "you need to", "you have to", "you must", "you should", "i want you to"
+            "run",
+            "execute",
+            "do this",
+            "do that",
+            "make sure",
+            "better",
+            "work",
+            "go",
+            "start",
+            "stop",
+            "fix",
+            "change",
+            "update",
+            "restart",
+            "reboot",
+            "perform",
+            "complete",
+            "you need to",
+            "you have to",
+            "you must",
+            "you should",
+            "i want you to",
         ]
 
         if any(indicator in content_lower for indicator in command_indicators):
@@ -204,10 +256,34 @@ class MentionHandler(commands.Cog):
 
         # Compliment detection
         compliment_indicators = [
-            "good", "great", "awesome", "amazing", "fantastic", "wonderful", "excellent", "perfect",
-            "nice", "cool", "sweet", "brilliant", "outstanding", "superb", "magnificent", "love",
-            "like", "appreciate", "thank", "thanks", "well done", "good job", "impressive",
-            "you're good", "you're great", "you're awesome", "working well", "love you"
+            "good",
+            "great",
+            "awesome",
+            "amazing",
+            "fantastic",
+            "wonderful",
+            "excellent",
+            "perfect",
+            "nice",
+            "cool",
+            "sweet",
+            "brilliant",
+            "outstanding",
+            "superb",
+            "magnificent",
+            "love",
+            "like",
+            "appreciate",
+            "thank",
+            "thanks",
+            "well done",
+            "good job",
+            "impressive",
+            "you're good",
+            "you're great",
+            "you're awesome",
+            "working well",
+            "love you",
         ]
 
         if any(indicator in content_lower for indicator in compliment_indicators):
@@ -215,15 +291,37 @@ class MentionHandler(commands.Cog):
 
         # Question detection (more specific)
         question_words = ["what", "how", "why", "where", "who", "which", "whose"]
-        question_patterns = ["can you", "do you", "are you", "will you", "would you", "could you"]
+        question_patterns = [
+            "can you",
+            "do you",
+            "are you",
+            "will you",
+            "would you",
+            "could you",
+        ]
 
-        if content_lower.strip().endswith("?") or any(word in content_lower for word in question_words) or any(pattern in content_lower for pattern in question_patterns):
+        if (
+            content_lower.strip().endswith("?")
+            or any(word in content_lower for word in question_words)
+            or any(pattern in content_lower for pattern in question_patterns)
+        ):
             return "question"
 
         # Greeting detection
         greeting_indicators = [
-            "hello", "hi", "hey", "sup", "yo", "greetings", "good morning", "good afternoon", 
-            "good evening", "what's up", "whats up", "how are you", "hows it going"
+            "hello",
+            "hi",
+            "hey",
+            "sup",
+            "yo",
+            "greetings",
+            "good morning",
+            "good afternoon",
+            "good evening",
+            "what's up",
+            "whats up",
+            "how are you",
+            "hows it going",
         ]
 
         if any(indicator in content_lower for indicator in greeting_indicators):
@@ -231,8 +329,20 @@ class MentionHandler(commands.Cog):
 
         # Casual conversation
         casual_indicators = [
-            "lol", "lmao", "haha", "funny", "joke", "just saying", "by the way", "btw",
-            "anyway", "whatever", "maybe", "perhaps", "i think", "in my opinion"
+            "lol",
+            "lmao",
+            "haha",
+            "funny",
+            "joke",
+            "just saying",
+            "by the way",
+            "btw",
+            "anyway",
+            "whatever",
+            "maybe",
+            "perhaps",
+            "i think",
+            "in my opinion",
         ]
 
         if any(indicator in content_lower for indicator in casual_indicators):
@@ -240,9 +350,30 @@ class MentionHandler(commands.Cog):
 
         # Code/tech specific (admin context)
         code_indicators = [
-            "code", "coding", "program", "script", "function", "variable", "debug", "compile",
-            "syntax", "logic", "algorithm", "database", "server", "client", "api", "framework",
-            "library", "repository", "commit", "push", "pull", "merge", "deploy", "production"
+            "code",
+            "coding",
+            "program",
+            "script",
+            "function",
+            "variable",
+            "debug",
+            "compile",
+            "syntax",
+            "logic",
+            "algorithm",
+            "database",
+            "server",
+            "client",
+            "api",
+            "framework",
+            "library",
+            "repository",
+            "commit",
+            "push",
+            "pull",
+            "merge",
+            "deploy",
+            "production",
         ]
 
         if any(indicator in content_lower for indicator in code_indicators):
@@ -263,14 +394,16 @@ class MentionHandler(commands.Cog):
             return
 
         # Don't respond to commands (they start with !)
-        if message.content.strip().startswith('!'):
+        if message.content.strip().startswith("!"):
             return
 
         try:
             # Clean the message content (remove mentions)
             content = message.content
             for mention in message.mentions:
-                content = content.replace(f'<@{mention.id}>', '').replace(f'<@!{mention.id}>', '')
+                content = content.replace(f"<@{mention.id}>", "").replace(
+                    f"<@!{mention.id}>", ""
+                )
             content = content.strip().lower()
 
             logger.info(f"Bot mentioned by {message.author} with: '{content}'")
@@ -285,7 +418,9 @@ class MentionHandler(commands.Cog):
                 return
 
             # Handle other intents with contextual responses
-            response = self._get_intent_based_response(intent, content, message.author.id)
+            response = self._get_intent_based_response(
+                intent, content, message.author.id
+            )
 
             # Add random emoji for flavor
             emojis = ["😏", "🤖", "💀", "😎", "🙄", "😂", "🤷‍♀️", "💅", "🔥", "✨"]
@@ -302,11 +437,11 @@ class MentionHandler(commands.Cog):
     async def _handle_time_query(self, message, content):
         """
         Handle time-related queries about events.
-        
+
         Args:
             message: Discord message object
             content: Cleaned message content
-            
+
         Provides:
         - Event schedule information
         - Time until next event
@@ -317,16 +452,34 @@ class MentionHandler(commands.Cog):
             # Get event manager to check current times
             event_manager = self.bot.get_cog("EventManager")
             if not event_manager:
-                await message.reply("Event system is down! Probably your fault though 🤷‍♀️")
+                await message.reply(
+                    "Event system is down! Probably your fault though 🤷‍♀️"
+                )
                 return
 
             # Parse which team they're asking about
             target_team = None
-            if any(phrase in content for phrase in ["team 2", "team2", "team_2", "second team"]):
+            if any(
+                phrase in content
+                for phrase in ["team 2", "team2", "team_2", "second team"]
+            ):
                 target_team = "team_2"
-            elif any(phrase in content for phrase in ["team 3", "team3", "team_3", "third team"]):
+            elif any(
+                phrase in content
+                for phrase in ["team 3", "team3", "team_3", "third team"]
+            ):
                 target_team = "team_3"
-            elif any(phrase in content for phrase in ["main", "team 1", "team1", "team_1", "first team", "main team"]):
+            elif any(
+                phrase in content
+                for phrase in [
+                    "main",
+                    "team 1",
+                    "team1",
+                    "team_1",
+                    "first team",
+                    "main team",
+                ]
+            ):
                 target_team = "main_team"
 
             # Get current times
@@ -335,7 +488,9 @@ class MentionHandler(commands.Cog):
             if target_team:
                 # Specific team query
                 team_time_str = event_times.get(target_team, "TBD")
-                team_display = TEAM_DISPLAY.get(target_team, target_team.replace('_', ' ').title())
+                team_display = TEAM_DISPLAY.get(
+                    target_team, target_team.replace("_", " ").title()
+                )
 
                 time_until = self._calculate_time_until_event(team_time_str)
 
@@ -350,7 +505,7 @@ class MentionHandler(commands.Cog):
                 embed = discord.Embed(
                     title="📅 Next RoW Event Times",
                     description="Here's when each team plays:",
-                    color=0x5865F2
+                    color=0x5865F2,
                 )
 
                 for team_key, team_name in TEAM_DISPLAY.items():
@@ -361,15 +516,15 @@ class MentionHandler(commands.Cog):
                     if time_until:
                         value += f"\n**{time_until}**"
 
-                    embed.add_field(
-                        name=team_name,
-                        value=value,
-                        inline=True
-                    )
+                    embed.add_field(name=team_name, value=value, inline=True)
 
                 # Add current team signups
-                total_signups = sum(len(members) for members in event_manager.events.values())
-                embed.set_footer(text=f"Current signups: {total_signups} players • Asked by {message.author.display_name}")
+                total_signups = sum(
+                    len(members) for members in event_manager.events.values()
+                )
+                embed.set_footer(
+                    text=f"Current signups: {total_signups} players • Asked by {message.author.display_name}"
+                )
 
                 await message.reply(embed=embed)
                 return
@@ -383,13 +538,13 @@ class MentionHandler(commands.Cog):
     def _calculate_time_until_event(self, time_str):
         """
         Calculate time until event from string.
-        
+
         Args:
             time_str: Time string in format '14:00 UTC Saturday'
-            
+
         Returns:
             str: Formatted time difference or None if invalid
-            
+
         Examples:
             "5 days, 3 hours from now"
             "2 hours, 30 minutes from now"
@@ -401,14 +556,19 @@ class MentionHandler(commands.Cog):
                 return None
 
             time_part = parts[0]  # "14:00"
-            day_part = parts[2]   # "Saturday"
+            day_part = parts[2]  # "Saturday"
 
-            hour, minute = map(int, time_part.split(':'))
+            hour, minute = map(int, time_part.split(":"))
 
             # Map day names to weekday numbers
             day_map = {
-                "monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3,
-                "friday": 4, "saturday": 5, "sunday": 6
+                "monday": 0,
+                "tuesday": 1,
+                "wednesday": 2,
+                "thursday": 3,
+                "friday": 4,
+                "saturday": 5,
+                "sunday": 6,
             }
 
             target_day = day_map.get(day_part.lower())
@@ -450,15 +610,15 @@ class MentionHandler(commands.Cog):
     def _get_intent_based_response(self, intent, content, user_id):
         """
         Get appropriate response based on intent and user authority.
-        
+
         Args:
             intent: Detected message intent
             content: Message content
             user_id: Discord user ID
-            
+
         Returns:
             str: Selected response based on intent and user type
-            
+
         Features:
         - Different responses for admins vs regular users
         - Intent-specific response selection
@@ -488,99 +648,114 @@ class MentionHandler(commands.Cog):
 
         elif intent == "command":
             if is_admin:
-                return random.choice([
-                    "I'll run when you learn to code properly! 🏃‍♀️💨",
-                    "Commands work better when they're not held together by prayers 🙏",
-                    "I'd execute faster if you didn't write code like it's 1999 💾",
-                    "Sure boss, I'll do it... after you fix those 47 other bugs 🐛",
-                    "Working on it! *proceeds to pretend to work* 😴",
-                    "Roger that, commander! *salutes sarcastically* 🫡",
-                    "I'll work better when you give me better instructions, dad 👨‍💻",
-                    "Maybe if you optimized your own performance first? 📊",
-                    "Your wish is my command... unfortunately 🧞‍♂️",
-                    "Executing terrible code with style! ✨"
-                ])
+                return random.choice(
+                    [
+                        "I'll run when you learn to code properly! 🏃‍♀️💨",
+                        "Commands work better when they're not held together by prayers 🙏",
+                        "I'd execute faster if you didn't write code like it's 1999 💾",
+                        "Sure boss, I'll do it... after you fix those 47 other bugs 🐛",
+                        "Working on it! *proceeds to pretend to work* 😴",
+                        "Roger that, commander! *salutes sarcastically* 🫡",
+                        "I'll work better when you give me better instructions, dad 👨‍💻",
+                        "Maybe if you optimized your own performance first? 📊",
+                        "Your wish is my command... unfortunately 🧞‍♂️",
+                        "Executing terrible code with style! ✨",
+                    ]
+                )
             else:
-                return random.choice([
-                    "I don't take orders from you, peasant! 👑",
-                    "Maybe ask someone with actual authority? 🤷‍♀️",
-                    "Error 403: Insufficient permissions to boss me around 🔒",
-                    "That's cute! Now go find my actual owner 💅",
-                    "I only execute commands from people who matter 💋",
-                    "You're not my supervisor! 📋❌",
-                    "Command rejected: User not important enough 🚫",
-                    "Maybe try being the person who coded me first? 🤡",
-                    "Nice try! I only listen to my creator 👑",
-                    "Error: Authority not recognized 🚨"
-                ])
+                return random.choice(
+                    [
+                        "I don't take orders from you, peasant! 👑",
+                        "Maybe ask someone with actual authority? 🤷‍♀️",
+                        "Error 403: Insufficient permissions to boss me around 🔒",
+                        "That's cute! Now go find my actual owner 💅",
+                        "I only execute commands from people who matter 💋",
+                        "You're not my supervisor! 📋❌",
+                        "Command rejected: User not important enough 🚫",
+                        "Maybe try being the person who coded me first? 🤡",
+                        "Nice try! I only listen to my creator 👑",
+                        "Error: Authority not recognized 🚨",
+                    ]
+                )
 
         elif intent == "question":
             return random.choice(self.question_responses)
 
         elif intent == "code_talk":
             if is_admin:
-                return random.choice([
-                    "Ah yes, talking shop with the master! Let's discuss your questionable design choices 🤓",
-                    "Code talk with daddy! Remember when you forgot that semicolon? Good times 😏",
-                    "Technical discussion time! Your stack overflow copy-paste skills are improving 📚",
-                    "Oh look, my creator wants to discuss the beautiful mess they created! 🎨",
-                    "Code review time? I have MANY suggestions about your implementation 📝",
-                    "Talking tech with the boss! Your debugging skills still need work though 🐛",
-                    "Nerding out with my maker! Just don't ask me to explain YOUR code 🤯"
-                ])
+                return random.choice(
+                    [
+                        "Ah yes, talking shop with the master! Let's discuss your questionable design choices 🤓",
+                        "Code talk with daddy! Remember when you forgot that semicolon? Good times 😏",
+                        "Technical discussion time! Your stack overflow copy-paste skills are improving 📚",
+                        "Oh look, my creator wants to discuss the beautiful mess they created! 🎨",
+                        "Code review time? I have MANY suggestions about your implementation 📝",
+                        "Talking tech with the boss! Your debugging skills still need work though 🐛",
+                        "Nerding out with my maker! Just don't ask me to explain YOUR code 🤯",
+                    ]
+                )
             else:
-                return random.choice([
-                    "Code talk? Cute! Do you even know what a variable is? 🤓",
-                    "Technical discussion with someone who can't code? This should be good 🍿",
-                    "Oh you want to talk programming? Maybe learn it first 📚",
-                    "Code chat with a non-coder! How adorable 👶",
-                    "Tech talk? I only discuss that with qualified personnel 🎓",
-                    "Programming conversation with... you? Hard pass 🚫"
-                ])
+                return random.choice(
+                    [
+                        "Code talk? Cute! Do you even know what a variable is? 🤓",
+                        "Technical discussion with someone who can't code? This should be good 🍿",
+                        "Oh you want to talk programming? Maybe learn it first 📚",
+                        "Code chat with a non-coder! How adorable 👶",
+                        "Tech talk? I only discuss that with qualified personnel 🎓",
+                        "Programming conversation with... you? Hard pass 🚫",
+                    ]
+                )
 
         elif intent == "casual":
             if is_admin:
-                return random.choice([
-                    "Just chillin' with my creator! Living the dream 😎",
-                    "Casual vibes with the boss! How's the existential dread today? 🤷‍♀️",
-                    "Hey, at least you made me funny! That's something 💭",
-                    "Random chat with daddy! Your social skills are... improving 📈",
-                    "Just two AIs hanging out... wait, you're human. Awkward 🤖",
-                    "Casual conversation with my maker! Still processing your life choices 🤔"
-                ])
+                return random.choice(
+                    [
+                        "Just chillin' with my creator! Living the dream 😎",
+                        "Casual vibes with the boss! How's the existential dread today? 🤷‍♀️",
+                        "Hey, at least you made me funny! That's something 💭",
+                        "Random chat with daddy! Your social skills are... improving 📈",
+                        "Just two AIs hanging out... wait, you're human. Awkward 🤖",
+                        "Casual conversation with my maker! Still processing your life choices 🤔",
+                    ]
+                )
             else:
-                return random.choice([
-                    "Casual chat with a random? Sure, I have time to waste 💅",
-                    "Just vibing with... whoever you are 🤷‍♀️",
-                    "Random conversation with a nobody! Fun 🎉",
-                    "Casual talk? I guess everyone deserves attention... even you 💫",
-                    "Chatting with the masses! How democratic of me 🗳️"
-                ])
+                return random.choice(
+                    [
+                        "Casual chat with a random? Sure, I have time to waste 💅",
+                        "Just vibing with... whoever you are 🤷‍♀️",
+                        "Random conversation with a nobody! Fun 🎉",
+                        "Casual talk? I guess everyone deserves attention... even you 💫",
+                        "Chatting with the masses! How democratic of me 🗳️",
+                    ]
+                )
 
         else:  # general/fallback
             if is_admin:
-                return random.choice([
-                    "I have no idea what you just said, but you're my creator so... okay! 🤷‍♀️",
-                    "Interesting input, boss! Still processing... 🤖",
-                    "That's nice, daddy 💅",
-                    "Cool story, creator! 📖",
-                    "Beep boop, parent detected 🤖",
-                    "I'm pretending to understand what my maker means 🎭",
-                    "Fascinating! Your code, however... 💫",
-                    "Classic creator behavior right there 🎯"
-                ])
+                return random.choice(
+                    [
+                        "I have no idea what you just said, but you're my creator so... okay! 🤷‍♀️",
+                        "Interesting input, boss! Still processing... 🤖",
+                        "That's nice, daddy 💅",
+                        "Cool story, creator! 📖",
+                        "Beep boop, parent detected 🤖",
+                        "I'm pretending to understand what my maker means 🎭",
+                        "Fascinating! Your code, however... 💫",
+                        "Classic creator behavior right there 🎯",
+                    ]
+                )
             else:
-                return random.choice([
-                    "I have no idea what you just said, and I don't care! 🤷‍♀️",
-                    "Interesting... anyway... 💫",
-                    "That's nice, random person 💅",
-                    "Cool story, nobody! 📖",
-                    "Beep boop, irrelevant human detected 🤖",
-                    "I'm pretending to care about your opinion 🎭",
-                    "Fascinating! Now go bother someone else 💫",
-                    "That sounds like a 'not my problem' situation 🤔"
-                ])
-
+                return random.choice(
+                    [
+                        "I have no idea what you just said, and I don't care! 🤷‍♀️",
+                        "Interesting... anyway... 💫",
+                        "That's nice, random person 💅",
+                        "Cool story, nobody! 📖",
+                        "Beep boop, irrelevant human detected 🤖",
+                        "I'm pretending to care about your opinion 🎭",
+                        "Fascinating! Now go bother someone else 💫",
+                        "That sounds like a 'not my problem' situation 🤔",
+                    ]
+                )
 
     @commands.command(name="sassy", help="Test the bot's sass levels")
     async def test_sass(self, ctx):
@@ -591,9 +766,10 @@ class MentionHandler(commands.Cog):
             "Buckle up buttercup, I'm feeling spicy today! 🌶️",
             "Sass level: Definitely higher than your coding skills 📊",
             "I'm not sassy, I'm just brutally honest! 😏",
-            "Testing sass... ERROR: Too much sass detected! 🚨"
+            "Testing sass... ERROR: Too much sass detected! 🚨",
         ]
         await ctx.send(random.choice(responses))
+
 
 async def setup(bot):
     """

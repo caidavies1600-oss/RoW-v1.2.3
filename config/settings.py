@@ -40,7 +40,7 @@ These values need to be updated for each Discord server deployment."""
 # Role IDs (these will be different per server)
 ADMIN_ROLE_IDS: List[int] = [
     1395129965405540452,  # Role: Admin
-    1258214711124688967   # Role: Moderator
+    1258214711124688967,  # Role: Moderator
 ]
 
 MAIN_TEAM_ROLE_ID: int = 1346414253992574976
@@ -50,7 +50,7 @@ ROW_NOTIFICATION_ROLE_ID: int = 1235729244605120572
 ALERT_CHANNEL_ID: int = 1311377465087885314
 
 # User IDs
-BOT_ADMIN_USER_ID: int = 1096858315826397354 # Discord User: ME
+BOT_ADMIN_USER_ID: int = 1096858315826397354  # Discord User: ME
 
 # =============================================================================
 # ⚙️ BOT BEHAVIOR SETTINGS
@@ -65,8 +65,8 @@ TEAMS = ["main_team", "team_2", "team_3"]
 # Event Scheduling (UTC times)
 DEFAULT_TIMES = {
     "main_team": "20:00 UTC Sunday",
-    "team_2": "20:00 UTC Saturday", 
-    "team_3": "14:00 UTC Sunday"
+    "team_2": "20:00 UTC Saturday",
+    "team_3": "14:00 UTC Sunday",
 }
 
 # Rate Limiting

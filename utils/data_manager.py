@@ -18,17 +18,19 @@ Components:
 - Data validation and recovery
 """
 
-import os
 import json
-from typing import Any, Dict
+import os
+from typing import Any
+
 from utils.logger import setup_logger
 
 logger = setup_logger("data_manager")
 
+
 class DataManager:
     """
     Enhanced data manager with Google Sheets as primary data source.
-    
+
     Features:
     - Google Sheets primary storage
     - JSON file fallback system
@@ -36,7 +38,7 @@ class DataManager:
     - Player statistics tracking
     - Match data management
     - Template creation
-    
+
     Attributes:
         sheets_manager: Google Sheets interface
         player_stats: Cache of player statistics
@@ -50,12 +52,15 @@ class DataManager:
     def _initialize_sheets(self):
         """Initialize Google Sheets manager if credentials are available."""
         try:
-            if os.getenv('GOOGLE_SHEETS_CREDENTIALS'):
+            if os.getenv("GOOGLE_SHEETS_CREDENTIALS"):
                 from services.sheets_manager import SheetsManager
+
                 self.sheets_manager = SheetsManager()
                 logger.info("✅ Google Sheets integration enabled")
             else:
-                logger.info("ℹ️ Google Sheets credentials not found, running without sync")
+                logger.info(
+                    "ℹ️ Google Sheets credentials not found, running without sync"
+                )
         except Exception as e:
             logger.warning(f"Failed to initialize Google Sheets: {e}")
             self.sheets_manager = None
@@ -83,27 +88,40 @@ class DataManager:
         from config.constants import FILES
 
         return {
-            "events": self.load_json(FILES["EVENTS"], {"main_team": [], "team_2": [], "team_3": []}),
+            "events": self.load_json(
+                FILES["EVENTS"], {"main_team": [], "team_2": [], "team_3": []}
+            ),
             "blocked": self.load_json(FILES["BLOCKED"], {}),
-            "results": self.load_json(FILES["RESULTS"], {"total_wins": 0, "total_losses": 0, "history": []}),
-            "events_history": self.load_json("data/events_history.json", {"history": []}),
+            "results": self.load_json(
+                FILES["RESULTS"], {"total_wins": 0, "total_losses": 0, "history": []}
+            ),
+            "events_history": self.load_json(
+                "data/events_history.json", {"history": []}
+            ),
             "player_stats": self.load_json("data/player_stats.json", {}),
             "ign_map": self.load_json(FILES["IGN_MAP"], {}),
             "absent": self.load_json(FILES["ABSENT"], {}),
-            "notification_preferences": self.load_json("data/notification_preferences.json", {"users": {}, "default_settings": {}}),
-            "match_stats": self.load_json("data/match_statistics.json", {"matches": []})
+            "notification_preferences": self.load_json(
+                "data/notification_preferences.json",
+                {"users": {}, "default_settings": {}},
+            ),
+            "match_stats": self.load_json(
+                "data/match_statistics.json", {"matches": []}
+            ),
         }
 
-    def update_player_stats(self, user_id: str, team: str, result: str, user_name: str = ""):
+    def update_player_stats(
+        self, user_id: str, team: str, result: str, user_name: str = ""
+    ):
         """
         Update player statistics for wins/losses per team.
-        
+
         Args:
             user_id: Discord user ID
             team: Team identifier (main_team, team_2, team_3)
             result: Match result (win/loss)
             user_name: Optional display name
-            
+
         Updates:
             - Win/loss records per team
             - Player name if provided
@@ -117,7 +135,7 @@ class DataManager:
                 "team_results": {
                     "main_team": {"wins": 0, "losses": 0},
                     "team_2": {"wins": 0, "losses": 0},
-                    "team_3": {"wins": 0, "losses": 0}
+                    "team_3": {"wins": 0, "losses": 0},
                 },
                 "absents": 0,
                 "blocked": False,
@@ -127,8 +145,8 @@ class DataManager:
                     "mages": False,
                     "archers": False,
                     "infantry": False,
-                    "whale": False
-                }
+                    "whale": False,
+                },
             }
 
         # Update name if provided
@@ -147,18 +165,18 @@ class DataManager:
     def save_json(self, filepath: str, data: Any, sync_to_sheets: bool = True) -> bool:
         """
         Save data to JSON file with optional Google Sheets sync.
-        
+
         Args:
             filepath: Path to JSON file
             data: Data to save
             sync_to_sheets: Whether to sync to Google Sheets
-            
+
         Features:
             - Directory creation
             - UTF-8 encoding
             - Live sheets sync
             - Error handling
-            
+
         Returns:
             bool: Success status
         """
@@ -167,7 +185,7 @@ class DataManager:
             if dirname:
                 os.makedirs(dirname, exist_ok=True)
 
-            with open(filepath, 'w', encoding='utf-8') as f:
+            with open(filepath, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=4, ensure_ascii=False)
 
             logger.debug(f"Successfully saved {filepath}")
@@ -201,7 +219,7 @@ class DataManager:
                 logger.info("🔄 Synced blocked users to Google Sheets")
             elif filename == "player_stats.json":
                 # Use member sync for player stats to keep consistency
-                if hasattr(self.sheets_manager, 'sync_player_stats'):
+                if hasattr(self.sheets_manager, "sync_player_stats"):
                     self.sheets_manager.sync_player_stats(data)
                 logger.info("🔄 Synced player stats to Google Sheets")
             elif filename == "notification_preferences.json":
@@ -225,15 +243,17 @@ class DataManager:
 
         return self.sheets_manager.create_all_templates(all_data)
 
-    def update_player_power(self, user_id: str, power_rating: int, specializations: dict = None):
+    def update_player_power(
+        self, user_id: str, power_rating: int, specializations: dict = None
+    ):
         """
         Update player power rating and specializations.
-        
+
         Args:
             user_id: Discord user ID
             power_rating: Player power level
             specializations: Dict of player specializations
-            
+
         Updates:
             - Power rating
             - Combat specializations
@@ -254,16 +274,16 @@ class DataManager:
     def save_match_statistics(self, match_data: dict):
         """
         Save detailed match statistics.
-        
+
         Args:
             match_data: Dictionary containing match details
-            
+
         Features:
             - Match history tracking
             - Google Sheets sync
             - JSON backup
             - Error handling
-            
+
         Returns:
             bool: Success status
         """
@@ -271,7 +291,9 @@ class DataManager:
             stats = self.load_json("data/match_statistics.json", {"matches": []})
             stats["matches"].append(match_data)
 
-            success = self.save_json("data/match_statistics.json", stats, sync_to_sheets=True)
+            success = self.save_json(
+                "data/match_statistics.json", stats, sync_to_sheets=True
+            )
             if success:
                 logger.info("✅ Match statistics saved successfully")
             return success
@@ -281,7 +303,9 @@ class DataManager:
 
     def save_player_stats(self):
         """Save player statistics to both JSON and Sheets."""
-        success = self.save_json("data/player_stats.json", self.player_stats, sync_to_sheets=True)
+        success = self.save_json(
+            "data/player_stats.json", self.player_stats, sync_to_sheets=True
+        )
         if success:
             logger.info("✅ Player stats saved successfully")
         return success
@@ -290,7 +314,7 @@ class DataManager:
     def load_json(filepath: str, default: Any = None) -> Any:
         """Load JSON data from a file."""
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
+            with open(filepath, "r", encoding="utf-8") as f:
                 return json.load(f)
         except FileNotFoundError:
             logger.warning(f"{filepath} not found. Returning default.")

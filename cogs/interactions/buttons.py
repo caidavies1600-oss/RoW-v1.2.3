@@ -1,14 +1,16 @@
 import discord
 from discord.ext import commands
+
 from config.constants import MAIN_TEAM_ROLE_ID
 from utils.logger import setup_logger
 
 logger = setup_logger("buttons")
 
+
 class EventButtons(discord.ui.View):
     """
     Persistent view containing buttons for RoW event interactions.
-    
+
     Features:
     - Team joining buttons with role validation
     - Team leaving functionality
@@ -20,7 +22,7 @@ class EventButtons(discord.ui.View):
     def __init__(self, bot):
         """
         Initialize the event buttons view.
-        
+
         Args:
             bot: The Discord bot instance
         """
@@ -30,10 +32,10 @@ class EventButtons(discord.ui.View):
     async def get_user_ign(self, interaction):
         """
         Helper to get user's IGN from profile system.
-        
+
         Args:
             interaction: Discord interaction event
-            
+
         Returns:
             str: User's IGN if set, display name as fallback, or None if IGN required
         """
@@ -49,14 +51,14 @@ class EventButtons(discord.ui.View):
     async def check_signup_permissions(self, interaction, team_key):
         """
         Check if user can join specific team and if signups are open.
-        
+
         Args:
             interaction: Discord interaction event
             team_key: Team identifier to check permissions for
-            
+
         Returns:
             tuple: (bool, EventManager) - Success status and event cog instance
-            
+
         Checks:
             - Event system availability
             - Signup lock status
@@ -65,14 +67,16 @@ class EventButtons(discord.ui.View):
         # FIXED: Changed from "Events" to "EventManager"
         event_cog = self.bot.get_cog("EventManager")
         if not event_cog:
-            await interaction.response.send_message("❌ Event system not available.", ephemeral=True)
+            await interaction.response.send_message(
+                "❌ Event system not available.", ephemeral=True
+            )
             return False, None
 
         # Check if signups are locked
         if event_cog.is_signup_locked():
             await interaction.response.send_message(
                 "🔒 Signups are currently locked! Teams have been finalized for this week.",
-                ephemeral=True
+                ephemeral=True,
             )
             return False, None
 
@@ -83,12 +87,13 @@ class EventButtons(discord.ui.View):
             duration = blocked_info.get("ban_duration_days", 0)
 
             from utils.helpers import Helpers
+
             days_left = Helpers.days_until_expiry(blocked_at, duration)
 
             await interaction.response.send_message(
                 f"🚫 You are currently blocked from events.\n"
                 f"⏰ Time remaining: {days_left} days",
-                ephemeral=True
+                ephemeral=True,
             )
             return False, None
 
@@ -98,13 +103,17 @@ class EventButtons(discord.ui.View):
         label="Join Main Team",
         style=discord.ButtonStyle.primary,
         emoji="🏆",
-        custom_id="join_main_team_btn"
+        custom_id="join_main_team_btn",
     )
-    async def join_main_team(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def join_main_team(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
         """Handle main team join button."""
         try:
             # Check basic permissions
-            can_proceed, event_cog = await self.check_signup_permissions(interaction, "main_team")
+            can_proceed, event_cog = await self.check_signup_permissions(
+                interaction, "main_team"
+            )
             if not can_proceed:
                 return
 
@@ -115,29 +124,29 @@ class EventButtons(discord.ui.View):
 
             # Check Main Team role permission
             user_role_ids = [role.id for role in interaction.user.roles]
-            logger.debug(f"User {interaction.user} role check: {user_role_ids} vs required {MAIN_TEAM_ROLE_ID}")
+            logger.debug(
+                f"User {interaction.user} role check: {user_role_ids} vs required {MAIN_TEAM_ROLE_ID}"
+            )
 
             if not any(role.id == MAIN_TEAM_ROLE_ID for role in interaction.user.roles):
                 await interaction.response.send_message(
                     "❌ You don't have permission to join the Main Team.\n"
                     "🏆 The Main Team role is required for this team.",
-                    ephemeral=True
+                    ephemeral=True,
                 )
                 return
 
             # Check if already in main team
             if user_ign in event_cog.events["main_team"]:
                 await interaction.response.send_message(
-                    "✅ You're already in the Main Team!",
-                    ephemeral=True
+                    "✅ You're already in the Main Team!", ephemeral=True
                 )
                 return
 
             # Check team capacity
             if len(event_cog.events["main_team"]) >= 40:
                 await interaction.response.send_message(
-                    "❌ Main Team is full (40/40).",
-                    ephemeral=True
+                    "❌ Main Team is full (40/40).", ephemeral=True
                 )
                 return
 
@@ -156,7 +165,10 @@ class EventButtons(discord.ui.View):
             # Log the signup for audit
             try:
                 from services.audit_logger import log_signup
-                log_signup(interaction.user.id, "main_team", "join", interaction.guild_id)
+
+                log_signup(
+                    interaction.user.id, "main_team", "join", interaction.guild_id
+                )
             except ImportError:
                 pass  # Audit logging is optional
 
@@ -171,21 +183,29 @@ class EventButtons(discord.ui.View):
         except Exception as e:
             logger.exception(f"Error in join_main_team: {e}")
             if not interaction.response.is_done():
-                await interaction.response.send_message("❌ An error occurred while joining the team.", ephemeral=True)
+                await interaction.response.send_message(
+                    "❌ An error occurred while joining the team.", ephemeral=True
+                )
             else:
-                await interaction.followup.send("❌ An error occurred while joining the team.", ephemeral=True)
+                await interaction.followup.send(
+                    "❌ An error occurred while joining the team.", ephemeral=True
+                )
 
     @discord.ui.button(
         label="Join Team 2",
         style=discord.ButtonStyle.secondary,
         emoji="🔸",
-        custom_id="join_team_2_btn"
+        custom_id="join_team_2_btn",
     )
-    async def join_team_2(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def join_team_2(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
         """Handle team 2 join button."""
         try:
             # Check basic permissions
-            can_proceed, event_cog = await self.check_signup_permissions(interaction, "team_2")
+            can_proceed, event_cog = await self.check_signup_permissions(
+                interaction, "team_2"
+            )
             if not can_proceed:
                 return
 
@@ -197,16 +217,14 @@ class EventButtons(discord.ui.View):
             # Check if already in team 2
             if user_ign in event_cog.events["team_2"]:
                 await interaction.response.send_message(
-                    "✅ You're already in Team 2!",
-                    ephemeral=True
+                    "✅ You're already in Team 2!", ephemeral=True
                 )
                 return
 
             # Check team capacity
             if len(event_cog.events["team_2"]) >= 40:
                 await interaction.response.send_message(
-                    "❌ Team 2 is full (40/40).",
-                    ephemeral=True
+                    "❌ Team 2 is full (40/40).", ephemeral=True
                 )
                 return
 
@@ -225,6 +243,7 @@ class EventButtons(discord.ui.View):
             # Log the signup for audit
             try:
                 from services.audit_logger import log_signup
+
                 log_signup(interaction.user.id, "team_2", "join", interaction.guild_id)
             except ImportError:
                 pass  # Audit logging is optional
@@ -240,21 +259,29 @@ class EventButtons(discord.ui.View):
         except Exception as e:
             logger.exception(f"Error in join_team_2: {e}")
             if not interaction.response.is_done():
-                await interaction.response.send_message("❌ An error occurred while joining the team.", ephemeral=True)
+                await interaction.response.send_message(
+                    "❌ An error occurred while joining the team.", ephemeral=True
+                )
             else:
-                await interaction.followup.send("❌ An error occurred while joining the team.", ephemeral=True)
+                await interaction.followup.send(
+                    "❌ An error occurred while joining the team.", ephemeral=True
+                )
 
     @discord.ui.button(
         label="Join Team 3",
         style=discord.ButtonStyle.secondary,
         emoji="🔸",
-        custom_id="join_team_3_btn"
+        custom_id="join_team_3_btn",
     )
-    async def join_team_3(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def join_team_3(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
         """Handle team 3 join button."""
         try:
             # Check basic permissions
-            can_proceed, event_cog = await self.check_signup_permissions(interaction, "team_3")
+            can_proceed, event_cog = await self.check_signup_permissions(
+                interaction, "team_3"
+            )
             if not can_proceed:
                 return
 
@@ -266,16 +293,14 @@ class EventButtons(discord.ui.View):
             # Check if already in team 3
             if user_ign in event_cog.events["team_3"]:
                 await interaction.response.send_message(
-                    "✅ You're already in Team 3!",
-                    ephemeral=True
+                    "✅ You're already in Team 3!", ephemeral=True
                 )
                 return
 
             # Check team capacity
             if len(event_cog.events["team_3"]) >= 40:
                 await interaction.response.send_message(
-                    "❌ Team 3 is full (40/40).",
-                    ephemeral=True
+                    "❌ Team 3 is full (40/40).", ephemeral=True
                 )
                 return
 
@@ -294,6 +319,7 @@ class EventButtons(discord.ui.View):
             # Log the signup for audit
             try:
                 from services.audit_logger import log_signup
+
                 log_signup(interaction.user.id, "team_3", "join", interaction.guild_id)
             except ImportError:
                 pass  # Audit logging is optional
@@ -309,29 +335,37 @@ class EventButtons(discord.ui.View):
         except Exception as e:
             logger.exception(f"Error in join_team_3: {e}")
             if not interaction.response.is_done():
-                await interaction.response.send_message("❌ An error occurred while joining the team.", ephemeral=True)
+                await interaction.response.send_message(
+                    "❌ An error occurred while joining the team.", ephemeral=True
+                )
             else:
-                await interaction.followup.send("❌ An error occurred while joining the team.", ephemeral=True)
+                await interaction.followup.send(
+                    "❌ An error occurred while joining the team.", ephemeral=True
+                )
 
     @discord.ui.button(
         label="❌ Leave My Team",
         style=discord.ButtonStyle.danger,
-        custom_id="leave_team_btn"
+        custom_id="leave_team_btn",
     )
-    async def leave_team(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def leave_team(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
         """Allow user to leave their current team."""
         try:
             # FIXED: Changed from "Events" to "EventManager"
             event_cog = self.bot.get_cog("EventManager")
             if not event_cog:
-                await interaction.response.send_message("❌ Event system not available.", ephemeral=True)
+                await interaction.response.send_message(
+                    "❌ Event system not available.", ephemeral=True
+                )
                 return
 
             # Check if signups are locked
             if event_cog.is_signup_locked():
                 await interaction.response.send_message(
                     "🔒 Signups are locked! You cannot leave your team at this time.",
-                    ephemeral=True
+                    ephemeral=True,
                 )
                 return
 
@@ -354,41 +388,51 @@ class EventButtons(discord.ui.View):
                 # Log the leave action for audit
                 try:
                     from services.audit_logger import log_signup
-                    log_signup(interaction.user.id, left_team, "leave", interaction.guild_id)
+
+                    log_signup(
+                        interaction.user.id, left_team, "leave", interaction.guild_id
+                    )
                 except ImportError:
                     pass  # Audit logging is optional
 
                 await interaction.response.send_message(
                     f"✅ {user_ign} has left the **{left_team.replace('_', ' ').title()}**.",
-                    ephemeral=True
+                    ephemeral=True,
                 )
                 logger.info(f"{interaction.user} ({user_ign}) left {left_team}")
             else:
                 await interaction.response.send_message(
-                    "ℹ️ You're not signed up for any team.",
-                    ephemeral=True
+                    "ℹ️ You're not signed up for any team.", ephemeral=True
                 )
 
         except Exception as e:
             logger.exception(f"Error in leave_team: {e}")
             if not interaction.response.is_done():
-                await interaction.response.send_message("❌ An error occurred while leaving the team.", ephemeral=True)
+                await interaction.response.send_message(
+                    "❌ An error occurred while leaving the team.", ephemeral=True
+                )
             else:
-                await interaction.followup.send("❌ An error occurred while leaving the team.", ephemeral=True)
+                await interaction.followup.send(
+                    "❌ An error occurred while leaving the team.", ephemeral=True
+                )
 
     @discord.ui.button(
         label="📋 Show Teams",
         style=discord.ButtonStyle.success,
         emoji="📋",
-        custom_id="show_teams_btn"
+        custom_id="show_teams_btn",
     )
-    async def show_teams(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def show_teams(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
         """Show current team signups."""
         try:
             # FIXED: Changed from "Events" to "EventManager"
             event_cog = self.bot.get_cog("EventManager")
             if not event_cog:
-                await interaction.response.send_message("❌ Event system not available.", ephemeral=True)
+                await interaction.response.send_message(
+                    "❌ Event system not available.", ephemeral=True
+                )
                 return
 
             # Check if user has IGN set (warning)
@@ -402,8 +446,7 @@ class EventButtons(discord.ui.View):
             from utils.helpers import Helpers
 
             embed = discord.Embed(
-                title="📋 Current RoW Team Signups",
-                color=COLORS["INFO"]
+                title="📋 Current RoW Team Signups", color=COLORS["INFO"]
             )
 
             # Add signup lock status to title if locked
@@ -420,7 +463,7 @@ class EventButtons(discord.ui.View):
                 embed.add_field(
                     name=f"{display_name} ({len(members)}/40)",
                     value=member_list or "*No signups yet.*",
-                    inline=False
+                    inline=False,
                 )
 
             # Footer with total signups and lock status
@@ -433,20 +476,31 @@ class EventButtons(discord.ui.View):
             embed.set_footer(text=footer_text)
 
             # Send response
-            content = f"Here are the current team signups:{ign_warning}" if ign_warning else None
-            await interaction.response.send_message(content=content, embed=embed, ephemeral=True)
+            content = (
+                f"Here are the current team signups:{ign_warning}"
+                if ign_warning
+                else None
+            )
+            await interaction.response.send_message(
+                content=content, embed=embed, ephemeral=True
+            )
 
         except Exception as e:
             logger.exception(f"Error in show_teams: {e}")
             if not interaction.response.is_done():
-                await interaction.response.send_message("❌ An error occurred while showing teams.", ephemeral=True)
+                await interaction.response.send_message(
+                    "❌ An error occurred while showing teams.", ephemeral=True
+                )
             else:
-                await interaction.followup.send("❌ An error occurred while showing teams.", ephemeral=True)
+                await interaction.followup.send(
+                    "❌ An error occurred while showing teams.", ephemeral=True
+                )
+
 
 class ButtonCog(commands.Cog):
     """
     Cog for managing persistent button interactions.
-    
+
     Handles:
     - Button view registration
     - View persistence across bot restarts
@@ -456,7 +510,7 @@ class ButtonCog(commands.Cog):
     def __init__(self, bot):
         """
         Initialize the button cog.
-        
+
         Args:
             bot: The Discord bot instance
         """
@@ -465,7 +519,7 @@ class ButtonCog(commands.Cog):
     async def cog_load(self):
         """
         Register persistent view when cog loads.
-        
+
         Effects:
             - Adds EventButtons view to bot
             - Ensures buttons persist across restarts
@@ -477,10 +531,11 @@ class ButtonCog(commands.Cog):
         """Clean up resources when cog is unloaded."""
         logger.info("ButtonCog unloaded")
 
+
 async def setup(bot):
     """
     Set up the ButtonCog.
-    
+
     Args:
         bot: The Discord bot instance
     """

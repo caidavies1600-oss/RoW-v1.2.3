@@ -13,11 +13,13 @@ and necessary formulas for data analysis.
 """
 
 from datetime import datetime
-from .worksheet_handlers import WorksheetHandlers
-from .config import SHEET_CONFIGS
+
 from utils.logger import setup_logger
 
+from .worksheet_handlers import WorksheetHandlers
+
 logger = setup_logger("template_creator")
+
 
 class TemplateCreator(WorksheetHandlers):
     """
@@ -35,7 +37,7 @@ class TemplateCreator(WorksheetHandlers):
     def create_player_stats_template(self, player_stats):
         """
         Create player stats template with current players for manual data entry.
-        
+
         Args:
             player_stats: Dictionary of player statistics
 
@@ -57,11 +59,27 @@ class TemplateCreator(WorksheetHandlers):
 
             # CORRECT headers that match our needs
             headers = [
-                "User ID", "Display Name", "Main Team Role", 
-                "Main Wins", "Main Losses", "Team2 Wins", "Team2 Losses",
-                "Team3 Wins", "Team3 Losses", "Total Wins", "Total Losses", 
-                "Win Rate", "Absents", "Blocked", "Power Rating", 
-                "Cavalry", "Mages", "Archers", "Infantry", "Whale Status", "Last Updated"
+                "User ID",
+                "Display Name",
+                "Main Team Role",
+                "Main Wins",
+                "Main Losses",
+                "Team2 Wins",
+                "Team2 Losses",
+                "Team3 Wins",
+                "Team3 Losses",
+                "Total Wins",
+                "Total Losses",
+                "Win Rate",
+                "Absents",
+                "Blocked",
+                "Power Rating",
+                "Cavalry",
+                "Mages",
+                "Archers",
+                "Infantry",
+                "Whale Status",
+                "Last Updated",
             ]
 
             # Only create template if sheet is empty or has wrong headers
@@ -78,61 +96,71 @@ class TemplateCreator(WorksheetHandlers):
                     for user_id, stats in player_stats.items():
                         # Create properly aligned row
                         row = [
-                            user_id,                                    # A: User ID
-                            stats.get("name", "Unknown"),              # B: Display Name  
-                            "No",                                       # C: Main Team Role (manual entry)
-                            0,                                          # D: Main Wins (manual entry)
-                            0,                                          # E: Main Losses (manual entry)
-                            0,                                          # F: Team2 Wins (manual entry)
-                            0,                                          # G: Team2 Losses (manual entry)
-                            0,                                          # H: Team3 Wins (manual entry)
-                            0,                                          # I: Team3 Losses (manual entry)
-                            "=D2+F2+H2",                               # J: Total Wins (formula)
-                            "=E2+G2+I2",                               # K: Total Losses (formula)
-                            "=IF(K2+J2=0,0,J2/(J2+K2))",              # L: Win Rate (formula)
-                            0,                                          # M: Absents (manual entry)
-                            "No",                                       # N: Blocked (manual entry)
-                            "",                                         # O: Power Rating (manual entry)
-                            "No",                                       # P: Cavalry (manual entry)
-                            "No",                                       # Q: Mages (manual entry)
-                            "No",                                       # R: Archers (manual entry)
-                            "No",                                       # S: Infantry (manual entry)
-                            "No",                                       # T: Whale Status (manual entry)
-                            datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")  # U: Last Updated
+                            user_id,  # A: User ID
+                            stats.get("name", "Unknown"),  # B: Display Name
+                            "No",  # C: Main Team Role (manual entry)
+                            0,  # D: Main Wins (manual entry)
+                            0,  # E: Main Losses (manual entry)
+                            0,  # F: Team2 Wins (manual entry)
+                            0,  # G: Team2 Losses (manual entry)
+                            0,  # H: Team3 Wins (manual entry)
+                            0,  # I: Team3 Losses (manual entry)
+                            "=D2+F2+H2",  # J: Total Wins (formula)
+                            "=E2+G2+I2",  # K: Total Losses (formula)
+                            "=IF(K2+J2=0,0,J2/(J2+K2))",  # L: Win Rate (formula)
+                            0,  # M: Absents (manual entry)
+                            "No",  # N: Blocked (manual entry)
+                            "",  # O: Power Rating (manual entry)
+                            "No",  # P: Cavalry (manual entry)
+                            "No",  # Q: Mages (manual entry)
+                            "No",  # R: Archers (manual entry)
+                            "No",  # S: Infantry (manual entry)
+                            "No",  # T: Whale Status (manual entry)
+                            datetime.utcnow().strftime(
+                                "%Y-%m-%d %H:%M UTC"
+                            ),  # U: Last Updated
                         ]
                         worksheet.append_row(row)
                 else:
                     # Add one example row if no player stats
                     example_row = [
-                        "123456789",                                   # A: User ID
-                        "Example Player",                              # B: Display Name
-                        "Yes",                                         # C: Main Team Role
-                        5,                                             # D: Main Wins
-                        3,                                             # E: Main Losses
-                        2,                                             # F: Team2 Wins
-                        1,                                             # G: Team2 Losses
-                        0,                                             # H: Team3 Wins
-                        0,                                             # I: Team3 Losses
-                        "=D2+F2+H2",                                  # J: Total Wins
-                        "=E2+G2+I2",                                  # K: Total Losses
-                        "=IF(K2+J2=0,0,J2/(J2+K2))",                 # L: Win Rate
-                        1,                                             # M: Absents
-                        "No",                                          # N: Blocked
-                        "125000000",                                   # O: Power Rating
-                        "Yes",                                         # P: Cavalry
-                        "No",                                          # Q: Mages
-                        "Yes",                                         # R: Archers
-                        "No",                                          # S: Infantry
-                        "Yes",                                         # T: Whale Status
-                        datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")  # U: Last Updated
+                        "123456789",  # A: User ID
+                        "Example Player",  # B: Display Name
+                        "Yes",  # C: Main Team Role
+                        5,  # D: Main Wins
+                        3,  # E: Main Losses
+                        2,  # F: Team2 Wins
+                        1,  # G: Team2 Losses
+                        0,  # H: Team3 Wins
+                        0,  # I: Team3 Losses
+                        "=D2+F2+H2",  # J: Total Wins
+                        "=E2+G2+I2",  # K: Total Losses
+                        "=IF(K2+J2=0,0,J2/(J2+K2))",  # L: Win Rate
+                        1,  # M: Absents
+                        "No",  # N: Blocked
+                        "125000000",  # O: Power Rating
+                        "Yes",  # P: Cavalry
+                        "No",  # Q: Mages
+                        "Yes",  # R: Archers
+                        "No",  # S: Infantry
+                        "Yes",  # T: Whale Status
+                        datetime.utcnow().strftime(
+                            "%Y-%m-%d %H:%M UTC"
+                        ),  # U: Last Updated
                     ]
                     worksheet.append_row(example_row)
 
                 # Format headers (bold, background color)
-                worksheet.format("A1:U1", {
-                    "backgroundColor": {"red": 0.2, "green": 0.6, "blue": 1.0},
-                    "textFormat": {"bold": True, "foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0}}
-                })
+                worksheet.format(
+                    "A1:U1",
+                    {
+                        "backgroundColor": {"red": 0.2, "green": 0.6, "blue": 1.0},
+                        "textFormat": {
+                            "bold": True,
+                            "foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0},
+                        },
+                    },
+                )
 
                 # Freeze header row
                 worksheet.freeze(rows=1)
@@ -157,7 +185,7 @@ class TemplateCreator(WorksheetHandlers):
         - Enemy alliance tracking
         - Resource and combat statistics
         - Player participation records
-        
+
         Returns:
             bool: Success status of template creation
         """
@@ -170,13 +198,31 @@ class TemplateCreator(WorksheetHandlers):
             # Only create template if sheet is empty
             if len(worksheet.get_all_values()) <= 1:
                 headers = [
-                    "Match ID", "Date", "Team", "Result", "Enemy Alliance Name", "Enemy Alliance Tag",
-                    "Our Matchmaking Power", "Our Lifestone Points", "Our Occupation Points",
-                    "Our Gathering Points", "Our Total Kills", "Our Total Wounded", "Our Total Healed",
-                    "Our Lifestone Obtained", "Enemy Matchmaking Power", "Enemy Lifestone Points", 
-                    "Enemy Occupation Points", "Enemy Gathering Points", "Enemy Total Kills", 
-                    "Enemy Total Wounded", "Enemy Total Healed", "Enemy Lifestone Obtained", 
-                    "Players Participated", "Recorded By", "Notes"
+                    "Match ID",
+                    "Date",
+                    "Team",
+                    "Result",
+                    "Enemy Alliance Name",
+                    "Enemy Alliance Tag",
+                    "Our Matchmaking Power",
+                    "Our Lifestone Points",
+                    "Our Occupation Points",
+                    "Our Gathering Points",
+                    "Our Total Kills",
+                    "Our Total Wounded",
+                    "Our Total Healed",
+                    "Our Lifestone Obtained",
+                    "Enemy Matchmaking Power",
+                    "Enemy Lifestone Points",
+                    "Enemy Occupation Points",
+                    "Enemy Gathering Points",
+                    "Enemy Total Kills",
+                    "Enemy Total Wounded",
+                    "Enemy Total Healed",
+                    "Enemy Lifestone Obtained",
+                    "Players Participated",
+                    "Recorded By",
+                    "Notes",
                 ]
 
                 worksheet.clear()
@@ -184,18 +230,45 @@ class TemplateCreator(WorksheetHandlers):
 
                 # Add example row
                 example_row = [
-                    "MATCH_001", "2025-08-10", "main_team", "Win", "Enemy Alliance", "EA",
-                    "2500000000", "1500", "800", "200", "150", "50", "100",
-                    "75", "2400000000", "1200", "600", "180", "120", "60", "80",
-                    "50", "Player1, Player2, Player3", "AdminUser", "Great teamwork!"
+                    "MATCH_001",
+                    "2025-08-10",
+                    "main_team",
+                    "Win",
+                    "Enemy Alliance",
+                    "EA",
+                    "2500000000",
+                    "1500",
+                    "800",
+                    "200",
+                    "150",
+                    "50",
+                    "100",
+                    "75",
+                    "2400000000",
+                    "1200",
+                    "600",
+                    "180",
+                    "120",
+                    "60",
+                    "80",
+                    "50",
+                    "Player1, Player2, Player3",
+                    "AdminUser",
+                    "Great teamwork!",
                 ]
                 worksheet.append_row(example_row)
 
                 # Format headers
-                worksheet.format("A1:Y1", {
-                    "backgroundColor": {"red": 0.2, "green": 0.6, "blue": 1.0},
-                    "textFormat": {"bold": True, "foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0}}
-                })
+                worksheet.format(
+                    "A1:Y1",
+                    {
+                        "backgroundColor": {"red": 0.2, "green": 0.6, "blue": 1.0},
+                        "textFormat": {
+                            "bold": True,
+                            "foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0},
+                        },
+                    },
+                )
 
                 logger.info("✅ Created match statistics template")
             else:
@@ -231,10 +304,21 @@ class TemplateCreator(WorksheetHandlers):
             # Only create template if sheet is empty
             if len(worksheet.get_all_values()) <= 1:
                 headers = [
-                    "Alliance Name", "Alliance Tag", "Matches Against", "Wins Against Them", 
-                    "Losses Against Them", "Win Rate vs Them", "Average Enemy Power",
-                    "Difficulty Rating", "Strategy Notes", "Last Fought", "Server/Kingdom",
-                    "Alliance Level", "Activity Level", "Threat Level", "Additional Notes"
+                    "Alliance Name",
+                    "Alliance Tag",
+                    "Matches Against",
+                    "Wins Against Them",
+                    "Losses Against Them",
+                    "Win Rate vs Them",
+                    "Average Enemy Power",
+                    "Difficulty Rating",
+                    "Strategy Notes",
+                    "Last Fought",
+                    "Server/Kingdom",
+                    "Alliance Level",
+                    "Activity Level",
+                    "Threat Level",
+                    "Additional Notes",
                 ]
 
                 worksheet.clear()
@@ -242,17 +326,35 @@ class TemplateCreator(WorksheetHandlers):
 
                 # Add example row
                 example_row = [
-                    "Example Alliance", "EX", 5, 3, 2, "60%", "2400000000",
-                    "Hard", "They focus on cavalry rushes", "2025-08-01", "K123",
-                    "High", "Very Active", "High", "Strong in KvK events, watch out for their coordination"
+                    "Example Alliance",
+                    "EX",
+                    5,
+                    3,
+                    2,
+                    "60%",
+                    "2400000000",
+                    "Hard",
+                    "They focus on cavalry rushes",
+                    "2025-08-01",
+                    "K123",
+                    "High",
+                    "Very Active",
+                    "High",
+                    "Strong in KvK events, watch out for their coordination",
                 ]
                 worksheet.append_row(example_row)
 
                 # Format headers
-                worksheet.format("A1:O1", {
-                    "backgroundColor": {"red": 1.0, "green": 0.6, "blue": 0.2},
-                    "textFormat": {"bold": True, "foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0}}
-                })
+                worksheet.format(
+                    "A1:O1",
+                    {
+                        "backgroundColor": {"red": 1.0, "green": 0.6, "blue": 0.2},
+                        "textFormat": {
+                            "bold": True,
+                            "foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0},
+                        },
+                    },
+                )
 
                 logger.info("✅ Created alliance tracking template")
             else:
@@ -311,7 +413,9 @@ class TemplateCreator(WorksheetHandlers):
             # Skip dashboard creation since you have web interface
             logger.info("Skipping dashboard creation - using web interface instead")
 
-            logger.info(f"✅ Template creation completed: {success_count}/5 operations successful")
+            logger.info(
+                f"✅ Template creation completed: {success_count}/5 operations successful"
+            )
             return success_count >= 3  # Consider successful if most operations work
 
         except Exception as e:

@@ -12,21 +12,23 @@ This module provides:
 - Comprehensive error recovery
 """
 
-import asyncio
-import gspread
-from google.oauth2.service_account import Credentials
 import json
 import os
-from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional
+from datetime import datetime
+from typing import Any, Dict
+
+import gspread
+from google.oauth2.service_account import Credentials
+
 from utils.logger import setup_logger
 
 logger = setup_logger("enhanced_sheets_manager")
 
+
 class EnhancedSheetsManager:
     """
     Enhanced Google Sheets Manager with comprehensive features.
-    
+
     Features:
     - Rate limited API access
     - Professional sheet formatting
@@ -49,19 +51,21 @@ class EnhancedSheetsManager:
         try:
             scope = [
                 "https://www.googleapis.com/auth/spreadsheets",
-                "https://www.googleapis.com/auth/drive"
+                "https://www.googleapis.com/auth/drive",
             ]
 
-            creds_json = os.getenv('GOOGLE_SHEETS_CREDENTIALS')
+            creds_json = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
             if creds_json:
                 creds_dict = json.loads(creds_json)
                 creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
             else:
-                creds = Credentials.from_service_account_file('credentials.json', scopes=scope)
+                creds = Credentials.from_service_account_file(
+                    "credentials.json", scopes=scope
+                )
 
             self.gc = gspread.authorize(creds)
 
-            spreadsheet_id = os.getenv('GOOGLE_SHEETS_ID')
+            spreadsheet_id = os.getenv("GOOGLE_SHEETS_ID")
             if spreadsheet_id:
                 self.spreadsheet = self.gc.open_by_key(spreadsheet_id)
             else:
@@ -84,14 +88,14 @@ class EnhancedSheetsManager:
     def rate_limited_request(self, func, *args, **kwargs):
         """Execute a function with rate limiting."""
         import time
-        
+
         current_time = time.time()
         time_since_last = current_time - self.last_api_call
-        
+
         if time_since_last < self.rate_limit_delay:
             sleep_time = self.rate_limit_delay - time_since_last
             time.sleep(sleep_time)
-        
+
         try:
             result = func(*args, **kwargs)
             self.last_api_call = time.time()
@@ -103,13 +107,13 @@ class EnhancedSheetsManager:
     def enhanced_batch_operation(self, worksheet, operation_type, data, batch_size=10):
         """
         Perform batch operations with enhanced error handling.
-        
+
         Args:
             worksheet: Google worksheet object
             operation_type: Type of operation ('append_rows', etc)
             data: Data to process in batches
             batch_size: Number of items per batch
-            
+
         Features:
         - Automatic rate limiting
         - Error recovery per batch
@@ -117,19 +121,19 @@ class EnhancedSheetsManager:
         - Progress logging
         """
         import time
-        
+
         if operation_type == "append_rows":
             # Split data into batches
             for i in range(0, len(data), batch_size):
-                batch = data[i:i + batch_size]
+                batch = data[i : i + batch_size]
                 try:
                     self.rate_limited_request(worksheet.append_rows, batch)
-                    logger.debug(f"Batch {i//batch_size + 1} completed successfully")
-                    
+                    logger.debug(f"Batch {i // batch_size + 1} completed successfully")
+
                     # Rate limiting between batches
                     if i + batch_size < len(data):
                         time.sleep(2)
-                        
+
                 except Exception as e:
                     logger.error(f"Batch operation failed: {e}")
                     # Try individual rows as fallback
@@ -143,14 +147,16 @@ class EnhancedSheetsManager:
         """Get existing worksheet or create new one with error handling."""
         if not self.spreadsheet:
             return None
-        
+
         try:
             worksheet = self.spreadsheet.worksheet(name)
             logger.debug(f"Found existing worksheet: {name}")
             return worksheet
         except gspread.WorksheetNotFound:
             try:
-                worksheet = self.spreadsheet.add_worksheet(title=name, rows=rows, cols=cols)
+                worksheet = self.spreadsheet.add_worksheet(
+                    title=name, rows=rows, cols=cols
+                )
                 logger.info(f"Created new worksheet: {name}")
                 return worksheet
             except Exception as e:
@@ -160,12 +166,12 @@ class EnhancedSheetsManager:
     def format_worksheet_professional(self, worksheet, headers, max_rows=100):
         """
         Apply professional formatting to a worksheet.
-        
+
         Args:
             worksheet: Google worksheet object
             headers: List of column headers
             max_rows: Maximum rows to format
-            
+
         Applies:
         - Header styling and colors
         - Cell borders and alignment
@@ -183,11 +189,11 @@ class EnhancedSheetsManager:
                     "textFormat": {
                         "foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0},
                         "fontSize": 12,
-                        "bold": True
+                        "bold": True,
                     },
                     "horizontalAlignment": "CENTER",
-                    "verticalAlignment": "MIDDLE"
-                }
+                    "verticalAlignment": "MIDDLE",
+                },
             )
 
             # Freeze header row
@@ -202,12 +208,24 @@ class EnhancedSheetsManager:
                     "textFormat": {"fontSize": 10},
                     "horizontalAlignment": "CENTER",
                     "borders": {
-                        "top": {"style": "SOLID", "color": {"red": 0.9, "green": 0.9, "blue": 0.9}},
-                        "bottom": {"style": "SOLID", "color": {"red": 0.9, "green": 0.9, "blue": 0.9}},
-                        "left": {"style": "SOLID", "color": {"red": 0.9, "green": 0.9, "blue": 0.9}},
-                        "right": {"style": "SOLID", "color": {"red": 0.9, "green": 0.9, "blue": 0.9}}
-                    }
-                }
+                        "top": {
+                            "style": "SOLID",
+                            "color": {"red": 0.9, "green": 0.9, "blue": 0.9},
+                        },
+                        "bottom": {
+                            "style": "SOLID",
+                            "color": {"red": 0.9, "green": 0.9, "blue": 0.9},
+                        },
+                        "left": {
+                            "style": "SOLID",
+                            "color": {"red": 0.9, "green": 0.9, "blue": 0.9},
+                        },
+                        "right": {
+                            "style": "SOLID",
+                            "color": {"red": 0.9, "green": 0.9, "blue": 0.9},
+                        },
+                    },
+                },
             )
 
             logger.debug(f"Applied professional formatting to {worksheet.title}")
@@ -215,16 +233,18 @@ class EnhancedSheetsManager:
         except Exception as e:
             logger.warning(f"Failed to apply formatting: {e}")
 
-    def add_conditional_formatting(self, worksheet, range_name, format_type, format_options):
+    def add_conditional_formatting(
+        self, worksheet, range_name, format_type, format_options
+    ):
         """
         Add conditional formatting with error handling.
-        
+
         Args:
             worksheet: Google worksheet object
             range_name: Cell range to format
             format_type: Type of formatting ('color_scale', 'custom_formula')
             format_options: Formatting rules and settings
-            
+
         Features:
         - Color scale formatting
         - Custom formula rules
@@ -235,10 +255,7 @@ class EnhancedSheetsManager:
                 self.rate_limited_request(
                     worksheet.add_conditional_format_rule,
                     range_name,
-                    {
-                        "type": "COLOR_SCALE",
-                        "colorScale": format_options
-                    }
+                    {"type": "COLOR_SCALE", "colorScale": format_options},
                 )
             elif format_type == "custom_formula":
                 self.rate_limited_request(
@@ -247,12 +264,12 @@ class EnhancedSheetsManager:
                     {
                         "type": "CUSTOM_FORMULA",
                         "condition": format_options["condition"],
-                        "format": format_options["format"]
-                    }
+                        "format": format_options["format"],
+                    },
                 )
-            
+
             logger.debug(f"Added conditional formatting to {range_name}")
-            
+
         except Exception as e:
             logger.warning(f"Failed to add conditional formatting: {e}")
 
@@ -269,7 +286,16 @@ class EnhancedSheetsManager:
             # Clear and set enhanced headers
             self.rate_limited_request(worksheet.clear)
 
-            headers = ["🕐 Timestamp", "⚔️ Team", "👥 Player Count", "📝 Players", "📊 Status", "💪 Team Power", "🎯 Readiness", "📈 Activity Level"]
+            headers = [
+                "🕐 Timestamp",
+                "⚔️ Team",
+                "👥 Player Count",
+                "📝 Players",
+                "📊 Status",
+                "💪 Team Power",
+                "🎯 Readiness",
+                "📈 Activity Level",
+            ]
             self.rate_limited_request(worksheet.append_row, headers)
 
             # Apply professional formatting
@@ -277,14 +303,22 @@ class EnhancedSheetsManager:
 
             # Process team data with enhanced metrics
             timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
-            team_mapping = {"main_team": "🏆 Main Team", "team_2": "🥈 Team 2", "team_3": "🥉 Team 3"}
+            team_mapping = {
+                "main_team": "🏆 Main Team",
+                "team_2": "🥈 Team 2",
+                "team_3": "🥉 Team 3",
+            }
 
             team_rows = []
             for team_key, players in events_data.items():
-                team_name = team_mapping.get(team_key, team_key.replace("_", " ").title())
+                team_name = team_mapping.get(
+                    team_key, team_key.replace("_", " ").title()
+                )
                 player_count = len(players)
-                player_list = ", ".join(str(p) for p in players) if players else "No signups"
-                
+                player_list = (
+                    ", ".join(str(p) for p in players) if players else "No signups"
+                )
+
                 # Enhanced status indicators
                 if player_count >= 8:
                     status = "🟢 Ready"
@@ -307,7 +341,16 @@ class EnhancedSheetsManager:
                 # Estimated team power (placeholder - can be enhanced)
                 estimated_power = f"{player_count * 100}M" if player_count > 0 else "0M"
 
-                row = [timestamp, team_name, player_count, player_list, status, estimated_power, readiness, activity]
+                row = [
+                    timestamp,
+                    team_name,
+                    player_count,
+                    player_list,
+                    status,
+                    estimated_power,
+                    readiness,
+                    activity,
+                ]
                 team_rows.append(row)
 
             # Add all team rows
@@ -321,8 +364,10 @@ class EnhancedSheetsManager:
                 "custom_formula",
                 {
                     "condition": {"type": "CUSTOM_FORMULA", "value": '=$E2="🟢 Ready"'},
-                    "format": {"backgroundColor": {"red": 0.85, "green": 1.0, "blue": 0.85}}
-                }
+                    "format": {
+                        "backgroundColor": {"red": 0.85, "green": 1.0, "blue": 0.85}
+                    },
+                },
             )
 
             logger.info("✅ Enhanced current teams sync completed")
@@ -338,7 +383,9 @@ class EnhancedSheetsManager:
             return False
 
         try:
-            worksheet = self.get_or_create_worksheet("Enhanced Player Stats", rows=500, cols=25)
+            worksheet = self.get_or_create_worksheet(
+                "Enhanced Player Stats", rows=500, cols=25
+            )
             if not worksheet:
                 return False
 
@@ -346,12 +393,31 @@ class EnhancedSheetsManager:
             self.rate_limited_request(worksheet.clear)
 
             headers = [
-                "👤 User ID", "🎮 IGN", "📝 Display Name", "🏆 Main Team Role",
-                "🥇 Main Wins", "❌ Main Losses", "🥈 Team2 Wins", "❌ Team2 Losses",
-                "🥉 Team3 Wins", "❌ Team3 Losses", "🏆 Total Wins", "❌ Total Losses",
-                "📊 Win Rate %", "😴 Absents", "🚫 Blocked", "⚡ Power Rating",
-                "🐎 Cavalry", "🧙 Mages", "🏹 Archers", "⚔️ Infantry", "🐋 Whale",
-                "📈 Performance Trend", "🎯 Consistency", "🔥 Recent Form", "📅 Last Updated"
+                "👤 User ID",
+                "🎮 IGN",
+                "📝 Display Name",
+                "🏆 Main Team Role",
+                "🥇 Main Wins",
+                "❌ Main Losses",
+                "🥈 Team2 Wins",
+                "❌ Team2 Losses",
+                "🥉 Team3 Wins",
+                "❌ Team3 Losses",
+                "🏆 Total Wins",
+                "❌ Total Losses",
+                "📊 Win Rate %",
+                "😴 Absents",
+                "🚫 Blocked",
+                "⚡ Power Rating",
+                "🐎 Cavalry",
+                "🧙 Mages",
+                "🏹 Archers",
+                "⚔️ Infantry",
+                "🐋 Whale",
+                "📈 Performance Trend",
+                "🎯 Consistency",
+                "🔥 Recent Form",
+                "📅 Last Updated",
             ]
             self.rate_limited_request(worksheet.append_row, headers)
 
@@ -373,11 +439,15 @@ class EnhancedSheetsManager:
 
                 total_wins = main_wins + team2_wins + team3_wins
                 total_losses = main_losses + team2_losses + team3_losses
-                win_rate = round(total_wins / (total_wins + total_losses), 3) if (total_wins + total_losses) > 0 else 0
+                win_rate = (
+                    round(total_wins / (total_wins + total_losses), 3)
+                    if (total_wins + total_losses) > 0
+                    else 0
+                )
 
                 # Enhanced analytics
                 total_games = total_wins + total_losses
-                
+
                 # Performance trend calculation
                 if total_games >= 10:
                     if win_rate >= 0.7:
@@ -411,21 +481,35 @@ class EnhancedSheetsManager:
                     stats.get("name", stats.get("display_name", f"User_{user_id}")),
                     stats.get("display_name", f"User_{user_id}"),
                     "Yes" if stats.get("has_main_team_role", False) else "No",
-                    main_wins, main_losses, team2_wins, team2_losses,
-                    team3_wins, team3_losses, total_wins, total_losses,
-                    win_rate, stats.get("absents", 0),
+                    main_wins,
+                    main_losses,
+                    team2_wins,
+                    team2_losses,
+                    team3_wins,
+                    team3_losses,
+                    total_wins,
+                    total_losses,
+                    win_rate,
+                    stats.get("absents", 0),
                     "Yes" if stats.get("blocked", False) else "No",
                     stats.get("power_rating", 0),
-                    stats.get("cavalry", "No"), stats.get("mages", "No"),
-                    stats.get("archers", "No"), stats.get("infantry", "No"),
-                    stats.get("whale", "No"), performance_trend,
-                    consistency, recent_form, current_time
+                    stats.get("cavalry", "No"),
+                    stats.get("mages", "No"),
+                    stats.get("archers", "No"),
+                    stats.get("infantry", "No"),
+                    stats.get("whale", "No"),
+                    performance_trend,
+                    consistency,
+                    recent_form,
+                    current_time,
                 ]
                 player_rows.append(row)
 
             # Add all player data
             if player_rows:
-                self.enhanced_batch_operation(worksheet, "append_rows", player_rows, batch_size=20)
+                self.enhanced_batch_operation(
+                    worksheet, "append_rows", player_rows, batch_size=20
+                )
 
             # Add conditional formatting for win rates
             self.add_conditional_formatting(
@@ -438,8 +522,8 @@ class EnhancedSheetsManager:
                     "midValue": {"type": "NUMBER", "value": "0.5"},
                     "midColor": {"red": 1.0, "green": 0.851, "blue": 0.4},
                     "maxValue": {"type": "NUMBER", "value": "1"},
-                    "maxColor": {"red": 0.349, "green": 0.686, "blue": 0.314}
-                }
+                    "maxColor": {"red": 0.349, "green": 0.686, "blue": 0.314},
+                },
             )
 
             # Add conditional formatting for performance trends
@@ -448,12 +532,19 @@ class EnhancedSheetsManager:
                 "V2:V500",  # Performance Trend column
                 "custom_formula",
                 {
-                    "condition": {"type": "CUSTOM_FORMULA", "value": '=$V2="📈 Excellent"'},
-                    "format": {"backgroundColor": {"red": 0.85, "green": 1.0, "blue": 0.85}}
-                }
+                    "condition": {
+                        "type": "CUSTOM_FORMULA",
+                        "value": '=$V2="📈 Excellent"',
+                    },
+                    "format": {
+                        "backgroundColor": {"red": 0.85, "green": 1.0, "blue": 0.85}
+                    },
+                },
             )
 
-            logger.info(f"✅ Enhanced player stats sync completed for {len(player_stats_data)} players")
+            logger.info(
+                f"✅ Enhanced player stats sync completed for {len(player_stats_data)} players"
+            )
             return True
 
         except Exception as e:
@@ -463,7 +554,7 @@ class EnhancedSheetsManager:
     def create_interactive_dashboard(self):
         """
         Create an interactive dashboard with charts and formulas.
-        
+
         Features:
         - Real-time statistics
         - Player leaderboards
@@ -476,7 +567,9 @@ class EnhancedSheetsManager:
             return False
 
         try:
-            worksheet = self.get_or_create_worksheet("Interactive Dashboard", rows=50, cols=15)
+            worksheet = self.get_or_create_worksheet(
+                "Interactive Dashboard", rows=50, cols=15
+            )
             if not worksheet:
                 return False
 
@@ -484,9 +577,11 @@ class EnhancedSheetsManager:
             self.rate_limited_request(worksheet.clear)
 
             # Title section
-            self.rate_limited_request(worksheet.merge_cells, 'A1:O3')
-            self.rate_limited_request(worksheet.update, 'A1', '🏆 RoW Alliance Command Center')
-            
+            self.rate_limited_request(worksheet.merge_cells, "A1:O3")
+            self.rate_limited_request(
+                worksheet.update, "A1", "🏆 RoW Alliance Command Center"
+            )
+
             # Title formatting
             self.rate_limited_request(
                 worksheet.format,
@@ -496,30 +591,57 @@ class EnhancedSheetsManager:
                     "textFormat": {
                         "foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0},
                         "fontSize": 24,
-                        "bold": True
+                        "bold": True,
                     },
                     "horizontalAlignment": "CENTER",
-                    "verticalAlignment": "MIDDLE"
-                }
+                    "verticalAlignment": "MIDDLE",
+                },
             )
 
             # Quick Stats section
             stats_data = [
-                ['📊 ALLIANCE OVERVIEW', '', '', ''],
-                ['Active Players:', '=COUNTA(\'Enhanced Player Stats\'!B:B)-1', 'Total Matches:', '=SUM(\'Enhanced Player Stats\'!K:K)+SUM(\'Enhanced Player Stats\'!L:L)'],
-                ['Main Team Size:', '=COUNTIF(\'Enhanced Player Stats\'!D:D,"Yes")', 'Overall Win Rate:', '=IF(SUM(\'Enhanced Player Stats\'!K:K)+SUM(\'Enhanced Player Stats\'!L:L)>0,SUM(\'Enhanced Player Stats\'!K:K)/(SUM(\'Enhanced Player Stats\'!K:K)+SUM(\'Enhanced Player Stats\'!L:L)),0)'],
-                ['Top Performers:', '=COUNTIF(\'Enhanced Player Stats\'!M:M,">0.7")', 'Average Power:', '=AVERAGE(\'Enhanced Player Stats\'!P:P)'],
-                ['', '', '', ''],
-                ['🎯 TEAM READINESS', '', '', ''],
-                ['Ready Teams:', '=COUNTIF(\'Current Teams\'!E:E,"🟢 Ready")', 'Total Signups:', '=SUM(\'Current Teams\'!C:C)'],
-                ['Needs Attention:', '=COUNTIF(\'Current Teams\'!E:E,"🔴 Low")', 'Activity Level:', '=IF(SUM(\'Current Teams\'!C:C)>20,"🔥 High","📊 Normal")']
+                ["📊 ALLIANCE OVERVIEW", "", "", ""],
+                [
+                    "Active Players:",
+                    "=COUNTA('Enhanced Player Stats'!B:B)-1",
+                    "Total Matches:",
+                    "=SUM('Enhanced Player Stats'!K:K)+SUM('Enhanced Player Stats'!L:L)",
+                ],
+                [
+                    "Main Team Size:",
+                    "=COUNTIF('Enhanced Player Stats'!D:D,\"Yes\")",
+                    "Overall Win Rate:",
+                    "=IF(SUM('Enhanced Player Stats'!K:K)+SUM('Enhanced Player Stats'!L:L)>0,SUM('Enhanced Player Stats'!K:K)/(SUM('Enhanced Player Stats'!K:K)+SUM('Enhanced Player Stats'!L:L)),0)",
+                ],
+                [
+                    "Top Performers:",
+                    "=COUNTIF('Enhanced Player Stats'!M:M,\">0.7\")",
+                    "Average Power:",
+                    "=AVERAGE('Enhanced Player Stats'!P:P)",
+                ],
+                ["", "", "", ""],
+                ["🎯 TEAM READINESS", "", "", ""],
+                [
+                    "Ready Teams:",
+                    "=COUNTIF('Current Teams'!E:E,\"🟢 Ready\")",
+                    "Total Signups:",
+                    "=SUM('Current Teams'!C:C)",
+                ],
+                [
+                    "Needs Attention:",
+                    "=COUNTIF('Current Teams'!E:E,\"🔴 Low\")",
+                    "Activity Level:",
+                    '=IF(SUM(\'Current Teams\'!C:C)>20,"🔥 High","📊 Normal")',
+                ],
             ]
 
             row_num = 5
             for row_data in stats_data:
                 for col_num, cell_data in enumerate(row_data):
                     col_letter = chr(65 + col_num)
-                    self.rate_limited_request(worksheet.update, f'{col_letter}{row_num}', cell_data)
+                    self.rate_limited_request(
+                        worksheet.update, f"{col_letter}{row_num}", cell_data
+                    )
                 row_num += 1
 
             # Format stats section
@@ -529,26 +651,51 @@ class EnhancedSheetsManager:
                 {
                     "borders": {"style": "SOLID", "width": 1},
                     "alternatingRowsStyle": {
-                        "style1": {"backgroundColor": {"red": 0.95, "green": 0.95, "blue": 0.95}},
-                        "style2": {"backgroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0}}
-                    }
-                }
+                        "style1": {
+                            "backgroundColor": {
+                                "red": 0.95,
+                                "green": 0.95,
+                                "blue": 0.95,
+                            }
+                        },
+                        "style2": {
+                            "backgroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0}
+                        },
+                    },
+                },
             )
 
             # Player Leaderboard section
             leaderboard_data = [
-                ['🏆 TOP PERFORMERS', '', '', ''],
-                ['Player', 'Wins', 'Win Rate', 'Performance'],
-                ['=INDEX(\'Enhanced Player Stats\'!B:B,MATCH(LARGE(\'Enhanced Player Stats\'!K:K,1),\'Enhanced Player Stats\'!K:K,0))', '=LARGE(\'Enhanced Player Stats\'!K:K,1)', '=INDEX(\'Enhanced Player Stats\'!M:M,MATCH(LARGE(\'Enhanced Player Stats\'!K:K,1),\'Enhanced Player Stats\'!K:K,0))', '=INDEX(\'Enhanced Player Stats\'!V:V,MATCH(LARGE(\'Enhanced Player Stats\'!K:K,1),\'Enhanced Player Stats\'!K:K,0))'],
-                ['=INDEX(\'Enhanced Player Stats\'!B:B,MATCH(LARGE(\'Enhanced Player Stats\'!K:K,2),\'Enhanced Player Stats\'!K:K,0))', '=LARGE(\'Enhanced Player Stats\'!K:K,2)', '=INDEX(\'Enhanced Player Stats\'!M:M,MATCH(LARGE(\'Enhanced Player Stats\'!K:K,2),\'Enhanced Player Stats\'!K:K,0))', '=INDEX(\'Enhanced Player Stats\'!V:V,MATCH(LARGE(\'Enhanced Player Stats\'!K:K,2),\'Enhanced Player Stats\'!K:K,0))'],
-                ['=INDEX(\'Enhanced Player Stats\'!B:B,MATCH(LARGE(\'Enhanced Player Stats\'!K:K,3),\'Enhanced Player Stats\'!K:K,0))', '=LARGE(\'Enhanced Player Stats\'!K:K,3)', '=INDEX(\'Enhanced Player Stats\'!M:M,MATCH(LARGE(\'Enhanced Player Stats\'!K:K,3),\'Enhanced Player Stats\'!K:K,0))', '=INDEX(\'Enhanced Player Stats\'!V:V,MATCH(LARGE(\'Enhanced Player Stats\'!K:K,3),\'Enhanced Player Stats\'!K:K,0))']
+                ["🏆 TOP PERFORMERS", "", "", ""],
+                ["Player", "Wins", "Win Rate", "Performance"],
+                [
+                    "=INDEX('Enhanced Player Stats'!B:B,MATCH(LARGE('Enhanced Player Stats'!K:K,1),'Enhanced Player Stats'!K:K,0))",
+                    "=LARGE('Enhanced Player Stats'!K:K,1)",
+                    "=INDEX('Enhanced Player Stats'!M:M,MATCH(LARGE('Enhanced Player Stats'!K:K,1),'Enhanced Player Stats'!K:K,0))",
+                    "=INDEX('Enhanced Player Stats'!V:V,MATCH(LARGE('Enhanced Player Stats'!K:K,1),'Enhanced Player Stats'!K:K,0))",
+                ],
+                [
+                    "=INDEX('Enhanced Player Stats'!B:B,MATCH(LARGE('Enhanced Player Stats'!K:K,2),'Enhanced Player Stats'!K:K,0))",
+                    "=LARGE('Enhanced Player Stats'!K:K,2)",
+                    "=INDEX('Enhanced Player Stats'!M:M,MATCH(LARGE('Enhanced Player Stats'!K:K,2),'Enhanced Player Stats'!K:K,0))",
+                    "=INDEX('Enhanced Player Stats'!V:V,MATCH(LARGE('Enhanced Player Stats'!K:K,2),'Enhanced Player Stats'!K:K,0))",
+                ],
+                [
+                    "=INDEX('Enhanced Player Stats'!B:B,MATCH(LARGE('Enhanced Player Stats'!K:K,3),'Enhanced Player Stats'!K:K,0))",
+                    "=LARGE('Enhanced Player Stats'!K:K,3)",
+                    "=INDEX('Enhanced Player Stats'!M:M,MATCH(LARGE('Enhanced Player Stats'!K:K,3),'Enhanced Player Stats'!K:K,0))",
+                    "=INDEX('Enhanced Player Stats'!V:V,MATCH(LARGE('Enhanced Player Stats'!K:K,3),'Enhanced Player Stats'!K:K,0))",
+                ],
             ]
 
             start_row = 15
             for i, row_data in enumerate(leaderboard_data):
                 for j, cell_data in enumerate(row_data):
                     col_letter = chr(70 + j)  # Start from column F
-                    self.rate_limited_request(worksheet.update, f'{col_letter}{start_row + i}', cell_data)
+                    self.rate_limited_request(
+                        worksheet.update, f"{col_letter}{start_row + i}", cell_data
+                    )
 
             # Format leaderboard
             self.rate_limited_request(
@@ -556,8 +703,8 @@ class EnhancedSheetsManager:
                 "F15:I20",
                 {
                     "borders": {"style": "SOLID", "width": 1},
-                    "textFormat": {"fontSize": 10}
-                }
+                    "textFormat": {"fontSize": 10},
+                },
             )
 
             # Header for leaderboard
@@ -566,8 +713,8 @@ class EnhancedSheetsManager:
                 "F15:I15",
                 {
                     "backgroundColor": {"red": 1.0, "green": 0.8, "blue": 0.2},
-                    "textFormat": {"bold": True, "fontSize": 12}
-                }
+                    "textFormat": {"bold": True, "fontSize": 12},
+                },
             )
 
             logger.info("✅ Interactive dashboard created successfully")
@@ -580,7 +727,7 @@ class EnhancedSheetsManager:
     def get_comprehensive_stats(self):
         """
         Get comprehensive statistics from all sheets.
-        
+
         Returns:
             dict containing:
             - spreadsheet_url: URL to sheets
@@ -600,18 +747,20 @@ class EnhancedSheetsManager:
                 "worksheets": [],
                 "total_players": 0,
                 "total_teams": 0,
-                "system_health": "🟢 Operational"
+                "system_health": "🟢 Operational",
             }
 
             # Get worksheet information
             for worksheet in self.spreadsheet.worksheets():
                 try:
                     row_count = len(worksheet.get_all_records())
-                    stats["worksheets"].append({
-                        "name": worksheet.title,
-                        "rows": row_count,
-                        "last_modified": "Recent"  # Could be enhanced with actual timestamp
-                    })
+                    stats["worksheets"].append(
+                        {
+                            "name": worksheet.title,
+                            "rows": row_count,
+                            "last_modified": "Recent",  # Could be enhanced with actual timestamp
+                        }
+                    )
 
                     # Count specific data
                     if "Player Stats" in worksheet.title:
@@ -632,11 +781,11 @@ class EnhancedSheetsManager:
     async def full_enhanced_sync(self, bot, all_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Perform a full enhanced synchronization of all bot data.
-        
+
         Args:
             bot: Discord bot instance
             all_data: Dictionary containing all data to sync
-            
+
         Returns:
             dict containing:
             - success: Overall success status
@@ -657,14 +806,22 @@ class EnhancedSheetsManager:
                 "synced_components": [],
                 "failed_components": [],
                 "performance_metrics": {},
-                "spreadsheet_url": self.spreadsheet.url
+                "spreadsheet_url": self.spreadsheet.url,
             }
 
             # Component sync operations
             sync_operations = [
-                ("current_teams", lambda: self.sync_current_teams(all_data.get("events", {}))),
-                ("player_stats", lambda: self.sync_player_stats_enhanced(all_data.get("player_stats", {}))),
-                ("interactive_dashboard", lambda: self.create_interactive_dashboard())
+                (
+                    "current_teams",
+                    lambda: self.sync_current_teams(all_data.get("events", {})),
+                ),
+                (
+                    "player_stats",
+                    lambda: self.sync_player_stats_enhanced(
+                        all_data.get("player_stats", {})
+                    ),
+                ),
+                ("interactive_dashboard", lambda: self.create_interactive_dashboard()),
             ]
 
             for component_name, sync_func in sync_operations:
@@ -672,7 +829,7 @@ class EnhancedSheetsManager:
                     start_time = datetime.utcnow()
                     success = sync_func()
                     end_time = datetime.utcnow()
-                    
+
                     duration = (end_time - start_time).total_seconds()
                     results["performance_metrics"][component_name] = f"{duration:.2f}s"
 
@@ -694,7 +851,9 @@ class EnhancedSheetsManager:
             if len(results["failed_components"]) > len(results["synced_components"]):
                 results["success"] = False
 
-            logger.info(f"🎯 Enhanced sync complete: {len(results['synced_components'])} successful, {len(results['failed_components'])} failed")
+            logger.info(
+                f"🎯 Enhanced sync complete: {len(results['synced_components'])} successful, {len(results['failed_components'])} failed"
+            )
             return results
 
         except Exception as e:

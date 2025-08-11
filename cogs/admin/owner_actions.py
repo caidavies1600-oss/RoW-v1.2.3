@@ -1,10 +1,11 @@
-import discord
-from discord.ext import commands
 import os
 from datetime import datetime
-from typing import Any, Dict, List, Tuple
+from typing import Any, List, Tuple
 
-from config.constants import FILES, EMOJIS, COLORS
+import discord
+from discord.ext import commands
+
+from config.constants import COLORS, EMOJIS, FILES
 from config.settings import BOT_ADMIN_USER_ID
 from utils.data_manager import DataManager
 from utils.logger import setup_logger
@@ -15,7 +16,7 @@ logger = setup_logger("owner_actions")
 class OwnerActions(commands.Cog):
     """
     Owner-only commands for bot maintenance and Google Sheets management.
-    
+
     Features:
     - Google Sheets synchronization and management
     - JSON data file integrity checks and repairs
@@ -30,10 +31,10 @@ class OwnerActions(commands.Cog):
     def _is_owner(self, user_id: int) -> bool:
         """
         Check if user is the bot owner.
-        
+
         Args:
             user_id: Discord user ID to check
-            
+
         Returns:
             bool: True if user is the bot owner
         """
@@ -42,10 +43,10 @@ class OwnerActions(commands.Cog):
     def _get_expected_structure(self, file_key: str) -> Any:
         """
         Get expected JSON structure for each file type.
-        
+
         Args:
             file_key: Key identifying the file type (EVENTS, BLOCKED, etc.)
-            
+
         Returns:
             Any: Default data structure for the specified file type
         """
@@ -58,20 +59,22 @@ class OwnerActions(commands.Cog):
             "TIMES": {
                 "main_team": "14:00 UTC Saturday",
                 "team_2": "14:00 UTC Sunday",
-                "team_3": "20:00 UTC Sunday"
+                "team_3": "20:00 UTC Sunday",
             },
-            "ABSENT": {}
+            "ABSENT": {},
         }
         return structures.get(file_key, {})
 
-    def _validate_json_structure(self, file_key: str, data: Any) -> Tuple[bool, List[str]]:
+    def _validate_json_structure(
+        self, file_key: str, data: Any
+    ) -> Tuple[bool, List[str]]:
         """
         Validate JSON data structure against expected format.
-        
+
         Args:
             file_key: Key identifying the file type
             data: Data structure to validate
-            
+
         Returns:
             Tuple containing:
                 bool: True if structure is valid
@@ -87,18 +90,24 @@ class OwnerActions(commands.Cog):
                     if team not in data:
                         issues.append(f"Missing team: {team}")
                     elif not isinstance(data[team], list):
-                        issues.append(f"Team {team} should be a list, got {type(data[team]).__name__}")
+                        issues.append(
+                            f"Team {team} should be a list, got {type(data[team]).__name__}"
+                        )
                     else:
                         for idx, member in enumerate(data[team]):
                             # Accept both IGN strings and user IDs for backward compatibility
                             if isinstance(member, int):
                                 if member <= 0:
-                                    issues.append(f"Invalid user ID in {team}[{idx}]: {member}")
+                                    issues.append(
+                                        f"Invalid user ID in {team}[{idx}]: {member}"
+                                    )
                             elif isinstance(member, str):
                                 if not member.strip():
                                     issues.append(f"Empty IGN in {team}[{idx}]")
                             else:
-                                issues.append(f"Invalid member type in {team}[{idx}]: {type(member).__name__}")
+                                issues.append(
+                                    f"Invalid member type in {team}[{idx}]: {type(member).__name__}"
+                                )
 
         elif file_key == "BLOCKED":
             if not isinstance(data, dict):
@@ -117,7 +126,9 @@ class OwnerActions(commands.Cog):
                         try:
                             datetime.fromisoformat(info["blocked_at"])
                         except ValueError:
-                            issues.append(f"User {user_id} has invalid timestamp format")
+                            issues.append(
+                                f"User {user_id} has invalid timestamp format"
+                            )
 
         elif file_key == "RESULTS":
             if not isinstance(data, dict):
@@ -125,7 +136,9 @@ class OwnerActions(commands.Cog):
             else:
                 if "total_wins" not in data or not isinstance(data["total_wins"], int):
                     issues.append("Missing or invalid total_wins")
-                if "total_losses" not in data or not isinstance(data["total_losses"], int):
+                if "total_losses" not in data or not isinstance(
+                    data["total_losses"], int
+                ):
                     issues.append("Missing or invalid total_losses")
                 if "history" not in data or not isinstance(data["history"], list):
                     issues.append("Missing or invalid history array")
@@ -141,7 +154,9 @@ class OwnerActions(commands.Cog):
                     if "timestamp" not in entry:
                         issues.append(f"History entry {idx} missing timestamp")
                     if "teams" not in entry or not isinstance(entry["teams"], dict):
-                        issues.append(f"History entry {idx} missing or invalid teams data")
+                        issues.append(
+                            f"History entry {idx} missing or invalid teams data"
+                        )
 
         elif file_key == "IGN_MAP":
             if not isinstance(data, dict):
@@ -178,11 +193,11 @@ class OwnerActions(commands.Cog):
     async def sync_discord_members(self, ctx: commands.Context, guild_id: int = None):
         """
         Sync Discord members to Google Sheets.
-        
+
         Args:
             ctx: Command context
             guild_id: Optional guild ID to sync (defaults to current guild)
-            
+
         Effects:
             - Updates member list in Google Sheets
             - Creates new entries for new members
@@ -200,8 +215,7 @@ class OwnerActions(commands.Cog):
 
             if result["success"]:
                 embed = discord.Embed(
-                    title="✅ Member Sync Complete",
-                    color=COLORS["SUCCESS"]
+                    title="✅ Member Sync Complete", color=COLORS["SUCCESS"]
                 )
                 embed.add_field(
                     name="📊 Results",
@@ -210,18 +224,20 @@ class OwnerActions(commands.Cog):
                         f"**Total Members:** {result['total_discord_members']}\n"
                         f"**New Added:** {result['new_members_added']}\n"
                         f"**Updated:** {result['existing_members_updated']}"
-                    )
+                    ),
                 )
 
                 if self.bot.sheets.spreadsheet:
                     embed.add_field(
                         name="🔗 Sheets",
                         value=f"[Open Spreadsheet]({self.bot.sheets.spreadsheet.url})",
-                        inline=False
+                        inline=False,
                     )
 
                 await ctx.send(embed=embed)
-                logger.info(f"{ctx.author} synced {result['new_members_added']} new members")
+                logger.info(
+                    f"{ctx.author} synced {result['new_members_added']} new members"
+                )
             else:
                 await ctx.send(f"❌ **Sync failed:** {result.get('error')}")
 
@@ -234,7 +250,7 @@ class OwnerActions(commands.Cog):
     async def full_sync_to_sheets(self, ctx: commands.Context):
         """
         Perform a complete data sync to Google Sheets.
-        
+
         Effects:
             - Syncs all Discord members
             - Creates/updates all template sheets
@@ -248,34 +264,43 @@ class OwnerActions(commands.Cog):
             # Check if bot has sheets manager
             if hasattr(self.bot, "sheets") and self.bot.sheets:
                 sheets_manager = self.bot.sheets
-                print(f"DEBUG: Using bot's sheets manager")
+                print("DEBUG: Using bot's sheets manager")
             else:
                 # Try to create new instance
-                print(f"DEBUG: Bot doesn't have sheets manager, creating new instance")
+                print("DEBUG: Bot doesn't have sheets manager, creating new instance")
                 try:
                     from sheets import SheetsManager
+
                     sheets_manager = SheetsManager()
-                    print(f"DEBUG: Created new SheetsManager instance")
+                    print("DEBUG: Created new SheetsManager instance")
                 except Exception as import_error:
-                    await ctx.send(f"❌ **Error importing sheets manager:** {import_error}")
+                    await ctx.send(
+                        f"❌ **Error importing sheets manager:** {import_error}"
+                    )
                     return
 
             if not sheets_manager.is_connected():
-                await ctx.send("❌ **Google Sheets not connected.** Check credentials in Secrets.")
+                await ctx.send(
+                    "❌ **Google Sheets not connected.** Check credentials in Secrets."
+                )
                 return
 
-            print(f"DEBUG: Sheets manager is connected, proceeding with sync")
+            print("DEBUG: Sheets manager is connected, proceeding with sync")
 
             event_manager = self.bot.get_cog("EventManager")
             all_data = {
                 "events": self.data_manager.load_json(FILES["EVENTS"], {}),
                 "results": self.data_manager.load_json(FILES["RESULTS"], {}),
-                "player_stats": getattr(event_manager.data_manager, 'player_stats', {}) if event_manager else {},
-                "notification_preferences": self.data_manager.load_json("data/notification_preferences.json", {})
+                "player_stats": getattr(event_manager.data_manager, "player_stats", {})
+                if event_manager
+                else {},
+                "notification_preferences": self.data_manager.load_json(
+                    "data/notification_preferences.json", {}
+                ),
             }
 
             # Perform full sync with comprehensive data collection
-            if hasattr(self.bot.sheets, 'full_sync_and_create_templates'):
+            if hasattr(self.bot.sheets, "full_sync_and_create_templates"):
                 sync_result = await self.bot.sheets.full_sync_and_create_templates(
                     self.bot, all_data, ctx.guild.id
                 )
@@ -284,15 +309,17 @@ class OwnerActions(commands.Cog):
                 success = self.bot.sheets.create_all_templates(all_data)
                 sync_result = {
                     "success": success,
-                    "spreadsheet_url": self.bot.sheets.spreadsheet.url if self.bot.sheets.spreadsheet else None
+                    "spreadsheet_url": self.bot.sheets.spreadsheet.url
+                    if self.bot.sheets.spreadsheet
+                    else None,
                 }
 
             if sync_result["success"]:
-                member_sync = sync_result.get("member_sync", {}) # Use get for safety
+                member_sync = sync_result.get("member_sync", {})  # Use get for safety
                 embed = discord.Embed(
                     title="✅ Full Setup Complete!",
                     description="Discord members synced and all templates created",
-                    color=COLORS["SUCCESS"]
+                    color=COLORS["SUCCESS"],
                 )
 
                 embed.add_field(
@@ -301,7 +328,7 @@ class OwnerActions(commands.Cog):
                         f"**New Members:** {member_sync.get('new_members_added', 'N/A')}\n"
                         f"**Updated:** {member_sync.get('existing_members_updated', 'N/A')}\n"
                         f"**Total:** {member_sync.get('total_discord_members', 'N/A')}"
-                    )
+                    ),
                 )
 
                 embed.add_field(
@@ -315,14 +342,14 @@ class OwnerActions(commands.Cog):
                         "✅ Dashboard\n"
                         "✅ Notification Preferences\n"
                         "✅ Error Summary"
-                    )
+                    ),
                 )
 
                 if sync_result.get("spreadsheet_url"):
                     embed.add_field(
                         name="🔗 Google Sheets",
                         value=f"[Open Spreadsheet]({sync_result['spreadsheet_url']})",
-                        inline=False
+                        inline=False,
                     )
 
                 embed.add_field(
@@ -332,18 +359,19 @@ class OwnerActions(commands.Cog):
                         "2. Set specializations (Cavalry, Mages, etc.)\n"
                         "3. Add match data and alliance info manually"
                     ),
-                    inline=False
+                    inline=False,
                 )
 
                 await ctx.send(embed=embed)
                 logger.info(f"{ctx.author} completed full sync")
             else:
-                await ctx.send(f"❌ **Setup failed:** {sync_result.get('error', 'Unknown error')}")
+                await ctx.send(
+                    f"❌ **Setup failed:** {sync_result.get('error', 'Unknown error')}"
+                )
 
         except Exception as e:
             logger.exception("Error in full_sync_and_setup")
             await ctx.send(f"❌ **Error:** {str(e)}")
-
 
     @commands.command(name="sheetsinfo", help="Show Google Sheets status")
     @commands.check(lambda ctx: ctx.author.id == BOT_ADMIN_USER_ID)
@@ -354,11 +382,11 @@ class OwnerActions(commands.Cog):
                 embed = discord.Embed(
                     title="⚠️ Google Sheets Not Configured",
                     description="Set environment variables and restart bot",
-                    color=COLORS["WARNING"]
+                    color=COLORS["WARNING"],
                 )
                 embed.add_field(
                     name="Required Variables",
-                    value="• `GOOGLE_SHEETS_CREDENTIALS`\n• `GOOGLE_SHEETS_ID`"
+                    value="• `GOOGLE_SHEETS_CREDENTIALS`\n• `GOOGLE_SHEETS_ID`",
                 )
                 return await ctx.send(embed=embed)
 
@@ -366,31 +394,32 @@ class OwnerActions(commands.Cog):
             embed = discord.Embed(
                 title="📊 Google Sheets Status",
                 description="✅ Integration active",
-                color=COLORS["SUCCESS"]
+                color=COLORS["SUCCESS"],
             )
 
             if sheets_manager.spreadsheet:
                 try:
-                    worksheets = [ws.title for ws in sheets_manager.spreadsheet.worksheets()]
+                    worksheets = [
+                        ws.title for ws in sheets_manager.spreadsheet.worksheets()
+                    ]
                     embed.add_field(
                         name="📋 Spreadsheet",
-                        value=f"**Worksheets:** {len(worksheets)}\n[Open Spreadsheet]({sheets_manager.spreadsheet.url})"
+                        value=f"**Worksheets:** {len(worksheets)}\n[Open Spreadsheet]({sheets_manager.spreadsheet.url})",
                     )
                     embed.add_field(
                         name="📄 Available Sheets",
                         value="\n".join([f"• {ws}" for ws in worksheets[:10]]),
-                        inline=False
+                        inline=False,
                     )
                 except Exception as e:
                     embed.add_field(
-                        name="⚠️ Access Error",
-                        value=f"Cannot read worksheets: {str(e)}"
+                        name="⚠️ Access Error", value=f"Cannot read worksheets: {str(e)}"
                     )
 
             embed.add_field(
                 name="🛠️ Commands",
                 value="`!syncmembers` • `!fullsync` • `!sheetsinfo`",
-                inline=False
+                inline=False,
             )
 
             await ctx.send(embed=embed)
@@ -399,19 +428,20 @@ class OwnerActions(commands.Cog):
             logger.exception("Error in sheets_info")
             await ctx.send(f"❌ **Error:** {str(e)}")
 
-
     # ============================================
     # JSON FILE MANAGEMENT COMMANDS
     # ============================================
 
-    @commands.command(name="checkjson", help="Check the integrity of all JSON data files.")
+    @commands.command(
+        name="checkjson", help="Check the integrity of all JSON data files."
+    )
     @commands.check(lambda ctx: ctx.author.id == BOT_ADMIN_USER_ID)
     async def check_json_status(self, ctx: commands.Context):
         """Check the integrity of all JSON data files."""
         embed = discord.Embed(
             title="🔍 JSON File Status Report",
             description="Checking integrity of all bot data files...",
-            color=COLORS["INFO"]
+            color=COLORS["INFO"],
         )
         total_files = len(FILES)
         healthy = 0
@@ -453,12 +483,24 @@ class OwnerActions(commands.Cog):
             if file_issues:
                 issues_found.extend([f"**{key}**: {issue}" for issue in file_issues])
                 field_value += f"\n🔧 {len(file_issues)} issue(s) found"
-            embed.add_field(name=f"{status_emoji} {key}", value=field_value, inline=True)
+            embed.add_field(
+                name=f"{status_emoji} {key}", value=field_value, inline=True
+            )
 
         checked = total_files - (1 if "LOG" in FILES else 0)
         health_pct = (healthy / checked * 100) if checked else 0.0
-        embed.color = COLORS["SUCCESS"] if health_pct >= 80 else COLORS["WARNING"] if health_pct >= 60 else COLORS["DANGER"]
-        embed.add_field(name="📊 Summary", value=f"**{healthy}/{checked}** healthy ({health_pct:.1f}%)", inline=False)
+        embed.color = (
+            COLORS["SUCCESS"]
+            if health_pct >= 80
+            else COLORS["WARNING"]
+            if health_pct >= 60
+            else COLORS["DANGER"]
+        )
+        embed.add_field(
+            name="📊 Summary",
+            value=f"**{healthy}/{checked}** healthy ({health_pct:.1f}%)",
+            inline=False,
+        )
 
         if issues_found:
             snippet = "\n".join(issues_found[:10])
@@ -466,17 +508,23 @@ class OwnerActions(commands.Cog):
                 snippet += f"\n... and {len(issues_found) - 10} more issues"
             embed.add_field(name="🚨 Issues Found", value=snippet, inline=False)
 
-        embed.set_footer(text=f"Report generated at {datetime.utcnow():%Y-%m-%d %H:%M:%S} UTC")
+        embed.set_footer(
+            text=f"Report generated at {datetime.utcnow():%Y-%m-%d %H:%M:%S} UTC"
+        )
         await ctx.send(embed=embed)
         logger.info(f"{ctx.author} requested JSON status: {healthy}/{checked} healthy")
 
-    @commands.command(name="fixjson", help="Attempt to fix corrupted or missing JSON files.")
+    @commands.command(
+        name="fixjson", help="Attempt to fix corrupted or missing JSON files."
+    )
     @commands.check(lambda ctx: ctx.author.id == BOT_ADMIN_USER_ID)
     async def fix_json_files(self, ctx: commands.Context):
         """Attempt to fix corrupted or missing JSON files."""
-        embed = discord.Embed(title="🔧 JSON File Repair Report",
-                               description="Attempting to fix JSON file issues...",
-                               color=COLORS["WARNING"])
+        embed = discord.Embed(
+            title="🔧 JSON File Repair Report",
+            description="Attempting to fix JSON file issues...",
+            color=COLORS["WARNING"],
+        )
         fixed, failed, skipped = [], [], []
 
         for key, path in FILES.items():
@@ -496,7 +544,10 @@ class OwnerActions(commands.Cog):
                     else:
                         valid, struct_issues = self._validate_json_structure(key, data)
                         if not valid:
-                            needs_fix, reason = True, f"{len(struct_issues)} structure issues"
+                            needs_fix, reason = (
+                                True,
+                                f"{len(struct_issues)} structure issues",
+                            )
             except Exception as e:
                 needs_fix, reason = True, f"Exception: {e}"
 
@@ -505,6 +556,7 @@ class OwnerActions(commands.Cog):
                     backup = f"{path}.backup.{datetime.utcnow():%Y%m%d_%H%M%S}"
                     try:
                         import shutil
+
                         shutil.copy2(path, backup)
                         logger.info(f"Backup created: {backup}")
                     except Exception as e:
@@ -528,8 +580,18 @@ class OwnerActions(commands.Cog):
 
                     elif key == "BLOCKED":
                         for uid, info in data.items():
-                            if (uid.isdigit() and isinstance(info, dict) and
-                                all(field in info for field in ("blocked_by", "blocked_at", "ban_duration_days"))):
+                            if (
+                                uid.isdigit()
+                                and isinstance(info, dict)
+                                and all(
+                                    field in info
+                                    for field in (
+                                        "blocked_by",
+                                        "blocked_at",
+                                        "ban_duration_days",
+                                    )
+                                )
+                            ):
                                 default[uid] = info
 
                     elif key == "IGN_MAP":
@@ -548,21 +610,49 @@ class OwnerActions(commands.Cog):
                 skipped.append(key)
 
         if fixed:
-            embed.add_field(name=f"✅ Fixed Files ({len(fixed)})", value="\n".join(fixed), inline=False)
+            embed.add_field(
+                name=f"✅ Fixed Files ({len(fixed)})",
+                value="\n".join(fixed),
+                inline=False,
+            )
         if failed:
-            embed.add_field(name=f"❌ Failed Fixes ({len(failed)})", value="\n".join(failed), inline=False)
+            embed.add_field(
+                name=f"❌ Failed Fixes ({len(failed)})",
+                value="\n".join(failed),
+                inline=False,
+            )
         if skipped:
-            embed.add_field(name=f"⏭️ Skipped (Healthy) ({len(skipped)})", value=", ".join(skipped), inline=False)
+            embed.add_field(
+                name=f"⏭️ Skipped (Healthy) ({len(skipped)})",
+                value=", ".join(skipped),
+                inline=False,
+            )
 
-        embed.color = COLORS["DANGER"] if failed else (COLORS["SUCCESS"] if fixed else COLORS["INFO"])
-        embed.add_field(name="📋 Summary", value=f"Fixed: {len(fixed)} | Failed: {len(failed)} | Skipped: {len(skipped)}", inline=False)
+        embed.color = (
+            COLORS["DANGER"]
+            if failed
+            else (COLORS["SUCCESS"] if fixed else COLORS["INFO"])
+        )
+        embed.add_field(
+            name="📋 Summary",
+            value=f"Fixed: {len(fixed)} | Failed: {len(failed)} | Skipped: {len(skipped)}",
+            inline=False,
+        )
         if fixed:
-            embed.add_field(name="⚠️ Note", value="Valid data preserved where possible; check results.", inline=False)
-        embed.set_footer(text=f"Repair completed at {datetime.utcnow():%Y-%m-%d %H:%M:%S} UTC")
+            embed.add_field(
+                name="⚠️ Note",
+                value="Valid data preserved where possible; check results.",
+                inline=False,
+            )
+        embed.set_footer(
+            text=f"Repair completed at {datetime.utcnow():%Y-%m-%d %H:%M:%S} UTC"
+        )
         await ctx.send(embed=embed)
         logger.info(f"{ctx.author} ran fix: fixed {len(fixed)}, failed {len(failed)}")
 
-    @commands.command(name="resetjson", help="Reset a specific JSON file to its default structure.")
+    @commands.command(
+        name="resetjson", help="Reset a specific JSON file to its default structure."
+    )
     @commands.check(lambda ctx: ctx.author.id == BOT_ADMIN_USER_ID)
     async def reset_json_file(self, ctx: commands.Context, file_key: str):
         """Reset a specific JSON file to its default structure."""
@@ -578,6 +668,7 @@ class OwnerActions(commands.Cog):
             backup = f"{path}.backup.{datetime.utcnow():%Y%m%d_%H%M%S}"
             try:
                 import shutil
+
                 shutil.copy2(path, backup)
                 backuped = True
             except Exception as e:
@@ -587,9 +678,17 @@ class OwnerActions(commands.Cog):
         success = self.data_manager.save_json(path, default)
 
         if success:
-            embed = discord.Embed(title="🔄 JSON Reset", description=f"Reset **{key}** to default structure.", color=COLORS["SUCCESS"])
+            embed = discord.Embed(
+                title="🔄 JSON Reset",
+                description=f"Reset **{key}** to default structure.",
+                color=COLORS["SUCCESS"],
+            )
             if backuped:
-                embed.add_field(name="💾 Backup", value=f"`{os.path.basename(backup)}`", inline=False)
+                embed.add_field(
+                    name="💾 Backup",
+                    value=f"`{os.path.basename(backup)}`",
+                    inline=False,
+                )
             embed.add_field(name="⚠️ Note", value="Previous data cleared.", inline=False)
             await ctx.send(embed=embed)
             logger.info(f"{ctx.author} reset {key}")
@@ -597,11 +696,15 @@ class OwnerActions(commands.Cog):
             await ctx.send(f"❌ Failed to reset {key}. Check logs.")
             logger.error(f"Failed to reset {key} for {ctx.author}")
 
-    @commands.command(name="migratedata", help="Convert user IDs in events.json to IGN strings.")
+    @commands.command(
+        name="migratedata", help="Convert user IDs in events.json to IGN strings."
+    )
     @commands.check(lambda ctx: ctx.author.id == BOT_ADMIN_USER_ID)
     async def migrate_user_ids_to_igns(self, ctx: commands.Context):
         """Convert user IDs in events.json to IGN strings."""
-        events_data = self.data_manager.load_json(FILES["EVENTS"], {"main_team": [], "team_2": [], "team_3": []})
+        events_data = self.data_manager.load_json(
+            FILES["EVENTS"], {"main_team": [], "team_2": [], "team_3": []}
+        )
         profile_cog = self.bot.get_cog("Profile")
 
         if not profile_cog:
@@ -636,11 +739,15 @@ class OwnerActions(commands.Cog):
 
         embed = discord.Embed(
             title="🔄 Data Migration Complete",
-            color=COLORS["SUCCESS"] if success else COLORS["DANGER"]
+            color=COLORS["SUCCESS"] if success else COLORS["DANGER"],
         )
 
         if success:
-            embed.add_field(name="✅ Converted", value=f"{converted_count} user IDs → IGNs", inline=True)
+            embed.add_field(
+                name="✅ Converted",
+                value=f"{converted_count} user IDs → IGNs",
+                inline=True,
+            )
             if failed_conversions:
                 failures = "\n".join(failed_conversions[:5])
                 if len(failed_conversions) > 5:

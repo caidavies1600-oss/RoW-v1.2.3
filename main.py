@@ -7,10 +7,11 @@ and error recovery during startup process.
 """
 
 import asyncio
-import discord
-import traceback
-import sys
 import os
+import sys
+import traceback
+
+import discord
 
 print("DEBUG: Starting main.py imports...")
 print(f"DEBUG: Python version: {sys.version}")
@@ -26,7 +27,7 @@ else:
 
 print("DEBUG: Available environment variables:")
 for key in sorted(os.environ.keys()):
-    if 'TOKEN' in key or 'BOT' in key:
+    if "TOKEN" in key or "BOT" in key:
         print(f"  - {key}: {'*' * min(len(os.environ[key]), 10)}")
 
 print("DEBUG: Attempting imports...")
@@ -34,6 +35,7 @@ print("DEBUG: Attempting imports...")
 try:
     print("DEBUG: Importing bot.client...")
     from bot.client import RowBot
+
     print("DEBUG: RowBot imported successfully")
 except Exception as e:
     print(f"DEBUG: Failed to import RowBot: {e}")
@@ -44,12 +46,14 @@ except Exception as e:
     try:
         print("DEBUG: Testing utils.logger import...")
         from utils.logger import setup_logger
+
         print("DEBUG: utils.logger imported")
     except Exception as e2:
         print(f"DEBUG: utils.logger failed: {e2}")
         try:
             print("DEBUG: Testing config.settings import...")
             from config.settings import BOT_TOKEN
+
             print("DEBUG: config.settings imported")
         except Exception as e2:
             print(f"DEBUG: config.settings failed: {e2}")
@@ -65,6 +69,7 @@ except Exception as e:
 try:
     print("DEBUG: Importing config.settings...")
     from config.settings import BOT_TOKEN
+
     print("DEBUG: BOT_TOKEN imported successfully")
     if not BOT_TOKEN:
         print("DEBUG: BOT_TOKEN is empty!")
@@ -82,6 +87,7 @@ except Exception as e:
 try:
     print("DEBUG: Setting up logger...")
     from utils.logger import setup_logger  # Safe here
+
     logger = setup_logger("main")
     print("DEBUG: Logger setup successful")
 except Exception as e:
@@ -89,6 +95,7 @@ except Exception as e:
     logger = None
 
 print("DEBUG: All imports completed successfully!")
+
 
 async def main():
     """Main bot startup sequence with comprehensive error handling."""
@@ -118,7 +125,7 @@ async def main():
             "cogs.user.commands",
             "cogs.user.profile",
             "cogs.interactions.buttons",
-            "cogs.interactions.dropdowns"
+            "cogs.interactions.dropdowns",
         ]
 
         print("DEBUG: Starting bot connection to Discord...")
@@ -161,6 +168,7 @@ async def main():
         if logger:
             logger.exception(f"Critical error starting bot: {e}")
         raise
+
 
 if __name__ == "__main__":
     print("DEBUG: Script started as main module")

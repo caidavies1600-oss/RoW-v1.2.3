@@ -10,17 +10,20 @@ Features:
 - Auto-reconnection on failures
 """
 
-import gspread
-from google.oauth2.service_account import Credentials
 import json
 import os
-import time
 import random
+import time
 from datetime import datetime
-from typing import Dict, Any, Optional, Callable
+from typing import Any, Callable, Dict, Optional
+
+import gspread
+from google.oauth2.service_account import Credentials
+
 from utils.logger import setup_logger
 
 logger = setup_logger("sheets_base")
+
 
 class RateLimitedSheetsManager:
     """
@@ -53,18 +56,20 @@ class RateLimitedSheetsManager:
             # Define the scope
             scope = [
                 "https://www.googleapis.com/auth/spreadsheets",
-                "https://www.googleapis.com/auth/drive"
+                "https://www.googleapis.com/auth/drive",
             ]
 
             # Load credentials from environment variable or file
-            creds_json = os.getenv('GOOGLE_SHEETS_CREDENTIALS')
+            creds_json = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
             if creds_json:
                 creds_dict = json.loads(creds_json)
                 creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
                 logger.info("✅ Loaded Google Sheets credentials from environment")
             else:
-                if os.path.exists('credentials.json'):
-                    creds = Credentials.from_service_account_file('credentials.json', scopes=scope)
+                if os.path.exists("credentials.json"):
+                    creds = Credentials.from_service_account_file(
+                        "credentials.json", scopes=scope
+                    )
                     logger.info("✅ Loaded Google Sheets credentials from file")
                 else:
                     logger.error("❌ No Google Sheets credentials found")
@@ -75,25 +80,31 @@ class RateLimitedSheetsManager:
             self.gc = gspread.authorize(creds)
 
             # Open the spreadsheet
-            spreadsheet_id = os.getenv('GOOGLE_SHEETS_ID')
+            spreadsheet_id = os.getenv("GOOGLE_SHEETS_ID")
             if spreadsheet_id:
                 self.spreadsheet = self.rate_limited_request(
                     lambda: self.gc.open_by_key(spreadsheet_id)
                 )
-                logger.info(f"✅ Connected to existing spreadsheet: {self.spreadsheet.url}")
+                logger.info(
+                    f"✅ Connected to existing spreadsheet: {self.spreadsheet.url}"
+                )
             else:
                 self.spreadsheet = self.rate_limited_request(
                     lambda: self.gc.create("Discord RoW Bot Data")
                 )
                 logger.info(f"✅ Created new spreadsheet: {self.spreadsheet.url}")
-                logger.warning("⚠️ Set GOOGLE_SHEETS_ID environment variable to reuse this spreadsheet")
+                logger.warning(
+                    "⚠️ Set GOOGLE_SHEETS_ID environment variable to reuse this spreadsheet"
+                )
 
         except Exception as e:
             logger.error(f"❌ Failed to initialize Google Sheets client: {e}")
             self.gc = None
             self.spreadsheet = None
 
-    def exponential_backoff_retry(self, func: Callable, max_retries: Optional[int] = None) -> Any:
+    def exponential_backoff_retry(
+        self, func: Callable, max_retries: Optional[int] = None
+    ) -> Any:
         """
         Execute function with exponential backoff on rate limit errors.
 
@@ -106,7 +117,7 @@ class RateLimitedSheetsManager:
 
         Raises:
             Exception: If all retries fail or non-retryable error occurs
-            
+
         Features:
             - Exponential delay between retries
             - Random jitter to prevent thundering herd
@@ -129,30 +140,36 @@ class RateLimitedSheetsManager:
                 last_exception = e
 
                 # Check if it's a rate limit error (429)
-                if hasattr(e, 'response') and e.response.status_code == 429:
+                if hasattr(e, "response") and e.response.status_code == 429:
                     self.rate_limit_hits += 1
-                    wait_time = (2 ** attempt) + random.uniform(0, 1)
+                    wait_time = (2**attempt) + random.uniform(0, 1)
                     max_wait = min(wait_time, 64)  # Cap at 64 seconds
 
-                    logger.warning(f"⏳ Rate limit hit (attempt {attempt + 1}/{max_retries}). Waiting {max_wait:.2f}s...")
+                    logger.warning(
+                        f"⏳ Rate limit hit (attempt {attempt + 1}/{max_retries}). Waiting {max_wait:.2f}s..."
+                    )
                     time.sleep(max_wait)
                     continue
 
                 # Check for quota exceeded (403)
-                elif hasattr(e, 'response') and e.response.status_code == 403:
-                    if 'quota' in str(e).lower() or 'exceeded' in str(e).lower():
+                elif hasattr(e, "response") and e.response.status_code == 403:
+                    if "quota" in str(e).lower() or "exceeded" in str(e).lower():
                         logger.error("🚫 Google Sheets API quota exceeded for today")
-                        raise Exception("Google Sheets API quota exceeded. Try again tomorrow.")
+                        raise Exception(
+                            "Google Sheets API quota exceeded. Try again tomorrow."
+                        )
                     else:
                         # Other 403 errors (permissions, etc.)
                         logger.error(f"🚫 Permission error: {e}")
                         raise
 
                 # For other API errors, retry with backoff
-                elif hasattr(e, 'response') and e.response.status_code >= 500:
-                    wait_time = (2 ** attempt) + random.uniform(0, 1)
+                elif hasattr(e, "response") and e.response.status_code >= 500:
+                    wait_time = (2**attempt) + random.uniform(0, 1)
                     max_wait = min(wait_time, 32)
-                    logger.warning(f"🔄 Server error {e.response.status_code} (attempt {attempt + 1}/{max_retries}). Retrying in {max_wait:.2f}s...")
+                    logger.warning(
+                        f"🔄 Server error {e.response.status_code} (attempt {attempt + 1}/{max_retries}). Retrying in {max_wait:.2f}s..."
+                    )
                     time.sleep(max_wait)
                     continue
                 else:
@@ -165,12 +182,16 @@ class RateLimitedSheetsManager:
                 # For non-API errors, still retry a few times
                 if attempt < 2:
                     wait_time = 1 + random.uniform(0, 1)
-                    logger.warning(f"🔄 Unexpected error (attempt {attempt + 1}/{max_retries}). Retrying in {wait_time:.2f}s...")
+                    logger.warning(
+                        f"🔄 Unexpected error (attempt {attempt + 1}/{max_retries}). Retrying in {wait_time:.2f}s..."
+                    )
                     time.sleep(wait_time)
                     continue
                 else:
                     # Give up on non-API errors after 3 attempts
-                    logger.error(f"❌ Non-retryable error after {attempt + 1} attempts: {e}")
+                    logger.error(
+                        f"❌ Non-retryable error after {attempt + 1} attempts: {e}"
+                    )
                     raise
 
         # If we get here, all retries failed
@@ -212,7 +233,9 @@ class RateLimitedSheetsManager:
 
         # Log every 100 requests for monitoring
         if self.request_count % 100 == 0:
-            logger.info(f"📊 API Usage: {self.request_count} requests, {self.rate_limit_hits} rate limit hits")
+            logger.info(
+                f"📊 API Usage: {self.request_count} requests, {self.rate_limit_hits} rate limit hits"
+            )
 
         # Execute with exponential backoff
         if args or kwargs:
@@ -238,15 +261,19 @@ class RateLimitedSheetsManager:
         if not updates:
             return True
 
-        logger.info(f"🔄 Starting batch update: {len(updates)} updates in batches of {batch_size}")
+        logger.info(
+            f"🔄 Starting batch update: {len(updates)} updates in batches of {batch_size}"
+        )
 
         try:
             for i in range(0, len(updates), batch_size):
-                batch = updates[i:i + batch_size]
+                batch = updates[i : i + batch_size]
                 batch_num = i // batch_size + 1
                 total_batches = (len(updates) - 1) // batch_size + 1
 
-                logger.info(f"📝 Processing batch {batch_num}/{total_batches} ({len(batch)} updates)")
+                logger.info(
+                    f"📝 Processing batch {batch_num}/{total_batches} ({len(batch)} updates)"
+                )
 
                 # Convert updates to the format expected by gspread
                 batch_data = []
@@ -264,17 +291,23 @@ class RateLimitedSheetsManager:
                 # Progressive delay - longer delays for larger batches
                 if batch_num < total_batches:
                     delay = min(2 + (batch_num * 0.1), 5)  # 2-5 second delays
-                    logger.debug(f"⏸️ Batch {batch_num} complete. Waiting {delay:.1f}s before next batch...")
+                    logger.debug(
+                        f"⏸️ Batch {batch_num} complete. Waiting {delay:.1f}s before next batch..."
+                    )
                     time.sleep(delay)
 
-            logger.info(f"✅ Batch update completed successfully: {len(updates)} updates processed")
+            logger.info(
+                f"✅ Batch update completed successfully: {len(updates)} updates processed"
+            )
             return True
 
         except Exception as e:
             logger.error(f"❌ Batch update failed: {e}")
             return False
 
-    def safe_worksheet_operation(self, operation_name: str, operation_func: Callable) -> Any:
+    def safe_worksheet_operation(
+        self, operation_name: str, operation_func: Callable
+    ) -> Any:
         """
         Safely execute worksheet operations with comprehensive error handling.
 
@@ -302,13 +335,19 @@ class RateLimitedSheetsManager:
 
             # Try to provide helpful error context
             if "worksheet" in str(e).lower():
-                logger.error("💡 Hint: Check if the worksheet exists and has proper permissions")
+                logger.error(
+                    "💡 Hint: Check if the worksheet exists and has proper permissions"
+                )
             elif "range" in str(e).lower():
-                logger.error("💡 Hint: Check if the cell range is valid (e.g., A1:Z100)")
+                logger.error(
+                    "💡 Hint: Check if the cell range is valid (e.g., A1:Z100)"
+                )
             elif "quota" in str(e).lower():
                 logger.error("💡 Hint: Google Sheets API quota may be exceeded")
             elif "permission" in str(e).lower():
-                logger.error("💡 Hint: Check if the service account has edit permissions")
+                logger.error(
+                    "💡 Hint: Check if the service account has edit permissions"
+                )
 
             return None
 
@@ -346,7 +385,9 @@ class RateLimitedSheetsManager:
             logger.info(f"📄 Creating new worksheet: {title}")
             try:
                 worksheet = self.rate_limited_request(
-                    lambda: self.spreadsheet.add_worksheet(title=title, rows=rows, cols=cols)
+                    lambda: self.spreadsheet.add_worksheet(
+                        title=title, rows=rows, cols=cols
+                    )
                 )
                 logger.info(f"✅ Created worksheet: {title}")
                 return worksheet
@@ -366,9 +407,7 @@ class RateLimitedSheetsManager:
 
         try:
             # Test connection with a simple operation
-            self.rate_limited_request(
-                lambda: self.spreadsheet.worksheets()
-            )
+            self.rate_limited_request(lambda: self.spreadsheet.worksheets())
             return True
         except:
             return False
@@ -389,14 +428,24 @@ class RateLimitedSheetsManager:
         session_duration = time.time() - self.session_start_time
 
         return {
-            'total_requests': self.request_count,
-            'rate_limit_hits': self.rate_limit_hits,
-            'session_duration_minutes': round(session_duration / 60, 2),
-            'requests_per_minute': round(self.request_count / (session_duration / 60), 2) if session_duration > 0 else 0,
-            'last_request_time': self.last_request_time,
-            'min_request_interval': self.min_request_interval,
-            'quota_health': 'good' if self.rate_limit_hits < 5 else 'warning' if self.rate_limit_hits < 20 else 'critical',
-            'estimated_quota_used_percent': min((self.request_count / 300) * 100, 100)  # Conservative estimate
+            "total_requests": self.request_count,
+            "rate_limit_hits": self.rate_limit_hits,
+            "session_duration_minutes": round(session_duration / 60, 2),
+            "requests_per_minute": round(
+                self.request_count / (session_duration / 60), 2
+            )
+            if session_duration > 0
+            else 0,
+            "last_request_time": self.last_request_time,
+            "min_request_interval": self.min_request_interval,
+            "quota_health": "good"
+            if self.rate_limit_hits < 5
+            else "warning"
+            if self.rate_limit_hits < 20
+            else "critical",
+            "estimated_quota_used_percent": min(
+                (self.request_count / 300) * 100, 100
+            ),  # Conservative estimate
         }
 
     def log_usage_summary(self):
@@ -406,10 +455,14 @@ class RateLimitedSheetsManager:
         logger.info("📊 Google Sheets API Usage Summary:")
         logger.info(f"  📞 Total Requests: {stats['total_requests']}")
         logger.info(f"  ⏳ Rate Limit Hits: {stats['rate_limit_hits']}")
-        logger.info(f"  🕐 Session Duration: {stats['session_duration_minutes']} minutes")
+        logger.info(
+            f"  🕐 Session Duration: {stats['session_duration_minutes']} minutes"
+        )
         logger.info(f"  📈 Requests/Minute: {stats['requests_per_minute']}")
         logger.info(f"  💾 Quota Health: {stats['quota_health']}")
-        logger.info(f"  📊 Estimated Quota Used: {stats['estimated_quota_used_percent']:.1f}%")
+        logger.info(
+            f"  📊 Estimated Quota Used: {stats['estimated_quota_used_percent']:.1f}%"
+        )
 
     def sync_current_teams(self, events_data):
         """Sync current team signups to Google Sheets."""
@@ -423,18 +476,32 @@ class RateLimitedSheetsManager:
 
             # Clear and set headers
             self.rate_limited_request(worksheet.clear)
-            headers = ["🕐 Timestamp", "⚔️ Team", "👥 Player Count", "📝 Players", "📊 Status"]
+            headers = [
+                "🕐 Timestamp",
+                "⚔️ Team",
+                "👥 Player Count",
+                "📝 Players",
+                "📊 Status",
+            ]
             self.rate_limited_request(worksheet.append_row, headers)
 
             # Add current data with enhanced status indicators
             timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
-            team_mapping = {"main_team": "🏆 Main Team", "team_2": "🥈 Team 2", "team_3": "🥉 Team 3"}
+            team_mapping = {
+                "main_team": "🏆 Main Team",
+                "team_2": "🥈 Team 2",
+                "team_3": "🥉 Team 3",
+            }
 
             team_rows = []
             for team_key, players in events_data.items():
-                team_name = team_mapping.get(team_key, team_key.replace("_", " ").title())
+                team_name = team_mapping.get(
+                    team_key, team_key.replace("_", " ").title()
+                )
                 player_count = len(players)
-                player_list = ", ".join(str(p) for p in players) if players else "No signups"
+                player_list = (
+                    ", ".join(str(p) for p in players) if players else "No signups"
+                )
 
                 # Enhanced status with emojis
                 if player_count >= 8:
@@ -473,12 +540,12 @@ class RateLimitedSheetsManager:
                 {
                     "backgroundColor": {"red": 0.1, "green": 0.7, "blue": 0.1},
                     "textFormat": {
-                        "bold": True, 
+                        "bold": True,
                         "fontSize": 12,
-                        "foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0}
+                        "foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0},
                     },
-                    "horizontalAlignment": "CENTER"
-                }
+                    "horizontalAlignment": "CENTER",
+                },
             )
 
             # Freeze header
@@ -491,70 +558,117 @@ class RateLimitedSheetsManager:
             format_requests = []
 
             # Green for Ready status
-            format_requests.append({
-                "addConditionalFormatRule": {
-                    "rule": {
-                        "ranges": [{"sheetId": worksheet.id, "startRowIndex": 1, "endRowIndex": max_row + 10, "startColumnIndex": 4, "endColumnIndex": 5}],
-                        "booleanRule": {
-                            "condition": {
-                                "type": "TEXT_CONTAINS",
-                                "values": [{"userEnteredValue": "🟢"}]
+            format_requests.append(
+                {
+                    "addConditionalFormatRule": {
+                        "rule": {
+                            "ranges": [
+                                {
+                                    "sheetId": worksheet.id,
+                                    "startRowIndex": 1,
+                                    "endRowIndex": max_row + 10,
+                                    "startColumnIndex": 4,
+                                    "endColumnIndex": 5,
+                                }
+                            ],
+                            "booleanRule": {
+                                "condition": {
+                                    "type": "TEXT_CONTAINS",
+                                    "values": [{"userEnteredValue": "🟢"}],
+                                },
+                                "format": {
+                                    "backgroundColor": {
+                                        "red": 0.8,
+                                        "green": 1.0,
+                                        "blue": 0.8,
+                                    }
+                                },
                             },
-                            "format": {"backgroundColor": {"red": 0.8, "green": 1.0, "blue": 0.8}}
-                        }
-                    },
-                    "index": 0
+                        },
+                        "index": 0,
+                    }
                 }
-            })
+            )
 
             # Yellow for Partial status
-            format_requests.append({
-                "addConditionalFormatRule": {
-                    "rule": {
-                        "ranges": [{"sheetId": worksheet.id, "startRowIndex": 1, "endRowIndex": max_row + 10, "startColumnIndex": 4, "endColumnIndex": 5}],
-                        "booleanRule": {
-                            "condition": {
-                                "type": "TEXT_CONTAINS", 
-                                "values": [{"userEnteredValue": "🟡"}]
+            format_requests.append(
+                {
+                    "addConditionalFormatRule": {
+                        "rule": {
+                            "ranges": [
+                                {
+                                    "sheetId": worksheet.id,
+                                    "startRowIndex": 1,
+                                    "endRowIndex": max_row + 10,
+                                    "startColumnIndex": 4,
+                                    "endColumnIndex": 5,
+                                }
+                            ],
+                            "booleanRule": {
+                                "condition": {
+                                    "type": "TEXT_CONTAINS",
+                                    "values": [{"userEnteredValue": "🟡"}],
+                                },
+                                "format": {
+                                    "backgroundColor": {
+                                        "red": 1.0,
+                                        "green": 1.0,
+                                        "blue": 0.8,
+                                    }
+                                },
                             },
-                            "format": {"backgroundColor": {"red": 1.0, "green": 1.0, "blue": 0.8}}
-                        }
-                    },
-                    "index": 1
+                        },
+                        "index": 1,
+                    }
                 }
-            })
+            )
 
             # Red for Low/Empty status
-            format_requests.append({
-                "addConditionalFormatRule": {
-                    "rule": {
-                        "ranges": [{"sheetId": worksheet.id, "startRowIndex": 1, "endRowIndex": max_row + 10, "startColumnIndex": 4, "endColumnIndex": 5}],
-                        "booleanRule": {
-                            "condition": {
-                                "type": "TEXT_CONTAINS",
-                                "values": [{"userEnteredValue": "🔴"}]
+            format_requests.append(
+                {
+                    "addConditionalFormatRule": {
+                        "rule": {
+                            "ranges": [
+                                {
+                                    "sheetId": worksheet.id,
+                                    "startRowIndex": 1,
+                                    "endRowIndex": max_row + 10,
+                                    "startColumnIndex": 4,
+                                    "endColumnIndex": 5,
+                                }
+                            ],
+                            "booleanRule": {
+                                "condition": {
+                                    "type": "TEXT_CONTAINS",
+                                    "values": [{"userEnteredValue": "🔴"}],
+                                },
+                                "format": {
+                                    "backgroundColor": {
+                                        "red": 1.0,
+                                        "green": 0.8,
+                                        "blue": 0.8,
+                                    }
+                                },
                             },
-                            "format": {"backgroundColor": {"red": 1.0, "green": 0.8, "blue": 0.8}}
-                        }
-                    },
-                    "index": 2
+                        },
+                        "index": 2,
+                    }
                 }
-            })
+            )
 
             # Execute batch formatting
             try:
                 self.rate_limited_request(
-                    self.spreadsheet.batch_update,
-                    {"requests": format_requests}
+                    self.spreadsheet.batch_update, {"requests": format_requests}
                 )
             except Exception as batch_error:
-                logger.warning(f"Batch formatting failed, using fallback: {batch_error}")
+                logger.warning(
+                    f"Batch formatting failed, using fallback: {batch_error}"
+                )
                 # Fallback to simple background colors
                 try:
                     self.rate_limited_request(
-                        worksheet.format,
-                        status_range,
-                        {"textFormat": {"bold": True}}
+                        worksheet.format, status_range, {"textFormat": {"bold": True}}
                     )
                 except Exception as fallback_error:
                     logger.warning(f"Fallback formatting also failed: {fallback_error}")
@@ -579,19 +693,34 @@ class RateLimitedSheetsManager:
 
             # Clear and set headers
             self.rate_limited_request(worksheet.clear)
-            headers = ["📅 Date", "⚔️ Team", "🏆 Result", "👥 Players", "📝 Recorded By", "📋 Notes", "📊 Total Wins", "📊 Total Losses"]
+            headers = [
+                "📅 Date",
+                "⚔️ Team",
+                "🏆 Result",
+                "👥 Players",
+                "📝 Recorded By",
+                "📋 Notes",
+                "📊 Total Wins",
+                "📊 Total Losses",
+            ]
             self.rate_limited_request(worksheet.append_row, headers)
 
             # Add history data with enhanced formatting
             history = results_data.get("history", [])
-            team_mapping = {"main_team": "🏆 Main Team", "team_2": "🥈 Team 2", "team_3": "🥉 Team 3"}
+            team_mapping = {
+                "main_team": "🏆 Main Team",
+                "team_2": "🥈 Team 2",
+                "team_3": "🥉 Team 3",
+            }
 
             for entry in history:
                 # Format date
                 try:
                     date = entry.get("date", entry.get("timestamp", "Unknown"))
                     if "T" in str(date):  # ISO format
-                        date = datetime.fromisoformat(date.replace("Z", "+00:00")).strftime("%Y-%m-%d %H:%M")
+                        date = datetime.fromisoformat(
+                            date.replace("Z", "+00:00")
+                        ).strftime("%Y-%m-%d %H:%M")
                 except:
                     date = str(entry.get("date", "Unknown"))
 
@@ -619,14 +748,16 @@ class RateLimitedSheetsManager:
                     recorded_by,
                     notes,
                     results_data.get("total_wins", 0),
-                    results_data.get("total_losses", 0)
+                    results_data.get("total_losses", 0),
                 ]
                 self.rate_limited_request(worksheet.append_row, row)
 
             # Apply formatting
             self._apply_results_formatting(worksheet, len(history) + 1)
 
-            logger.info(f"✅ Synced {len(history)} results to Google Sheets with formatting")
+            logger.info(
+                f"✅ Synced {len(history)} results to Google Sheets with formatting"
+            )
             return True
 
         except Exception as e:
@@ -643,12 +774,12 @@ class RateLimitedSheetsManager:
                 {
                     "backgroundColor": {"red": 0.6, "green": 0.2, "blue": 0.8},
                     "textFormat": {
-                        "bold": True, 
+                        "bold": True,
                         "fontSize": 12,
-                        "foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0}
+                        "foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0},
                     },
-                    "horizontalAlignment": "CENTER"
-                }
+                    "horizontalAlignment": "CENTER",
+                },
             )
 
             # Freeze header
@@ -660,62 +791,89 @@ class RateLimitedSheetsManager:
             format_requests = []
 
             # Green for victories
-            format_requests.append({
-                "addConditionalFormatRule": {
-                    "rule": {
-                        "ranges": [{"sheetId": worksheet.id, "startRowIndex": 1, "endRowIndex": max_row + 20, "startColumnIndex": 2, "endColumnIndex": 3}],
-                        "booleanRule": {
-                            "condition": {
-                                "type": "TEXT_CONTAINS",
-                                "values": [{"userEnteredValue": "✅"}]
+            format_requests.append(
+                {
+                    "addConditionalFormatRule": {
+                        "rule": {
+                            "ranges": [
+                                {
+                                    "sheetId": worksheet.id,
+                                    "startRowIndex": 1,
+                                    "endRowIndex": max_row + 20,
+                                    "startColumnIndex": 2,
+                                    "endColumnIndex": 3,
+                                }
+                            ],
+                            "booleanRule": {
+                                "condition": {
+                                    "type": "TEXT_CONTAINS",
+                                    "values": [{"userEnteredValue": "✅"}],
+                                },
+                                "format": {
+                                    "backgroundColor": {
+                                        "red": 0.8,
+                                        "green": 1.0,
+                                        "blue": 0.8,
+                                    },
+                                    "textFormat": {"bold": True},
+                                },
                             },
-                            "format": {
-                                "backgroundColor": {"red": 0.8, "green": 1.0, "blue": 0.8},
-                                "textFormat": {"bold": True}
-                            }
-                        }
-                    },
-                    "index": 0
+                        },
+                        "index": 0,
+                    }
                 }
-            })
+            )
 
             # Red for defeats
-            format_requests.append({
-                "addConditionalFormatRule": {
-                    "rule": {
-                        "ranges": [{"sheetId": worksheet.id, "startRowIndex": 1, "endRowIndex": max_row + 20, "startColumnIndex": 2, "endColumnIndex": 3}],
-                        "booleanRule": {
-                            "condition": {
-                                "type": "TEXT_CONTAINS",
-                                "values": [{"userEnteredValue": "❌"}]
+            format_requests.append(
+                {
+                    "addConditionalFormatRule": {
+                        "rule": {
+                            "ranges": [
+                                {
+                                    "sheetId": worksheet.id,
+                                    "startRowIndex": 1,
+                                    "endRowIndex": max_row + 20,
+                                    "startColumnIndex": 2,
+                                    "endColumnIndex": 3,
+                                }
+                            ],
+                            "booleanRule": {
+                                "condition": {
+                                    "type": "TEXT_CONTAINS",
+                                    "values": [{"userEnteredValue": "❌"}],
+                                },
+                                "format": {
+                                    "backgroundColor": {
+                                        "red": 1.0,
+                                        "green": 0.8,
+                                        "blue": 0.8,
+                                    },
+                                    "textFormat": {"bold": True},
+                                },
                             },
-                            "format": {
-                                "backgroundColor": {"red": 1.0, "green": 0.8, "blue": 0.8},
-                                "textFormat": {"bold": True}
-                            }
-                        }
-                    },
-                    "index": 1
+                        },
+                        "index": 1,
+                    }
                 }
-            })
+            )
 
             # Execute batch formatting
             try:
                 self.rate_limited_request(
-                    self.spreadsheet.batch_update,
-                    {"requests": format_requests}
+                    self.spreadsheet.batch_update, {"requests": format_requests}
                 )
             except Exception as batch_error:
                 logger.warning(f"Results batch formatting failed: {batch_error}")
                 # Apply basic formatting as fallback
                 try:
                     self.rate_limited_request(
-                        worksheet.format,
-                        result_range,
-                        {"textFormat": {"bold": True}}
+                        worksheet.format, result_range, {"textFormat": {"bold": True}}
                     )
                 except Exception as fallback_error:
-                    logger.warning(f"Results fallback formatting failed: {fallback_error}")
+                    logger.warning(
+                        f"Results fallback formatting failed: {fallback_error}"
+                    )
 
             # Format totals columns
             totals_range = f"G2:H{max_row + 20}"
@@ -725,8 +883,8 @@ class RateLimitedSheetsManager:
                 {
                     "backgroundColor": {"red": 0.9, "green": 0.9, "blue": 1.0},
                     "textFormat": {"bold": True},
-                    "horizontalAlignment": "CENTER"
-                }
+                    "horizontalAlignment": "CENTER",
+                },
             )
 
             # Auto-resize columns
@@ -763,17 +921,19 @@ class RateLimitedSheetsManager:
 
             # Create additional templates if methods exist
             try:
-                if hasattr(self, 'create_match_statistics_template'):
+                if hasattr(self, "create_match_statistics_template"):
                     if self.create_match_statistics_template():
                         success_count += 1
                         logger.info("✅ Match Statistics template created")
 
-                if hasattr(self, 'create_alliance_tracking_sheet'):
+                if hasattr(self, "create_alliance_tracking_sheet"):
                     if self.create_alliance_tracking_sheet():
                         success_count += 1
                         logger.info("✅ Alliance Tracking template created")
             except Exception as template_error:
-                logger.warning(f"⚠️ Additional template creation failed: {template_error}")
+                logger.warning(
+                    f"⚠️ Additional template creation failed: {template_error}"
+                )
 
             # Add new template creation methods here
             if self.create_error_summary_template():
@@ -784,8 +944,9 @@ class RateLimitedSheetsManager:
                 success_count += 1
                 logger.info("✅ Dashboard Summary template created")
 
-
-            logger.info(f"✅ Template creation completed: {success_count} operations successful")
+            logger.info(
+                f"✅ Template creation completed: {success_count} operations successful"
+            )
             return success_count >= 3  # Consider successful if most operations work
 
         except Exception as e:
@@ -805,16 +966,36 @@ class RateLimitedSheetsManager:
             # Check if sheet already has data to avoid overwriting
             existing_data = self.rate_limited_request(worksheet.get_all_values)
             headers = [
-                "User ID", "Display Name", "Main Team Role", 
-                "Main Wins", "Main Losses", "Team2 Wins", "Team2 Losses",
-                "Team3 Wins", "Team3 Losses", "Total Wins", "Total Losses", 
-                "Win Rate", "Absents", "Blocked", "Power Rating", 
-                "Cavalry", "Mages", "Archers", "Infantry", "Whale Status", "Last Updated"
+                "User ID",
+                "Display Name",
+                "Main Team Role",
+                "Main Wins",
+                "Main Losses",
+                "Team2 Wins",
+                "Team2 Losses",
+                "Team3 Wins",
+                "Team3 Losses",
+                "Total Wins",
+                "Total Losses",
+                "Win Rate",
+                "Absents",
+                "Blocked",
+                "Power Rating",
+                "Cavalry",
+                "Mages",
+                "Archers",
+                "Infantry",
+                "Whale Status",
+                "Last Updated",
             ]
 
             # Only recreate if empty or headers don't match
-            if len(existing_data) <= 1 or (existing_data and existing_data[0] != headers):
-                logger.info("Creating new player stats template with correct headers and formatting")
+            if len(existing_data) <= 1 or (
+                existing_data and existing_data[0] != headers
+            ):
+                logger.info(
+                    "Creating new player stats template with correct headers and formatting"
+                )
 
                 # Clear and set headers
                 self.rate_limited_request(worksheet.clear)
@@ -826,25 +1007,40 @@ class RateLimitedSheetsManager:
                     for user_id, stats in player_stats.items():
                         row = [
                             user_id,
-                            stats.get("name", stats.get("display_name", f"User_{user_id}")),
+                            stats.get(
+                                "name", stats.get("display_name", f"User_{user_id}")
+                            ),
                             "No",  # Manual entry required
-                            0, 0, 0, 0, 0, 0,  # Win/Loss stats - manual entry
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,  # Win/Loss stats - manual entry
                             f"=D{row_num}+F{row_num}+H{row_num}",  # Total Wins formula
                             f"=E{row_num}+G{row_num}+I{row_num}",  # Total Losses formula
                             f"=IF(K{row_num}+J{row_num}=0,0,J{row_num}/(J{row_num}+K{row_num}))",  # Win Rate formula
                             stats.get("absents", 0),
                             "Yes" if stats.get("blocked", False) else "No",
                             "",  # Power rating - manual entry
-                            "No", "No", "No", "No", "No",  # Specializations - manual entry
-                            datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+                            "No",
+                            "No",
+                            "No",
+                            "No",
+                            "No",  # Specializations - manual entry
+                            datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
                         ]
                         self.rate_limited_request(worksheet.append_row, row)
                         row_num += 1
 
                 # Apply comprehensive formatting
-                self._apply_player_stats_formatting(worksheet, len(player_stats) + 1 if player_stats else 2)
+                self._apply_player_stats_formatting(
+                    worksheet, len(player_stats) + 1 if player_stats else 2
+                )
 
-                logger.info("✅ Created player stats template with formulas and formatting")
+                logger.info(
+                    "✅ Created player stats template with formulas and formatting"
+                )
             else:
                 logger.info("✅ Player stats sheet already exists with correct format")
 
@@ -864,13 +1060,13 @@ class RateLimitedSheetsManager:
                 {
                     "backgroundColor": {"red": 0.2, "green": 0.4, "blue": 0.8},
                     "textFormat": {
-                        "bold": True, 
+                        "bold": True,
                         "fontSize": 12,
-                        "foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0}
+                        "foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0},
                     },
                     "horizontalAlignment": "CENTER",
-                    "verticalAlignment": "MIDDLE"
-                }
+                    "verticalAlignment": "MIDDLE",
+                },
             )
 
             # Freeze header row
@@ -885,35 +1081,57 @@ class RateLimitedSheetsManager:
                     "textFormat": {"fontSize": 10},
                     "horizontalAlignment": "CENTER",
                     "borders": {
-                        "top": {"style": "SOLID", "color": {"red": 0.8, "green": 0.8, "blue": 0.8}},
-                        "bottom": {"style": "SOLID", "color": {"red": 0.8, "green": 0.8, "blue": 0.8}},
-                        "left": {"style": "SOLID", "color": {"red": 0.8, "green": 0.8, "blue": 0.8}},
-                        "right": {"style": "SOLID", "color": {"red": 0.8, "green": 0.8, "blue": 0.8}}
-                    }
-                }
+                        "top": {
+                            "style": "SOLID",
+                            "color": {"red": 0.8, "green": 0.8, "blue": 0.8},
+                        },
+                        "bottom": {
+                            "style": "SOLID",
+                            "color": {"red": 0.8, "green": 0.8, "blue": 0.8},
+                        },
+                        "left": {
+                            "style": "SOLID",
+                            "color": {"red": 0.8, "green": 0.8, "blue": 0.8},
+                        },
+                        "right": {
+                            "style": "SOLID",
+                            "color": {"red": 0.8, "green": 0.8, "blue": 0.8},
+                        },
+                    },
+                },
             )
 
             # Win/Loss columns - green for wins, red for losses
-            win_columns = ["D", "F", "H", "J"]  # Main Wins, Team2 Wins, Team3 Wins, Total Wins
+            win_columns = [
+                "D",
+                "F",
+                "H",
+                "J",
+            ]  # Main Wins, Team2 Wins, Team3 Wins, Total Wins
             for col in win_columns:
                 self.rate_limited_request(
                     worksheet.format,
                     f"{col}2:{col}{max_row + 50}",
                     {
                         "backgroundColor": {"red": 0.85, "green": 1.0, "blue": 0.85},
-                        "textFormat": {"bold": True}
-                    }
+                        "textFormat": {"bold": True},
+                    },
                 )
 
-            loss_columns = ["E", "G", "I", "K"]  # Main Losses, Team2 Losses, Team3 Losses, Total Losses
+            loss_columns = [
+                "E",
+                "G",
+                "I",
+                "K",
+            ]  # Main Losses, Team2 Losses, Team3 Losses, Total Losses
             for col in loss_columns:
                 self.rate_limited_request(
                     worksheet.format,
                     f"{col}2:{col}{max_row + 50}",
                     {
                         "backgroundColor": {"red": 1.0, "green": 0.85, "blue": 0.85},
-                        "textFormat": {"bold": True}
-                    }
+                        "textFormat": {"bold": True},
+                    },
                 )
 
             # Win Rate column with conditional formatting
@@ -923,8 +1141,8 @@ class RateLimitedSheetsManager:
                 {
                     "backgroundColor": {"red": 0.9, "green": 0.9, "blue": 1.0},
                     "textFormat": {"bold": True},
-                    "numberFormat": {"type": "PERCENT", "pattern": "0.0%"}
-                }
+                    "numberFormat": {"type": "PERCENT", "pattern": "0.0%"},
+                },
             )
 
             # Power Rating column
@@ -933,8 +1151,8 @@ class RateLimitedSheetsManager:
                 f"O2:O{max_row + 50}",
                 {
                     "backgroundColor": {"red": 1.0, "green": 0.9, "blue": 0.6},
-                    "numberFormat": {"type": "NUMBER", "pattern": "#,##0"}
-                }
+                    "numberFormat": {"type": "NUMBER", "pattern": "#,##0"},
+                },
             )
 
             # Specialization columns with distinct colors
@@ -943,7 +1161,7 @@ class RateLimitedSheetsManager:
                 {"red": 0.7, "green": 0.7, "blue": 0.9},  # Mages - blueish
                 {"red": 0.7, "green": 0.9, "blue": 0.7},  # Archers - greenish
                 {"red": 0.9, "green": 0.9, "blue": 0.7},  # Infantry - yellowish
-                {"red": 0.9, "green": 0.7, "blue": 0.9}   # Whale - purplish
+                {"red": 0.9, "green": 0.7, "blue": 0.9},  # Whale - purplish
             ]
 
             spec_columns = ["P", "Q", "R", "S", "T"]
@@ -951,10 +1169,7 @@ class RateLimitedSheetsManager:
                 self.rate_limited_request(
                     worksheet.format,
                     f"{col}2:{col}{max_row + 50}",
-                    {
-                        "backgroundColor": spec_colors[i],
-                        "textFormat": {"bold": True}
-                    }
+                    {"backgroundColor": spec_colors[i], "textFormat": {"bold": True}},
                 )
 
             # Auto-resize columns for better readability
@@ -971,8 +1186,11 @@ class RateLimitedSheetsManager:
                     "A1:U1",
                     {
                         "backgroundColor": {"red": 0.2, "green": 0.6, "blue": 1.0},
-                        "textFormat": {"bold": True, "foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0}}
-                    }
+                        "textFormat": {
+                            "bold": True,
+                            "foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0},
+                        },
+                    },
                 )
                 self.rate_limited_request(worksheet.freeze, rows=1)
                 logger.info("✅ Applied basic formatting as fallback")
@@ -1001,12 +1219,16 @@ class RateLimitedSheetsManager:
                             "name": member.display_name,
                             "display_name": member.display_name,
                             "username": member.name,
-                            "joined_at": member.joined_at.isoformat() if member.joined_at else None
+                            "joined_at": member.joined_at.isoformat()
+                            if member.joined_at
+                            else None,
                         }
 
                         # Add to player_stats if not exists
                         if user_id not in all_data.get("player_stats", {}):
-                            all_data.setdefault("player_stats", {})[user_id] = discord_members[user_id]
+                            all_data.setdefault("player_stats", {})[user_id] = (
+                                discord_members[user_id]
+                            )
                             new_members_added += 1
                         else:
                             existing_members_updated += 1
@@ -1019,12 +1241,14 @@ class RateLimitedSheetsManager:
                 "member_sync": {
                     "new_members_added": new_members_added,
                     "existing_members_updated": existing_members_updated,
-                    "total_discord_members": len(discord_members)
+                    "total_discord_members": len(discord_members),
                 },
-                "spreadsheet_url": self.spreadsheet.url if self.spreadsheet else None
+                "spreadsheet_url": self.spreadsheet.url if self.spreadsheet else None,
             }
 
-            logger.info(f"✅ Full sync complete: {new_members_added} new members, {existing_members_updated} updated")
+            logger.info(
+                f"✅ Full sync complete: {new_members_added} new members, {existing_members_updated} updated"
+            )
             return result
 
         except Exception as e:
@@ -1045,13 +1269,31 @@ class RateLimitedSheetsManager:
             existing_data = self.rate_limited_request(worksheet.get_all_values)
             if len(existing_data) <= 1:
                 headers = [
-                    "Match ID", "Date", "Team", "Result", "Enemy Alliance Name", "Enemy Alliance Tag",
-                    "Our Matchmaking Power", "Our Lifestone Points", "Our Occupation Points",
-                    "Our Gathering Points", "Our Total Kills", "Our Total Wounded", "Our Total Healed",
-                    "Our Lifestone Obtained", "Enemy Matchmaking Power", "Enemy Lifestone Points", 
-                    "Enemy Occupation Points", "Enemy Gathering Points", "Enemy Total Kills", 
-                    "Enemy Total Wounded", "Enemy Total Healed", "Enemy Lifestone Obtained", 
-                    "Players Participated", "Recorded By", "Notes"
+                    "Match ID",
+                    "Date",
+                    "Team",
+                    "Result",
+                    "Enemy Alliance Name",
+                    "Enemy Alliance Tag",
+                    "Our Matchmaking Power",
+                    "Our Lifestone Points",
+                    "Our Occupation Points",
+                    "Our Gathering Points",
+                    "Our Total Kills",
+                    "Our Total Wounded",
+                    "Our Total Healed",
+                    "Our Lifestone Obtained",
+                    "Enemy Matchmaking Power",
+                    "Enemy Lifestone Points",
+                    "Enemy Occupation Points",
+                    "Enemy Gathering Points",
+                    "Enemy Total Kills",
+                    "Enemy Total Wounded",
+                    "Enemy Total Healed",
+                    "Enemy Lifestone Obtained",
+                    "Players Participated",
+                    "Recorded By",
+                    "Notes",
                 ]
 
                 self.rate_limited_request(worksheet.clear)
@@ -1059,10 +1301,31 @@ class RateLimitedSheetsManager:
 
                 # Add example row
                 example_row = [
-                    "MATCH_001", "2025-08-10", "main_team", "Win", "Enemy Alliance", "EA",
-                    "2500000000", "1500", "800", "200", "150", "50", "100",
-                    "75", "2400000000", "1200", "600", "180", "120", "60", "80",
-                    "50", "Player1, Player2, Player3", "AdminUser", "Great teamwork!"
+                    "MATCH_001",
+                    "2025-08-10",
+                    "main_team",
+                    "Win",
+                    "Enemy Alliance",
+                    "EA",
+                    "2500000000",
+                    "1500",
+                    "800",
+                    "200",
+                    "150",
+                    "50",
+                    "100",
+                    "75",
+                    "2400000000",
+                    "1200",
+                    "600",
+                    "180",
+                    "120",
+                    "60",
+                    "80",
+                    "50",
+                    "Player1, Player2, Player3",
+                    "AdminUser",
+                    "Great teamwork!",
                 ]
                 self.rate_limited_request(worksheet.append_row, example_row)
 
@@ -1073,11 +1336,20 @@ class RateLimitedSheetsManager:
                         "A1:Y1",
                         {
                             "backgroundColor": {"red": 0.2, "green": 0.6, "blue": 1.0},
-                            "textFormat": {"bold": True, "foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0}}
-                        }
+                            "textFormat": {
+                                "bold": True,
+                                "foregroundColor": {
+                                    "red": 1.0,
+                                    "green": 1.0,
+                                    "blue": 1.0,
+                                },
+                            },
+                        },
                     )
                 except Exception as format_error:
-                    logger.warning(f"Failed to format match statistics headers: {format_error}")
+                    logger.warning(
+                        f"Failed to format match statistics headers: {format_error}"
+                    )
 
                 logger.info("✅ Created match statistics template")
             else:
@@ -1103,10 +1375,21 @@ class RateLimitedSheetsManager:
             existing_data = self.rate_limited_request(worksheet.get_all_values)
             if len(existing_data) <= 1:
                 headers = [
-                    "Alliance Name", "Alliance Tag", "Matches Against", "Wins Against Them", 
-                    "Losses Against Them", "Win Rate vs Them", "Average Enemy Power",
-                    "Difficulty Rating", "Strategy Notes", "Last Fought", "Server/Kingdom",
-                    "Alliance Level", "Activity Level", "Threat Level", "Additional Notes"
+                    "Alliance Name",
+                    "Alliance Tag",
+                    "Matches Against",
+                    "Wins Against Them",
+                    "Losses Against Them",
+                    "Win Rate vs Them",
+                    "Average Enemy Power",
+                    "Difficulty Rating",
+                    "Strategy Notes",
+                    "Last Fought",
+                    "Server/Kingdom",
+                    "Alliance Level",
+                    "Activity Level",
+                    "Threat Level",
+                    "Additional Notes",
                 ]
 
                 self.rate_limited_request(worksheet.clear)
@@ -1114,9 +1397,21 @@ class RateLimitedSheetsManager:
 
                 # Add example row
                 example_row = [
-                    "Example Alliance", "EX", 5, 3, 2, "60%", "2400000000",
-                    "Hard", "They focus on cavalry rushes", "2025-08-01", "K123",
-                    "High", "Very Active", "High", "Strong in KvK events, watch out for their coordination"
+                    "Example Alliance",
+                    "EX",
+                    5,
+                    3,
+                    2,
+                    "60%",
+                    "2400000000",
+                    "Hard",
+                    "They focus on cavalry rushes",
+                    "2025-08-01",
+                    "K123",
+                    "High",
+                    "Very Active",
+                    "High",
+                    "Strong in KvK events, watch out for their coordination",
                 ]
                 self.rate_limited_request(worksheet.append_row, example_row)
 
@@ -1127,11 +1422,20 @@ class RateLimitedSheetsManager:
                         "A1:O1",
                         {
                             "backgroundColor": {"red": 1.0, "green": 0.6, "blue": 0.2},
-                            "textFormat": {"bold": True, "foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0}}
-                        }
+                            "textFormat": {
+                                "bold": True,
+                                "foregroundColor": {
+                                    "red": 1.0,
+                                    "green": 1.0,
+                                    "blue": 1.0,
+                                },
+                            },
+                        },
                     )
                 except Exception as format_error:
-                    logger.warning(f"Failed to format alliance tracking headers: {format_error}")
+                    logger.warning(
+                        f"Failed to format alliance tracking headers: {format_error}"
+                    )
 
                 logger.info("✅ Created alliance tracking template")
             else:
@@ -1152,27 +1456,48 @@ class RateLimitedSheetsManager:
 
             # Headers for error tracking
             headers = [
-                "Timestamp", "Error Type", "Command", "User ID", 
-                "Error Message", "Traceback", "Severity", "Status", "Notes"
+                "Timestamp",
+                "Error Type",
+                "Command",
+                "User ID",
+                "Error Message",
+                "Traceback",
+                "Severity",
+                "Status",
+                "Notes",
             ]
 
             # Set headers
-            worksheet.update('A1:I1', [headers])
+            worksheet.update("A1:I1", [headers])
 
             # Format headers
-            worksheet.format('A1:I1', {
-                "backgroundColor": {"red": 0.8, "green": 0.2, "blue": 0.2},
-                "textFormat": {"bold": True, "foregroundColor": {"red": 1, "green": 1, "blue": 1}}
-            })
+            worksheet.format(
+                "A1:I1",
+                {
+                    "backgroundColor": {"red": 0.8, "green": 0.2, "blue": 0.2},
+                    "textFormat": {
+                        "bold": True,
+                        "foregroundColor": {"red": 1, "green": 1, "blue": 1},
+                    },
+                },
+            )
 
             # Add some sample data to show format
             sample_data = [
-                ["2025-01-05 20:00:00", "CommandError", "!formatsheets", "123456789", 
-                 "Method not found", "AttributeError: 'SheetsManager' object has no attribute...", 
-                 "Medium", "Resolved", "Added missing method"]
+                [
+                    "2025-01-05 20:00:00",
+                    "CommandError",
+                    "!formatsheets",
+                    "123456789",
+                    "Method not found",
+                    "AttributeError: 'SheetsManager' object has no attribute...",
+                    "Medium",
+                    "Resolved",
+                    "Added missing method",
+                ]
             ]
 
-            worksheet.update('A2:I2', sample_data)
+            worksheet.update("A2:I2", sample_data)
 
             logger.info("✅ Error Summary worksheet created successfully")
             return True
@@ -1189,17 +1514,21 @@ class RateLimitedSheetsManager:
             worksheet = self.get_or_create_worksheet("Dashboard Summary")
 
             # Create overview section
-            overview_headers = [
-                "Metric", "Value", "Last Updated"
-            ]
+            overview_headers = ["Metric", "Value", "Last Updated"]
 
-            worksheet.update('A1:C1', [overview_headers])
+            worksheet.update("A1:C1", [overview_headers])
 
             # Format headers
-            worksheet.format('A1:C1', {
-                "backgroundColor": {"red": 0.2, "green": 0.8, "blue": 0.2},
-                "textFormat": {"bold": True, "foregroundColor": {"red": 1, "green": 1, "blue": 1}}
-            })
+            worksheet.format(
+                "A1:C1",
+                {
+                    "backgroundColor": {"red": 0.2, "green": 0.8, "blue": 0.2},
+                    "textFormat": {
+                        "bold": True,
+                        "foregroundColor": {"red": 1, "green": 1, "blue": 1},
+                    },
+                },
+            )
 
             # Add dashboard metrics
             dashboard_data = [
@@ -1209,25 +1538,31 @@ class RateLimitedSheetsManager:
                 ["Win Rate", "0%", "2025-01-05"],
                 ["Active Teams", "3", "2025-01-05"],
                 ["Blocked Users", "0", "2025-01-05"],
-                ["Recent Activity", "No recent activity", "2025-01-05"]
+                ["Recent Activity", "No recent activity", "2025-01-05"],
             ]
 
-            worksheet.update('A2:C8', dashboard_data)
+            worksheet.update("A2:C8", dashboard_data)
 
             # Add team status section
-            worksheet.update('E1:G1', [["Team", "Members", "Status"]])
-            worksheet.format('E1:G1', {
-                "backgroundColor": {"red": 0.3, "green": 0.3, "blue": 0.8},
-                "textFormat": {"bold": True, "foregroundColor": {"red": 1, "green": 1, "blue": 1}}
-            })
+            worksheet.update("E1:G1", [["Team", "Members", "Status"]])
+            worksheet.format(
+                "E1:G1",
+                {
+                    "backgroundColor": {"red": 0.3, "green": 0.3, "blue": 0.8},
+                    "textFormat": {
+                        "bold": True,
+                        "foregroundColor": {"red": 1, "green": 1, "blue": 1},
+                    },
+                },
+            )
 
             team_data = [
                 ["Main Team", "0", "Active"],
                 ["Team 2", "0", "Active"],
-                ["Team 3", "0", "Active"]
+                ["Team 3", "0", "Active"],
             ]
 
-            worksheet.update('E2:G4', team_data)
+            worksheet.update("E2:G4", team_data)
 
             logger.info("✅ Dashboard Summary worksheet created successfully")
             return True
@@ -1239,12 +1574,14 @@ class RateLimitedSheetsManager:
     def __del__(self):
         """Log usage summary when object is destroyed."""
         try:
-            if hasattr(self, 'request_count') and self.request_count > 0:
+            if hasattr(self, "request_count") and self.request_count > 0:
                 self.log_usage_summary()
         except:
             pass
 
+
 # For backward compatibility
 class BaseSheetsManager(RateLimitedSheetsManager):
     """Alias for backward compatibility."""
+
     pass

@@ -1,8 +1,9 @@
+import os
+import tempfile
+from datetime import datetime
+
 import discord
 from discord.ext import commands
-import tempfile
-import os
-from datetime import datetime
 
 from config.constants import FILES
 from config.settings import ADMIN_ROLE_IDS
@@ -15,11 +16,11 @@ logger = setup_logger("exporter")
 class Exporter(commands.Cog):
     """
     Handles data export functionality for RoW bot.
-    
+
     Provides commands to export:
     - Current team signups
     - Event participation history
-    
+
     Exports are provided as formatted text files.
     """
 
@@ -34,7 +35,9 @@ class Exporter(commands.Cog):
         self.data_manager = DataManager()
 
     @commands.command()
-    @commands.check(lambda ctx: any(role.id in ADMIN_ROLE_IDS for role in ctx.author.roles))
+    @commands.check(
+        lambda ctx: any(role.id in ADMIN_ROLE_IDS for role in ctx.author.roles)
+    )
     async def exportteams(self, ctx):
         """
         Export current team signups to a text file.
@@ -67,7 +70,7 @@ class Exporter(commands.Cog):
 
             total_players = 0
             for team, members in data.items():
-                team_name = team.replace('_', ' ').title()
+                team_name = team.replace("_", " ").title()
                 lines.append(f"# {team_name} ({len(members)} players)")
                 lines.append("-" * 30)
 
@@ -84,13 +87,15 @@ class Exporter(commands.Cog):
 
             text = "\n".join(lines)
 
-            with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix=".txt", encoding='utf-8') as temp:
+            with tempfile.NamedTemporaryFile(
+                mode="w+", delete=False, suffix=".txt", encoding="utf-8"
+            ) as temp:
                 temp.write(text)
                 temp_path = temp.name
 
             await ctx.send(
                 content=f"📋 **Team Export Complete** - {total_players} total players signed up",
-                file=discord.File(temp_path, filename="team_export.txt")
+                file=discord.File(temp_path, filename="team_export.txt"),
             )
             logger.info(f"{ctx.author} exported team list ({total_players} players).")
 
@@ -101,7 +106,9 @@ class Exporter(commands.Cog):
             await ctx.send("❌ Failed to export team data.")
 
     @commands.command()
-    @commands.check(lambda ctx: any(role.id in ADMIN_ROLE_IDS for role in ctx.author.roles))
+    @commands.check(
+        lambda ctx: any(role.id in ADMIN_ROLE_IDS for role in ctx.author.roles)
+    )
     async def exporthistory(self, ctx):
         """
         Export event history to a text file.
@@ -139,7 +146,7 @@ class Exporter(commands.Cog):
 
                 teams = entry.get("teams", {})
                 for team, members in teams.items():
-                    team_name = team.replace('_', ' ').title()
+                    team_name = team.replace("_", " ").title()
                     lines.append(f"{team_name}: {len(members)} players")
                     if members:
                         member_list = ", ".join(members[:10])
@@ -153,13 +160,15 @@ class Exporter(commands.Cog):
 
             text = "\n".join(lines)
 
-            with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix=".txt", encoding='utf-8') as temp:
+            with tempfile.NamedTemporaryFile(
+                mode="w+", delete=False, suffix=".txt", encoding="utf-8"
+            ) as temp:
                 temp.write(text)
                 temp_path = temp.name
 
             await ctx.send(
                 content=f"📚 **Event History Export Complete** - {len(history)} events recorded",
-                file=discord.File(temp_path, filename="event_history.txt")
+                file=discord.File(temp_path, filename="event_history.txt"),
             )
             logger.info(f"{ctx.author} exported event history ({len(history)} events).")
 

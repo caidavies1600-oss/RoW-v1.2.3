@@ -18,16 +18,16 @@ Components:
 
 import json
 import os
-from datetime import datetime
-from typing import Dict, List, Any
+
 from utils.logger import setup_logger
 
 logger = setup_logger("startup_fixer")
 
+
 class StartupDataFixer:
     """
     Automatically fixes data inconsistencies on bot startup.
-    
+
     Features:
     - Missing file creation
     - Data structure repair
@@ -35,7 +35,7 @@ class StartupDataFixer:
     - Corruption recovery
     - IGN mapping fixes
     - Logging of applied fixes
-    
+
     Attributes:
         bot: Discord bot instance
         fixes_applied: List of fixes performed
@@ -57,7 +57,9 @@ class StartupDataFixer:
             self.clean_corrupted_files()
 
             if self.fixes_applied:
-                logger.info(f"✅ Startup fixes completed: {len(self.fixes_applied)} fixes applied")
+                logger.info(
+                    f"✅ Startup fixes completed: {len(self.fixes_applied)} fixes applied"
+                )
                 for fix in self.fixes_applied[:10]:  # Log first 10 fixes
                     logger.info(f"  🔧 {fix}")
                 if len(self.fixes_applied) > 10:
@@ -73,7 +75,7 @@ class StartupDataFixer:
 
     def ensure_all_files_exist(self):
         """Create missing data files with clean defaults."""
-        from config.constants import FILES, DEFAULT_TIMES
+        from config.constants import DEFAULT_TIMES, FILES
 
         file_defaults = {
             FILES["EVENTS"]: {"main_team": [], "team_2": [], "team_3": []},
@@ -93,7 +95,9 @@ class StartupDataFixer:
 
                 if not os.path.exists(file_path):
                     self._save_json(file_path, default_data)
-                    self.fixes_applied.append(f"Created missing file: {os.path.basename(file_path)}")
+                    self.fixes_applied.append(
+                        f"Created missing file: {os.path.basename(file_path)}"
+                    )
 
             except Exception as e:
                 logger.warning(f"Failed to create {file_path}: {e}")
@@ -103,7 +107,9 @@ class StartupDataFixer:
         from config.constants import FILES
 
         try:
-            events = self._load_json(FILES["EVENTS"], {"main_team": [], "team_2": [], "team_3": []})
+            events = self._load_json(
+                FILES["EVENTS"], {"main_team": [], "team_2": [], "team_3": []}
+            )
             ign_map = self._load_json(FILES["IGN_MAP"], {})
 
             # Ensure proper structure
@@ -131,7 +137,9 @@ class StartupDataFixer:
                         user_id_str = str(member)
                         if user_id_str in ign_map:
                             fixed_members.append(ign_map[user_id_str])
-                            self.fixes_applied.append(f"Converted user ID {member} to IGN in {team_key}")
+                            self.fixes_applied.append(
+                                f"Converted user ID {member} to IGN in {team_key}"
+                            )
                         else:
                             # Try to get from bot
                             if self.bot:
@@ -142,14 +150,20 @@ class StartupDataFixer:
                                         fixed_members.append(ign)
                                         # Update IGN map
                                         ign_map[user_id_str] = ign
-                                        self.fixes_applied.append(f"Added new IGN mapping: {member} -> {ign}")
+                                        self.fixes_applied.append(
+                                            f"Added new IGN mapping: {member} -> {ign}"
+                                        )
                                     else:
                                         # User not found, skip
-                                        self.fixes_applied.append(f"Removed invalid user ID {member} from {team_key}")
+                                        self.fixes_applied.append(
+                                            f"Removed invalid user ID {member} from {team_key}"
+                                        )
                                 except:
                                     # Keep as placeholder
                                     fixed_members.append(f"User_{member}")
-                                    self.fixes_applied.append(f"Converted unknown user ID {member} to placeholder")
+                                    self.fixes_applied.append(
+                                        f"Converted unknown user ID {member} to placeholder"
+                                    )
                             else:
                                 # No bot available, use placeholder
                                 fixed_members.append(f"User_{member}")
@@ -160,13 +174,19 @@ class StartupDataFixer:
                         if cleaned and len(cleaned) >= 2:
                             fixed_members.append(cleaned)
                             if cleaned != member:
-                                self.fixes_applied.append(f"Cleaned IGN: '{member}' -> '{cleaned}'")
+                                self.fixes_applied.append(
+                                    f"Cleaned IGN: '{member}' -> '{cleaned}'"
+                                )
                         else:
-                            self.fixes_applied.append(f"Removed invalid IGN '{member}' from {team_key}")
+                            self.fixes_applied.append(
+                                f"Removed invalid IGN '{member}' from {team_key}"
+                            )
 
                     else:
                         # Invalid type, remove
-                        self.fixes_applied.append(f"Removed invalid member type {type(member)} from {team_key}")
+                        self.fixes_applied.append(
+                            f"Removed invalid member type {type(member)} from {team_key}"
+                        )
 
                 events[team_key] = fixed_members
 
@@ -184,7 +204,7 @@ class StartupDataFixer:
         user_id_files = [
             (FILES["BLOCKED"], "blocked_users.json"),
             (FILES["IGN_MAP"], "ign_map.json"),
-            (FILES["ABSENT"], "absent_users.json")
+            (FILES["ABSENT"], "absent_users.json"),
         ]
 
         for file_path, file_name in user_id_files:
@@ -221,7 +241,7 @@ class StartupDataFixer:
             (FILES["BLOCKED"], {}),
             (FILES["IGN_MAP"], {}),
             (FILES["RESULTS"], {"total_wins": 0, "total_losses": 0, "history": []}),
-            (FILES["ABSENT"], {})
+            (FILES["ABSENT"], {}),
         ]
 
         for file_path, default_data in critical_files:
@@ -231,7 +251,7 @@ class StartupDataFixer:
 
                 # Try to load and validate
                 try:
-                    with open(file_path, 'r', encoding='utf-8') as f:
+                    with open(file_path, "r", encoding="utf-8") as f:
                         data = json.load(f)
 
                     # Basic validation
@@ -241,7 +261,9 @@ class StartupDataFixer:
                 except (json.JSONDecodeError, ValueError, TypeError):
                     # File is corrupted, reset it
                     self._save_json(file_path, default_data)
-                    self.fixes_applied.append(f"Reset corrupted file: {os.path.basename(file_path)}")
+                    self.fixes_applied.append(
+                        f"Reset corrupted file: {os.path.basename(file_path)}"
+                    )
 
             except Exception as e:
                 logger.warning(f"Failed to clean {file_path}: {e}")
@@ -249,14 +271,14 @@ class StartupDataFixer:
     def _validate_file_structure(self, file_path: str, data) -> bool:
         """
         Validate basic file structure.
-        
+
         Args:
             file_path: Path to JSON file
             data: Loaded JSON data
-            
+
         Returns:
             bool: True if structure is valid
-            
+
         Validates:
         - Data type correctness
         - Required keys presence
@@ -267,14 +289,23 @@ class StartupDataFixer:
 
         try:
             if file_path == FILES["EVENTS"]:
-                return (isinstance(data, dict) and 
-                       all(team in data for team in ["main_team", "team_2", "team_3"]) and
-                       all(isinstance(data[team], list) for team in ["main_team", "team_2", "team_3"]))
+                return (
+                    isinstance(data, dict)
+                    and all(team in data for team in ["main_team", "team_2", "team_3"])
+                    and all(
+                        isinstance(data[team], list)
+                        for team in ["main_team", "team_2", "team_3"]
+                    )
+                )
 
             elif file_path == FILES["RESULTS"]:
-                return (isinstance(data, dict) and
-                       "total_wins" in data and "total_losses" in data and "history" in data and
-                       isinstance(data["history"], list))
+                return (
+                    isinstance(data, dict)
+                    and "total_wins" in data
+                    and "total_losses" in data
+                    and "history" in data
+                    and isinstance(data["history"], list)
+                )
 
             elif file_path in [FILES["BLOCKED"], FILES["IGN_MAP"], FILES["ABSENT"]]:
                 return isinstance(data, dict)
@@ -288,14 +319,14 @@ class StartupDataFixer:
     def _load_json(self, file_path: str, default=None):
         """
         Load JSON with fallback.
-        
+
         Args:
             file_path: Path to JSON file
             default: Default value if load fails
-            
+
         Returns:
             Any: Loaded JSON data or default
-            
+
         Features:
         - UTF-8 encoding
         - Error recovery
@@ -303,7 +334,7 @@ class StartupDataFixer:
         """
         try:
             if os.path.exists(file_path):
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, "r", encoding="utf-8") as f:
                     return json.load(f)
         except:
             pass
@@ -312,14 +343,14 @@ class StartupDataFixer:
     def _save_json(self, file_path: str, data) -> bool:
         """
         Save JSON safely.
-        
+
         Args:
             file_path: Path to JSON file
             data: Data to save
-            
+
         Returns:
             bool: Success status
-            
+
         Features:
         - Directory creation
         - UTF-8 encoding
@@ -328,12 +359,13 @@ class StartupDataFixer:
         """
         try:
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
-            with open(file_path, 'w', encoding='utf-8') as f:
+            with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
             return True
         except Exception as e:
             logger.error(f"Failed to save {file_path}: {e}")
             return False
+
 
 # Convenience function
 def run_startup_data_fixes(bot=None) -> bool:

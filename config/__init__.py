@@ -9,6 +9,6 @@ Contains:
 - Team configurations
 - Visual elements (colors, emojis)
 
-Note: Sensitive configuration should be stored in environment 
+Note: Sensitive configuration should be stored in environment
 variables or secrets, not in these files.
 """

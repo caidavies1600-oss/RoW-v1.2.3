@@ -1,29 +1,25 @@
 # cogs/events/manager.py
 
-import discord
-from discord.ext import commands
 from datetime import datetime, timedelta
 
-from utils.data_manager import DataManager
-from utils.logger import setup_logger
-from utils.helpers import Helpers
-from utils.validators import Validators
-from config.constants import (
-    FILES, EMOJIS, TEAM_DISPLAY, COLORS, ALERT_CHANNEL_ID
-)
-from config.settings import (
-    ADMIN_ROLE_IDS, MAIN_TEAM_ROLE_ID, ROW_NOTIFICATION_ROLE_ID,
-    MAX_TEAM_SIZE, DEFAULT_TIMES
-)
+import discord
+from discord.ext import commands
 
 from cogs.events.signup_view import EventSignupView
+from config.constants import ALERT_CHANNEL_ID, COLORS, EMOJIS, FILES, TEAM_DISPLAY
+from config.settings import DEFAULT_TIMES, MAX_TEAM_SIZE, ROW_NOTIFICATION_ROLE_ID
+from utils.data_manager import DataManager
+from utils.helpers import Helpers
+from utils.logger import setup_logger
+from utils.validators import Validators
 
 logger = setup_logger("event_manager")
+
 
 class EventManager(commands.Cog, name="EventManager"):
     """
     Core event management functionality.
-    
+
     Features:
     - Event creation and signup management
     - Team roster tracking and display
@@ -46,7 +42,9 @@ class EventManager(commands.Cog, name="EventManager"):
             logger.info("✅ Loaded data from Google Sheets")
         except Exception as e:
             logger.warning(f"Failed to load from Sheets, using JSON fallback: {e}")
-            self.events = self.data_manager.load_json(FILES["EVENTS"], self._default_events())
+            self.events = self.data_manager.load_json(
+                FILES["EVENTS"], self._default_events()
+            )
             self.blocked_users = self.data_manager.load_json(FILES["BLOCKED"], {})
 
         self.event_times = self.data_manager.load_json(FILES["TIMES"], DEFAULT_TIMES)
@@ -55,7 +53,7 @@ class EventManager(commands.Cog, name="EventManager"):
     def _default_events(self):
         """
         Create default empty event structure.
-        
+
         Returns:
             dict: Default event structure with empty teams
         """
@@ -63,14 +61,18 @@ class EventManager(commands.Cog, name="EventManager"):
 
     def save_events(self):
         """Save event data to file and sync to Google Sheets."""
-        if not self.data_manager.save_json(FILES["EVENTS"], self.events, sync_to_sheets=True):
+        if not self.data_manager.save_json(
+            FILES["EVENTS"], self.events, sync_to_sheets=True
+        ):
             logger.error("❌ Failed to save events.json")
         else:
             logger.info("✅ Events saved and synced to Sheets")
 
     def save_blocked_users(self):
         """Save blocked users data to file and sync to Google Sheets."""
-        if not self.data_manager.save_json(FILES["BLOCKED"], self.blocked_users, sync_to_sheets=True):
+        if not self.data_manager.save_json(
+            FILES["BLOCKED"], self.blocked_users, sync_to_sheets=True
+        ):
             logger.error("❌ Failed to save blocked_users.json")
         else:
             logger.info("✅ Blocked users saved and synced to Sheets")
@@ -104,7 +106,7 @@ class EventManager(commands.Cog, name="EventManager"):
     def save_history(self):
         """
         Save current event state to history.
-        
+
         Maintains a rolling history of the last 50 events.
         Each entry contains timestamp and team compositions.
         """
@@ -115,7 +117,7 @@ class EventManager(commands.Cog, name="EventManager"):
 
         entry = {
             "timestamp": datetime.utcnow().isoformat(),
-            "teams": self.events.copy()
+            "teams": self.events.copy(),
         }
         history.append(entry)
 
@@ -130,10 +132,10 @@ class EventManager(commands.Cog, name="EventManager"):
     def is_user_blocked(self, user_id: int) -> bool:
         """
         Check if a user is currently blocked from signups.
-        
+
         Args:
             user_id: Discord user ID to check
-            
+
         Returns:
             bool: True if user is blocked and block hasn't expired
         """
@@ -161,7 +163,7 @@ class EventManager(commands.Cog, name="EventManager"):
     def block_user(self, user_id: int, blocked_by: int, days: int):
         """
         Block a user from signing up for events.
-        
+
         Args:
             user_id: Discord ID of user to block
             blocked_by: Discord ID of admin who blocked
@@ -170,7 +172,7 @@ class EventManager(commands.Cog, name="EventManager"):
         self.blocked_users[str(user_id)] = {
             "blocked_by": str(blocked_by),
             "blocked_at": datetime.utcnow().isoformat(),
-            "ban_duration_days": days
+            "ban_duration_days": days,
         }
         self.save_blocked_users()
         logger.info(f"🚫 User {user_id} blocked by {blocked_by} for {days} days")
@@ -191,7 +193,7 @@ class EventManager(commands.Cog, name="EventManager"):
     async def start_event(self, ctx):
         """
         Start a new event, resetting signups and notifying users.
-        
+
         Args:
             ctx: Command context
         """
@@ -206,34 +208,32 @@ class EventManager(commands.Cog, name="EventManager"):
             embed = discord.Embed(
                 title="📢 Weekly RoW Sign-Up",
                 description=self._create_event_description(),
-                color=COLORS["PRIMARY"]
+                color=COLORS["PRIMARY"],
             )
             embed.set_footer(text="First come, first served – choose wisely!")
 
             view = EventSignupView(self)
 
             await ctx.send(
-                content=f"<@&{ROW_NOTIFICATION_ROLE_ID}>",
-                embed=embed,
-                view=view
+                content=f"<@&{ROW_NOTIFICATION_ROLE_ID}>", embed=embed, view=view
             )
 
             logger.info("✅ Event posted in current channel")
 
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to start event")
             await ctx.send(f"{EMOJIS['ERROR']} Failed to start event.")
 
     def _create_event_description(self) -> str:
         """
         Create formatted event description with schedules.
-        
+
         Returns:
             str: Formatted event description with times and status
         """
         lines = [
-            f"Hey! Pick your team for this week's **RoW Event**.\n",
-            f"{EMOJIS['CALENDAR']} **Schedule**:"
+            "Hey! Pick your team for this week's **RoW Event**.\n",
+            f"{EMOJIS['CALENDAR']} **Schedule**:",
         ]
         for team_key, display_name in TEAM_DISPLAY.items():
             time_str = self.event_times.get(team_key, "TBD")
@@ -243,7 +243,7 @@ class EventManager(commands.Cog, name="EventManager"):
 
         # Add signup lock warning if locked
         if self.is_signup_locked():
-            lines.append(f"\n🔒 **SIGNUPS ARE CURRENTLY LOCKED**")
+            lines.append("\n🔒 **SIGNUPS ARE CURRENTLY LOCKED**")
 
         return "\n".join(lines)
 
@@ -251,9 +251,9 @@ class EventManager(commands.Cog, name="EventManager"):
     async def show_teams(self, ctx):
         """
         Display current team signups to the user.
-        
+
         If the user hasn't set their IGN, prompt them to do so.
-        
+
         Args:
             ctx: Command context
         """
@@ -262,14 +262,11 @@ class EventManager(commands.Cog, name="EventManager"):
             embed = discord.Embed(
                 title="⚠️ IGN Not Set",
                 description="You haven't set your IGN yet. Use `!setign YourName` to set it.",
-                color=COLORS["WARNING"]
+                color=COLORS["WARNING"],
             )
             await ctx.send(embed=embed)
 
-        embed = discord.Embed(
-            title="📋 Current RoW Team Signups",
-            color=COLORS["INFO"]
-        )
+        embed = discord.Embed(title="📋 Current RoW Team Signups", color=COLORS["INFO"])
 
         # Add signup lock status to title if locked
         if self.is_signup_locked():
@@ -284,7 +281,7 @@ class EventManager(commands.Cog, name="EventManager"):
             embed.add_field(
                 name=f"{display_name} ({len(members)}/{MAX_TEAM_SIZE})",
                 value=member_list or "*No signups yet.*",
-                inline=False
+                inline=False,
             )
 
         total_signups = sum(len(members) for members in self.events.values())
@@ -302,9 +299,9 @@ class EventManager(commands.Cog, name="EventManager"):
     async def lock_signups_command(self, ctx):
         """
         Manually lock signups.
-        
+
         Sends an alert to the designated channel.
-        
+
         Args:
             ctx: Command context
         """
@@ -317,7 +314,7 @@ class EventManager(commands.Cog, name="EventManager"):
         embed = discord.Embed(
             title="🔒 Signups Locked",
             description="Signups have been manually locked by an admin.",
-            color=COLORS["WARNING"]
+            color=COLORS["WARNING"],
         )
 
         alert_channel = self.bot.get_channel(ALERT_CHANNEL_ID)
@@ -331,9 +328,9 @@ class EventManager(commands.Cog, name="EventManager"):
     async def unlock_signups_command(self, ctx):
         """
         Manually unlock signups.
-        
+
         Sends an alert to the designated channel.
-        
+
         Args:
             ctx: Command context
         """
@@ -346,7 +343,7 @@ class EventManager(commands.Cog, name="EventManager"):
         embed = discord.Embed(
             title="🔓 Signups Unlocked",
             description="Signups have been manually unlocked by an admin.",
-            color=COLORS["SUCCESS"]
+            color=COLORS["SUCCESS"],
         )
 
         alert_channel = self.bot.get_channel(ALERT_CHANNEL_ID)
@@ -358,9 +355,9 @@ class EventManager(commands.Cog, name="EventManager"):
     async def auto_post_signup(self, ctx):
         """
         Automatically post signup message in specified channel.
-        
+
         Used by scheduler for automated event creation.
-        
+
         Args:
             ctx: Context for message posting
         """
@@ -368,24 +365,22 @@ class EventManager(commands.Cog, name="EventManager"):
             embed = discord.Embed(
                 title="📢 Weekly RoW Sign-Up",
                 description=self._create_event_description(),
-                color=COLORS["PRIMARY"]
+                color=COLORS["PRIMARY"],
             )
             embed.set_footer(text="First come, first served – choose wisely!")
             view = EventSignupView(self)
 
             await ctx.send(
-                content=f"<@&{ROW_NOTIFICATION_ROLE_ID}>",
-                embed=embed,
-                view=view
+                content=f"<@&{ROW_NOTIFICATION_ROLE_ID}>", embed=embed, view=view
             )
             logger.info("✅ Auto-posted weekly signup")
-        except Exception as e:
+        except Exception:
             logger.exception("❌ Failed to auto-post signup")
 
     async def auto_show_teams_and_lock(self):
         """
         Automatically display final teams and lock signups.
-        
+
         Used by scheduler for Thursday night lockout.
         Posts final roster to alert channel and locks further changes.
         """
@@ -396,14 +391,16 @@ class EventManager(commands.Cog, name="EventManager"):
             # Get alert channel
             alert_channel = self.bot.get_channel(ALERT_CHANNEL_ID)
             if not alert_channel:
-                logger.error("⚠️ ALERT_CHANNEL_ID does not match any channel in this guild.")
+                logger.error(
+                    "⚠️ ALERT_CHANNEL_ID does not match any channel in this guild."
+                )
                 return
 
             # Create teams display embed
             embed = discord.Embed(
                 title="📋 Final Team Rosters 🔒 [SIGNUPS LOCKED]",
                 description="Signups are now locked until next week's event!",
-                color=COLORS["WARNING"]
+                color=COLORS["WARNING"],
             )
 
             total_signups = 0
@@ -416,20 +413,23 @@ class EventManager(commands.Cog, name="EventManager"):
                 embed.add_field(
                     name=f"{display_name} ({len(members)}/{MAX_TEAM_SIZE})",
                     value=member_list or "*No signups.*",
-                    inline=False
+                    inline=False,
                 )
 
-            embed.set_footer(text=f"Total signups: {total_signups} | Locked at Thursday 23:59 UTC")
+            embed.set_footer(
+                text=f"Total signups: {total_signups} | Locked at Thursday 23:59 UTC"
+            )
 
             # Post with role mention
             await alert_channel.send(
-                content=f"<@&{ROW_NOTIFICATION_ROLE_ID}>",
-                embed=embed
+                content=f"<@&{ROW_NOTIFICATION_ROLE_ID}>", embed=embed
             )
 
-            logger.info(f"✅ Auto-posted final team rosters and locked signups ({total_signups} total)")
+            logger.info(
+                f"✅ Auto-posted final team rosters and locked signups ({total_signups} total)"
+            )
 
-        except Exception as e:
+        except Exception:
             logger.exception("❌ Failed to auto-show teams and lock signups")
 
     async def reset_event_state(self):
@@ -438,6 +438,7 @@ class EventManager(commands.Cog, name="EventManager"):
         self.bot.event_team = None
         self.bot.attendance = {}
         self.bot.checked_in = set()
+
 
 async def setup(bot):
     await bot.add_cog(EventManager(bot))

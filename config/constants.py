@@ -10,18 +10,30 @@ not in this file.
 """
 
 import os
+
 # config/settings.py exists but might need these critical imports in constants.py:
 from config.settings import (
-    DATA_DIR, ADMIN_ROLE_IDS, MAIN_TEAM_ROLE_ID, 
-    ROW_NOTIFICATION_ROLE_ID, ALERT_CHANNEL_ID, 
-    BOT_ADMIN_USER_ID, MAX_TEAM_SIZE, DEFAULT_TIMES
+    ADMIN_ROLE_IDS,
+    ALERT_CHANNEL_ID,
+    BOT_ADMIN_USER_ID,
+    DATA_DIR,
+    DEFAULT_TIMES,
+    MAIN_TEAM_ROLE_ID,
+    MAX_TEAM_SIZE,
+    ROW_NOTIFICATION_ROLE_ID,
 )
+
 # Import settings for backward compatibility
 try:
     from config.settings import (
-        DATA_DIR, ADMIN_ROLE_IDS, MAIN_TEAM_ROLE_ID, 
-        ROW_NOTIFICATION_ROLE_ID, ALERT_CHANNEL_ID, 
-        BOT_ADMIN_USER_ID, MAX_TEAM_SIZE, DEFAULT_TIMES
+        ADMIN_ROLE_IDS,
+        ALERT_CHANNEL_ID,
+        BOT_ADMIN_USER_ID,
+        DATA_DIR,
+        DEFAULT_TIMES,
+        MAIN_TEAM_ROLE_ID,
+        MAX_TEAM_SIZE,
+        ROW_NOTIFICATION_ROLE_ID,
     )
 except ImportError:
     # Fallback values if settings not available
@@ -42,26 +54,25 @@ Includes colors for embeds and standard emojis for message formatting."""
 
 # Discord Embed Colors
 COLORS = {
-    "PRIMARY": 0x5865F2,     # Discord Blurple
-    "SUCCESS": 0x57F287,     # Green
-    "WARNING": 0xFEE75C,     # Yellow
-    "DANGER": 0xED4245,      # Red
-    "ERROR": 0xED4245,       # Red (alias)
-    "INFO": 0x5DADE2,        # Light Blue
-    "SECONDARY": 0x6C757D,   # Gray
-    "DARK": 0x343A40,        # Dark Gray
+    "PRIMARY": 0x5865F2,  # Discord Blurple
+    "SUCCESS": 0x57F287,  # Green
+    "WARNING": 0xFEE75C,  # Yellow
+    "DANGER": 0xED4245,  # Red
+    "ERROR": 0xED4245,  # Red (alias)
+    "INFO": 0x5DADE2,  # Light Blue
+    "SECONDARY": 0x6C757D,  # Gray
+    "DARK": 0x343A40,  # Dark Gray
 }
 
 # Emojis for consistent messaging
 EMOJIS = {
     # Status indicators
     "SUCCESS": "✅",
-    "ERROR": "❌", 
+    "ERROR": "❌",
     "WARNING": "⚠️",
     "INFO": "ℹ️",
     "LOADING": "⏳",
     "BLOCKED": "🚫",
-
     # Activity icons
     "TROPHY": "🏆",
     "CALENDAR": "🗓️",
@@ -69,14 +80,12 @@ EMOJIS = {
     "STATS": "📊",
     "GEAR": "⚙️",
     "SHIELD": "🛡️",
-
     # UI elements
     "DOT": "•",
     "ARROW_RIGHT": "➡️",
     "ARROW_LEFT": "⬅️",
     "UP_ARROW": "⬆️",
     "DOWN_ARROW": "⬇️",
-
     # Team/Game related
     "MAIN_TEAM": "🏆",
     "TEAM_2": "🔸",
@@ -95,22 +104,22 @@ Used for consistent team representation across all bot features."""
 # Team display names with emojis
 TEAM_DISPLAY = {
     "main_team": "🏆 Main Team",
-    "team_2": "🔸 Team 2", 
-    "team_3": "🔸 Team 3"
+    "team_2": "🔸 Team 2",
+    "team_3": "🔸 Team 3",
 }
 
 # Team colors for embeds
 TEAM_COLORS = {
     "main_team": COLORS["PRIMARY"],
     "team_2": COLORS["INFO"],
-    "team_3": COLORS["SECONDARY"]
+    "team_3": COLORS["SECONDARY"],
 }
 
 # Team descriptions
 TEAM_DESCRIPTIONS = {
     "main_team": "Competitive team for experienced players",
     "team_2": "Open to all skill levels",
-    "team_3": "Open to all skill levels"
+    "team_3": "Open to all skill levels",
 }
 
 # =============================================================================
@@ -126,21 +135,17 @@ FILES = {
     "BLOCKED": os.path.join(DATA_DIR, "blocked_users.json"),
     "IGN_MAP": os.path.join(DATA_DIR, "ign_map.json"),
     "ABSENT": os.path.join(DATA_DIR, "absent_users.json"),
-
     # Results and history
     "RESULTS": os.path.join(DATA_DIR, "event_results.json"),
     "HISTORY": os.path.join(DATA_DIR, "events_history.json"),
     "PLAYER_STATS": os.path.join(DATA_DIR, "player_stats.json"),
-
     # Configuration
     "TIMES": os.path.join(DATA_DIR, "row_times.json"),
     "SIGNUP_LOCK": os.path.join(DATA_DIR, "signup_lock.json"),
-
     # System files
     "AUDIT_LOG": os.path.join(DATA_DIR, "audit_log.json"),
     "NOTIFICATION_PREFS": os.path.join(DATA_DIR, "notification_preferences.json"),
     "MATCH_STATS": os.path.join(DATA_DIR, "match_statistics.json"),
-
     # Logs
     "BOT_LOG": os.path.join(DATA_DIR, "logs", "bot.log"),
 }
@@ -166,14 +171,14 @@ WEEKDAYS = {
     "THURSDAY": 3,
     "FRIDAY": 4,
     "SATURDAY": 5,
-    "SUNDAY": 6
+    "SUNDAY": 6,
 }
 
 # Scheduler configuration
 SCHEDULER_CONFIG = {
     "EVENT_POST_DAY": WEEKDAYS["TUESDAY"],
     "EVENT_POST_HOUR": 10,  # 10:00 UTC
-    "TEAMS_LOCK_DAY": WEEKDAYS["THURSDAY"], 
+    "TEAMS_LOCK_DAY": WEEKDAYS["THURSDAY"],
     "TEAMS_LOCK_HOUR": 23,  # 23:59 UTC
     "SUMMARY_DAY": WEEKDAYS["SUNDAY"],
     "SUMMARY_HOUR": 23,  # 23:30 UTC
@@ -188,10 +193,10 @@ Includes specializations, result types, and moderation settings."""
 # Player specializations
 SPECIALIZATIONS = {
     "cavalry": "🐎 Cavalry",
-    "mages": "🔮 Mages", 
+    "mages": "🔮 Mages",
     "archers": "🏹 Archers",
     "infantry": "⚔️ Infantry",
-    "whale": "🐋 Whale"
+    "whale": "🐋 Whale",
 }
 
 # Match result types
@@ -221,7 +226,7 @@ MESSAGES = {
 # Command help descriptions
 HELP_DESCRIPTIONS = {
     "setign": "Set your in-game name",
-    "myign": "View your stored IGN", 
+    "myign": "View your stored IGN",
     "clearign": "Clear your stored IGN",
     "showteams": "Show current team signups",
     "startevent": "Start a new event (Admin only)",
@@ -242,31 +247,29 @@ Defines acceptable formats for IGNs, user IDs, and team names."""
 IGN_RULES = {
     "MIN_LENGTH": 2,
     "MAX_LENGTH": 20,
-    "ALLOWED_CHARS": r'^[a-zA-Z0-9\s_-]+$',
-    "FORBIDDEN_WORDS": ["admin", "bot", "system", "everyone", "here"]
+    "ALLOWED_CHARS": r"^[a-zA-Z0-9\s_-]+$",
+    "FORBIDDEN_WORDS": ["admin", "bot", "system", "everyone", "here"],
 }
 
 # User ID validation
 USER_ID_RULES = {
     "MIN_ID": 17,  # Discord snowflake minimum length
-    "MAX_ID": 19   # Discord snowflake maximum length
+    "MAX_ID": 19,  # Discord snowflake maximum length
 }
 
 # Team name validation
 TEAM_NAME_MAPPING = {
     "main": "main_team",
-    "main_team": "main_team", 
+    "main_team": "main_team",
     "team1": "main_team",
     "team_1": "main_team",
     "1": "main_team",
-
     "team2": "team_2",
     "team_2": "team_2",
     "2": "team_2",
-
-    "team3": "team_3", 
+    "team3": "team_3",
     "team_3": "team_3",
-    "3": "team_3"
+    "3": "team_3",
 }
 
 # =============================================================================
@@ -285,4 +288,3 @@ FEATURES = {
     "RATE_LIMITING": True,
     "HEALTH_MONITORING": True,
 }
-

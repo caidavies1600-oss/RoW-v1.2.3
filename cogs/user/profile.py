@@ -11,10 +11,10 @@ Handles:
 import discord
 from discord.ext import commands
 
+from config.constants import EMOJIS, FILES
 from utils.data_manager import DataManager
-from utils.validators import Validators
 from utils.logger import setup_logger
-from config.constants import FILES, EMOJIS
+from utils.validators import Validators
 
 logger = setup_logger("profile")
 
@@ -22,7 +22,7 @@ logger = setup_logger("profile")
 class ProfileCog(commands.Cog, name="Profile"):
     """
     Manages user profiles and IGN mappings.
-    
+
     Features:
     - IGN storage and retrieval
     - Data persistence with Google Sheets sync
@@ -33,7 +33,7 @@ class ProfileCog(commands.Cog, name="Profile"):
     def __init__(self, bot):
         """
         Initialize the profile cog.
-        
+
         Args:
             bot: The Discord bot instance
         """
@@ -44,7 +44,7 @@ class ProfileCog(commands.Cog, name="Profile"):
     def save_data(self) -> bool:
         """
         Save IGN mappings to file and sync to sheets.
-        
+
         Returns:
             bool: True if save was successful
         """
@@ -56,10 +56,10 @@ class ProfileCog(commands.Cog, name="Profile"):
     def get_ign(self, user: discord.User) -> str:
         """
         Get user's IGN or fallback to display name.
-        
+
         Args:
             user: Discord user to get IGN for
-            
+
         Returns:
             str: User's IGN or display name as fallback
         """
@@ -68,10 +68,10 @@ class ProfileCog(commands.Cog, name="Profile"):
     def has_ign(self, user: discord.User) -> bool:
         """
         Check if user has set a custom IGN.
-        
+
         Args:
             user: Discord user to check
-            
+
         Returns:
             bool: True if user has custom IGN set
         """
@@ -80,17 +80,17 @@ class ProfileCog(commands.Cog, name="Profile"):
     async def warn_if_no_ign(self, interaction: discord.Interaction):
         """
         Warn user if they haven't set their IGN.
-        
+
         Args:
             interaction: Discord interaction to respond to
-            
+
         Returns:
             bool: True if warning was sent (no IGN set)
         """
         if not self.has_ign(interaction.user):
             await interaction.response.send_message(
                 f"{EMOJIS['WARNING']} You haven't set your IGN yet. Use `!setign YourName`.",
-                ephemeral=True
+                ephemeral=True,
             )
             return True
         return False
@@ -108,7 +108,9 @@ class ProfileCog(commands.Cog, name="Profile"):
 
         if self.save_data():
             if old_ign:
-                await ctx.send(f"{EMOJIS['SUCCESS']} IGN updated from `{old_ign}` to `{ign}`")
+                await ctx.send(
+                    f"{EMOJIS['SUCCESS']} IGN updated from `{old_ign}` to `{ign}`"
+                )
                 logger.info(f"{ctx.author} updated IGN from '{old_ign}' to '{ign}'")
             else:
                 await ctx.send(f"{EMOJIS['SUCCESS']} IGN set to `{ign}`")
@@ -123,7 +125,9 @@ class ProfileCog(commands.Cog, name="Profile"):
             ign = self.get_ign(ctx.author)
             await ctx.send(f"🎮 Your IGN is: `{ign}`")
         else:
-            await ctx.send(f"{EMOJIS['ERROR']} You haven't set your IGN yet. Use `!setign YourName`")
+            await ctx.send(
+                f"{EMOJIS['ERROR']} You haven't set your IGN yet. Use `!setign YourName`"
+            )
 
     @commands.command(name="clearign")
     async def clear_ign(self, ctx):
@@ -134,10 +138,14 @@ class ProfileCog(commands.Cog, name="Profile"):
             del self.ign_map[user_id]
 
             if self.save_data():
-                await ctx.send(f"{EMOJIS['SUCCESS']} Your IGN `{old_ign}` has been cleared.")
+                await ctx.send(
+                    f"{EMOJIS['SUCCESS']} Your IGN `{old_ign}` has been cleared."
+                )
                 logger.info(f"{ctx.author} cleared their IGN")
             else:
-                await ctx.send(f"{EMOJIS['ERROR']} Failed to clear IGN. Please try again.")
+                await ctx.send(
+                    f"{EMOJIS['ERROR']} Failed to clear IGN. Please try again."
+                )
         else:
             await ctx.send(f"{EMOJIS['ERROR']} You haven't set an IGN yet.")
 
@@ -145,7 +153,7 @@ class ProfileCog(commands.Cog, name="Profile"):
 async def setup(bot):
     """
     Set up the Profile cog.
-    
+
     Args:
         bot: The Discord bot instance
     """

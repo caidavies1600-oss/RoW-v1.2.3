@@ -17,18 +17,14 @@ Each sheet's configuration defines:
 
 # Team mapping for display names
 """Team name mappings for consistent display and lookup."""
-TEAM_MAPPING = {
-    "main_team": "Main Team", 
-    "team_2": "Team 2", 
-    "team_3": "Team 3"
-}
+TEAM_MAPPING = {"main_team": "Main Team", "team_2": "Team 2", "team_3": "Team 3"}
 
 # Reverse mapping for loading data
 """Reverse mappings for converting display names back to internal names."""
 TEAM_REVERSE_MAPPING = {
     "Main Team": "main_team",
-    "Team 2": "team_2", 
-    "Team 3": "team_3"
+    "Team 2": "team_2",
+    "Team 3": "team_3",
 }
 
 # Sheet configurations
@@ -44,60 +40,121 @@ SHEET_CONFIGS = {
     "Current Teams": {
         "headers": ["Timestamp", "Team", "Player Count", "Players", "Status"],
         "rows": 50,
-        "cols": 10
+        "cols": 10,
     },
     "Player Stats": {
         "headers": [
-            "User ID", "Display Name", "Main Team Role", 
-            "Main Wins", "Main Losses", "Team2 Wins", "Team2 Losses",
-            "Team3 Wins", "Team3 Losses", "Total Wins", "Total Losses", 
-            "Win Rate", "Absents", "Blocked", "Power Rating", 
-            "Cavalry", "Mages", "Archers", "Infantry", "Whale Status", "Last Updated"
+            "User ID",
+            "Display Name",
+            "Main Team Role",
+            "Main Wins",
+            "Main Losses",
+            "Team2 Wins",
+            "Team2 Losses",
+            "Team3 Wins",
+            "Team3 Losses",
+            "Total Wins",
+            "Total Losses",
+            "Win Rate",
+            "Absents",
+            "Blocked",
+            "Power Rating",
+            "Cavalry",
+            "Mages",
+            "Archers",
+            "Infantry",
+            "Whale Status",
+            "Last Updated",
         ],
         "rows": 300,
-        "cols": 21
+        "cols": 21,
     },
     "Results History": {
-        "headers": ["Date", "Team", "Result", "Players", "By", "Total Wins", "Total Losses"],
+        "headers": [
+            "Date",
+            "Team",
+            "Result",
+            "Players",
+            "By",
+            "Total Wins",
+            "Total Losses",
+        ],
         "rows": 1000,
-        "cols": 7
+        "cols": 7,
     },
     "Match Statistics": {
         "headers": [
-            "Match ID", "Date", "Team", "Result", "Enemy Alliance Name", "Enemy Alliance Tag",
-            "Our Matchmaking Power", "Our Lifestone Points", "Our Occupation Points",
-            "Our Gathering Points", "Our Total Kills", "Our Total Wounded", "Our Total Healed",
-            "Our Lifestone Obtained", "Enemy Matchmaking Power", "Enemy Lifestone Points", 
-            "Enemy Occupation Points", "Enemy Gathering Points", "Enemy Total Kills", 
-            "Enemy Total Wounded", "Enemy Total Healed", "Enemy Lifestone Obtained", 
-            "Players Participated", "Recorded By", "Notes"
+            "Match ID",
+            "Date",
+            "Team",
+            "Result",
+            "Enemy Alliance Name",
+            "Enemy Alliance Tag",
+            "Our Matchmaking Power",
+            "Our Lifestone Points",
+            "Our Occupation Points",
+            "Our Gathering Points",
+            "Our Total Kills",
+            "Our Total Wounded",
+            "Our Total Healed",
+            "Our Lifestone Obtained",
+            "Enemy Matchmaking Power",
+            "Enemy Lifestone Points",
+            "Enemy Occupation Points",
+            "Enemy Gathering Points",
+            "Enemy Total Kills",
+            "Enemy Total Wounded",
+            "Enemy Total Healed",
+            "Enemy Lifestone Obtained",
+            "Players Participated",
+            "Recorded By",
+            "Notes",
         ],
         "rows": 500,
-        "cols": 25
+        "cols": 25,
     },
     "Alliance Tracking": {
         "headers": [
-            "Alliance Name", "Alliance Tag", "Matches Against", "Wins Against Them", 
-            "Losses Against Them", "Win Rate vs Them", "Average Enemy Power",
-            "Difficulty Rating", "Strategy Notes", "Last Fought", "Server/Kingdom",
-            "Alliance Level", "Activity Level", "Threat Level", "Additional Notes"
+            "Alliance Name",
+            "Alliance Tag",
+            "Matches Against",
+            "Wins Against Them",
+            "Losses Against Them",
+            "Win Rate vs Them",
+            "Average Enemy Power",
+            "Difficulty Rating",
+            "Strategy Notes",
+            "Last Fought",
+            "Server/Kingdom",
+            "Alliance Level",
+            "Activity Level",
+            "Threat Level",
+            "Additional Notes",
         ],
         "rows": 200,
-        "cols": 15
+        "cols": 15,
     },
     "Notification Preferences": {
         "headers": [
-            "User ID", "Method", "Event Reminders", "Result Notifications", "Team Updates",
-            "Reminder Times", "Quiet Start", "Quiet End", "Timezone Offset", "Last Updated"
+            "User ID",
+            "Method",
+            "Event Reminders",
+            "Result Notifications",
+            "Team Updates",
+            "Reminder Times",
+            "Quiet Start",
+            "Quiet End",
+            "Timezone Offset",
+            "Last Updated",
         ],
         "rows": 300,
-        "cols": 10
+        "cols": 10,
     },
     "Dashboard": {
         "headers": ["Component", "Value", "Last Updated"],
         "rows": 50,
-        "cols": 10
-    }
+        "cols": 10,
+    },
 }
 
 # Default data structures for fallback
@@ -122,9 +179,9 @@ DEFAULT_DATA = {
             "team_updates": True,
             "reminder_times": [60, 15],
             "quiet_hours": {"start": 22, "end": 8},
-            "timezone_offset": 0
-        }
-    }
+            "timezone_offset": 0,
+        },
+    },
 }
 
 # Column mappings for easier data access
@@ -154,7 +211,7 @@ PLAYER_STATS_COLUMNS = {
     "archers": 17,
     "infantry": 18,
     "whale_status": 19,
-    "last_updated": 20
+    "last_updated": 20,
 }
 
 # Validation rules
@@ -171,21 +228,21 @@ VALIDATION_RULES = {
         "type": "number",
         "min": 0,
         "max": 10000000000,  # 10 billion max power
-        "default": 0
+        "default": 0,
     },
     "specializations": {
         "type": "boolean_text",
         "valid_values": ["Yes", "No", "yes", "no", "YES", "NO"],
-        "default": "No"
+        "default": "No",
     },
     "main_team_role": {
-        "type": "boolean_text", 
+        "type": "boolean_text",
         "valid_values": ["Yes", "No", "yes", "no", "YES", "NO"],
-        "default": "No"
+        "default": "No",
     },
     "blocked": {
         "type": "boolean_text",
         "valid_values": ["Yes", "No", "yes", "no", "YES", "NO"],
-        "default": "No"
-    }
+        "default": "No",
+    },
 }

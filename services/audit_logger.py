@@ -15,16 +15,18 @@ to prevent excessive file growth.
 import json
 import os
 from datetime import datetime
-from typing import Optional, Dict, Any
-from utils.logger import setup_logger
+from typing import Any, Dict, Optional
+
 from utils.data_manager import DataManager
+from utils.logger import setup_logger
 
 logger = setup_logger("audit_logger")
+
 
 class AuditLogger:
     """
     Handles audit logging for important bot actions.
-    
+
     Features:
     - Automatic log rotation (1000 entries)
     - JSON-based persistent storage
@@ -43,14 +45,20 @@ class AuditLogger:
         if not os.path.exists(self.audit_file):
             try:
                 os.makedirs(os.path.dirname(self.audit_file), exist_ok=True)
-                with open(self.audit_file, 'w') as f:
+                with open(self.audit_file, "w") as f:
                     json.dump([], f)
                 logger.info(f"✅ Created audit log file: {self.audit_file}")
             except Exception as e:
                 logger.error(f"❌ Failed to create audit log file: {e}")
 
-    def log_action(self, action_type: str, user_id: int, details: Dict[str, Any], 
-                   target_user_id: Optional[int] = None, guild_id: Optional[int] = None):
+    def log_action(
+        self,
+        action_type: str,
+        user_id: int,
+        details: Dict[str, Any],
+        target_user_id: Optional[int] = None,
+        guild_id: Optional[int] = None,
+    ):
         """
         Log an audit action with full details.
 
@@ -78,7 +86,7 @@ class AuditLogger:
                 "user_id": str(user_id),
                 "target_user_id": str(target_user_id) if target_user_id else None,
                 "guild_id": str(guild_id) if guild_id else None,
-                "details": details
+                "details": details,
             }
 
             # Add to log
@@ -92,48 +100,67 @@ class AuditLogger:
             if self.data_manager.save_json(self.audit_file, audit_log):
                 logger.debug(f"📝 Audit logged: {action_type} by {user_id}")
             else:
-                logger.error(f"❌ Failed to save audit log entry")
+                logger.error("❌ Failed to save audit log entry")
 
         except Exception as e:
             logger.error(f"❌ Error logging audit action: {e}")
 
-    def log_signup(self, user_id: int, team: str, action: str = "join", guild_id: Optional[int] = None):
+    def log_signup(
+        self,
+        user_id: int,
+        team: str,
+        action: str = "join",
+        guild_id: Optional[int] = None,
+    ):
         """Log team signup/leave actions."""
         self.log_action(
             action_type=f"team_{action}",
             user_id=user_id,
             details={"team": team, "action": action},
-            guild_id=guild_id
+            guild_id=guild_id,
         )
 
-    def log_admin_action(self, admin_id: int, action: str, target_user_id: Optional[int] = None, 
-                        details: Optional[Dict] = None, guild_id: Optional[int] = None):
+    def log_admin_action(
+        self,
+        admin_id: int,
+        action: str,
+        target_user_id: Optional[int] = None,
+        details: Optional[Dict] = None,
+        guild_id: Optional[int] = None,
+    ):
         """Log admin actions like blocking, unblocking, etc."""
         self.log_action(
             action_type=f"admin_{action}",
             user_id=admin_id,
             target_user_id=target_user_id,
             details=details or {},
-            guild_id=guild_id
+            guild_id=guild_id,
         )
 
-    def log_result(self, admin_id: int, team: str, result: str, guild_id: Optional[int] = None):
+    def log_result(
+        self, admin_id: int, team: str, result: str, guild_id: Optional[int] = None
+    ):
         """Log win/loss recording."""
         self.log_action(
             action_type="record_result",
             user_id=admin_id,
             details={"team": team, "result": result},
-            guild_id=guild_id
+            guild_id=guild_id,
         )
 
-    def log_event_action(self, admin_id: int, action: str, details: Optional[Dict] = None, 
-                        guild_id: Optional[int] = None):
+    def log_event_action(
+        self,
+        admin_id: int,
+        action: str,
+        details: Optional[Dict] = None,
+        guild_id: Optional[int] = None,
+    ):
         """Log event management actions."""
         self.log_action(
             action_type=f"event_{action}",
             user_id=admin_id,
             details=details or {},
-            guild_id=guild_id
+            guild_id=guild_id,
         )
 
     def get_user_actions(self, user_id: int, limit: int = 50) -> list:
@@ -179,8 +206,12 @@ class AuditLogger:
             logger.error(f"❌ Error getting recent actions: {e}")
             return []
 
-    def search_actions(self, action_type: Optional[str] = None, user_id: Optional[int] = None,
-                      days_back: int = 7) -> list:
+    def search_actions(
+        self,
+        action_type: Optional[str] = None,
+        user_id: Optional[int] = None,
+        days_back: int = 7,
+    ) -> list:
         """
         Search audit log with filters.
 
@@ -207,7 +238,9 @@ class AuditLogger:
                     continue
 
                 # Apply filters
-                if action_type and not entry.get("action_type", "").startswith(action_type):
+                if action_type and not entry.get("action_type", "").startswith(
+                    action_type
+                ):
                     continue
 
                 if user_id and entry.get("user_id") != str(user_id):
@@ -220,11 +253,15 @@ class AuditLogger:
             logger.error(f"❌ Error searching audit log: {e}")
             return []
 
+
 # Global audit logger instance
 audit_logger = AuditLogger()
 
+
 # Convenience functions for easy access
-def log_signup(user_id: int, team: str, action: str = "join", guild_id: Optional[int] = None):
+def log_signup(
+    user_id: int, team: str, action: str = "join", guild_id: Optional[int] = None
+):
     """
     Log team signup action.
 
@@ -236,8 +273,14 @@ def log_signup(user_id: int, team: str, action: str = "join", guild_id: Optional
     """
     audit_logger.log_signup(user_id, team, action, guild_id)
 
-def log_admin_action(admin_id: int, action: str, target_user_id: Optional[int] = None, 
-                    details: Optional[Dict] = None, guild_id: Optional[int] = None):
+
+def log_admin_action(
+    admin_id: int,
+    action: str,
+    target_user_id: Optional[int] = None,
+    details: Optional[Dict] = None,
+    guild_id: Optional[int] = None,
+):
     """
     Log administrative action.
 
@@ -250,11 +293,17 @@ def log_admin_action(admin_id: int, action: str, target_user_id: Optional[int] =
     """
     audit_logger.log_admin_action(admin_id, action, target_user_id, details, guild_id)
 
+
 def log_result(admin_id: int, team: str, result: str, guild_id: Optional[int] = None):
     """Log result recording."""
     audit_logger.log_result(admin_id, team, result, guild_id)
 
-def log_event_action(admin_id: int, action: str, details: Optional[Dict] = None, 
-                    guild_id: Optional[int] = None):
+
+def log_event_action(
+    admin_id: int,
+    action: str,
+    details: Optional[Dict] = None,
+    guild_id: Optional[int] = None,
+):
     """Log event action."""
     audit_logger.log_event_action(admin_id, action, details, guild_id)

@@ -16,6 +16,7 @@ Components:
 
 from .base_manager import RateLimitedSheetsManager
 
+
 class SheetsManager(RateLimitedSheetsManager):
     """
     Complete Google Sheets Manager combining all functionality.
@@ -27,27 +28,27 @@ class SheetsManager(RateLimitedSheetsManager):
     - Data synchronization
     - Sheet formatting
     - Formula management
-    
+
     Configuration:
     - Uses GOOGLE_SHEETS_CREDENTIALS from environment
     - Uses GOOGLE_SHEETS_ID for spreadsheet
     - Automatically creates required worksheets
     """
-    
+
     # Rate limiting settings
     MAX_RETRIES = 3
     BACKOFF_FACTOR = 1.5
     REQUEST_TIMEOUT = 30
-    
+
     def __init__(self):
         """
         Initialize sheets manager with rate limiting and error handling.
-        
+
         Establishes connection to Google Sheets API and
         verifies credentials and permissions.
         """
         super().__init__()
-        
+
     async def full_sync_and_create_templates(self, bot, all_data, guild_id=None):
         """Enhanced full sync with all template creation and formatting."""
         if not self.is_connected():
@@ -56,26 +57,27 @@ class SheetsManager(RateLimitedSheetsManager):
         try:
             # Create all templates with proper formatting
             success = self.create_all_templates(all_data)
-            
+
             result = {
                 "success": success,
                 "spreadsheet_url": self.spreadsheet.url if self.spreadsheet else None,
                 "templates_created": [
                     "Player Stats (with formulas and formatting)",
-                    "Current Teams", 
+                    "Current Teams",
                     "Results History",
                     "Match Statistics",
-                    "Alliance Tracking"
-                ]
+                    "Alliance Tracking",
+                ],
             }
-            
+
             return result
-            
+
         except Exception as e:
             return {"success": False, "error": str(e)}
 
+
 # For backward compatibility, export the main class
-__all__ = ['SheetsManager']
+__all__ = ["SheetsManager"]
 
 # Module metadata with descriptions
 __version__ = "2.0.2"
