@@ -1,3 +1,4 @@
+
 """
 Google Sheets Integration Module for Discord RoW Bot.
 
@@ -36,7 +37,7 @@ class SheetsManager(RateLimitedSheetsManager):
 
             from utils.logger import setup_logger
             logger = setup_logger("sheets_sync")
-            logger.info(" Syncing Discord members to Google Sheets...")
+            logger.info("🔄 Syncing Discord members to Google Sheets...")
 
             # Get all members from all guilds
             all_members = []
@@ -77,3 +78,41 @@ __author__ = "RoW Bot Team"
 __description__ = "Google Sheets integration with comprehensive features"
 __requirements__ = ["gspread", "google-auth", "google-auth-oauthlib"]
 __min_python_version__ = "3.8"
+
+# Features provided by this module
+__features__ = [
+    "Rate-limited API access",
+    "Comprehensive error handling",
+    "Template creation and formatting",
+    "Data synchronization",
+    "Batch operations",
+    "Usage tracking",
+    "Auto-reconnection"
+]
+
+# Configuration constants
+DEFAULT_REQUEST_INTERVAL = 0.1  # 100ms between requests
+DEFAULT_MAX_RETRIES = 5
+DEFAULT_BATCH_SIZE = 50
+
+# Supported sheet types
+SUPPORTED_SHEETS = [
+    "Current Teams",
+    "Events History", 
+    "Player Stats",
+    "Results History",
+    "Blocked Users",
+    "Discord Members",
+    "Match Statistics",
+    "Alliance Tracking",
+    "Error Summary",
+    "Dashboard Summary"
+]
+
+# Version history
+__changelog__ = {
+    "2.0.2": "Added scan_and_sync_all_members method",
+    "2.0.1": "Enhanced error handling and logging",
+    "2.0.0": "Complete rewrite with rate limiting and templates",
+    "1.0.0": "Initial release"
+}
