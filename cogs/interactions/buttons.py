@@ -571,9 +571,13 @@ class ButtonHandler(commands.Cog):
             success = await event_manager.save_events()
 
             if success:
-                await interaction.response.send_message("✅ Joined team!", ephemeral=True)
+                await interaction.response.send_message(
+                    "✅ Joined team!", ephemeral=True
+                )
             else:
-                await interaction.response.send_message("❌ Failed to join team", ephemeral=True)
+                await interaction.response.send_message(
+                    "❌ Failed to join team", ephemeral=True
+                )
 
     async def cog_load(self):
         """
