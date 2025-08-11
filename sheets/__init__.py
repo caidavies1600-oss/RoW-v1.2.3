@@ -1,4 +1,3 @@
-
 """
 Google Sheets Integration Module for Discord RoW Bot.
 
@@ -61,8 +60,11 @@ class SheetsManager(RateLimitedSheetsManager):
                             "joined_at": member.joined_at.isoformat() if member.joined_at else None
                         })
 
+            # Get guild name for sheets
+            guild_name = guild.name if guild else "Unknown Guild"
+
             # Sync to sheets (using the inherited method from base_manager)
-            success = await self._sync_members_to_sheets(all_members)
+            success = await self._sync_members_to_sheets(all_members, guild_name)
 
             if success:
                 logger.info(f"✅ Successfully synced {len(all_members)} members to Google Sheets")
@@ -107,7 +109,7 @@ DEFAULT_BATCH_SIZE = 50
 # Supported sheet types
 SUPPORTED_SHEETS = [
     "Current Teams",
-    "Events History", 
+    "Events History",
     "Player Stats",
     "Results History",
     "Blocked Users",
