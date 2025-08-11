@@ -214,21 +214,51 @@ COMMIT_MSG="🚀 Deploy RoW Bot $NEW_VERSION for Railway
 git add .
 git commit -m "$COMMIT_MSG"
 
-# Setup remote and push
+# Setup remote and create proper branching workflow
 git remote add origin "https://$GH_TOKEN@github.com/${REPO_URL#https://github.com/}"
+
+# Create main branch if it doesn't exist
 git branch -M main
 
-echo "📤 Pushing to GitHub..."
-if git push -f origin main; then
+# First, try to fetch existing repo to check for remote main
+echo "🔍 Checking for existing repository..."
+if git ls-remote origin main 2>/dev/null; then
+    echo "✅ Remote repository exists, fetching updates..."
+    git fetch origin main
+    
+    # Create a merge commit to preserve history
+    git merge origin/main --allow-unrelated-histories -m "Merge existing repository with new deployment $NEW_VERSION" || true
+fi
+
+# Create a version branch for this deployment
+VERSION_BRANCH="release/$NEW_VERSION"
+git checkout -b "$VERSION_BRANCH"
+
+echo "📤 Pushing version branch to GitHub..."
+if git push -u origin "$VERSION_BRANCH"; then
+    echo "✅ Successfully pushed version branch: $VERSION_BRANCH"
+    
+    # Now push to main branch (preserving history)
+    git checkout main
+    git merge "$VERSION_BRANCH" --no-ff -m "Deploy RoW Bot $NEW_VERSION to main"
+    
+    echo "📤 Pushing to main branch..."
+    if git push origin main; then
     echo "✅ Successfully pushed to GitHub!"
-    echo "🌐 Repository: $REPO_URL"
-    echo "📋 Version: $NEW_VERSION"
-    echo ""
-    echo "🚀 Ready for Railway deployment!"
-    echo "   1. Connect this GitHub repo to Railway"
-    echo "   2. Set BOT_TOKEN environment variable"
-    echo "   3. Optionally set Google Sheets variables"
-    echo "   4. Deploy automatically starts"
+        echo "🌐 Repository: $REPO_URL"
+        echo "📋 Version: $NEW_VERSION"
+        echo "🌿 Main branch: Updated with latest deployment"
+        echo "🏷️ Version branch: $VERSION_BRANCH created"
+        echo ""
+        echo "🚀 Ready for Railway deployment!"
+        echo "   1. Connect this GitHub repo to Railway (use main branch)"
+        echo "   2. Set BOT_TOKEN environment variable"
+        echo "   3. Optionally set Google Sheets variables"
+        echo "   4. Deploy automatically starts"
+    else
+        echo "❌ Failed to push to main branch"
+        exit 1
+    fi
 else
     echo "❌ Failed to push to GitHub"
     exit 1
