@@ -41,6 +41,7 @@ class EventManager(commands.Cog, name="EventManager"):
         self.data_manager = data_manager
         self.blocked_users = {}
         self.event_times = DEFAULT_TIMES
+        self.signup_locked = False
 
     async def load_events(self):
         """Load events with new integrated manager."""
@@ -59,6 +60,13 @@ class EventManager(commands.Cog, name="EventManager"):
     @commands.Cog.listener()
     async def on_ready(self):
         await self.load_events()
+        # Load signup lock state
+        lock_data = await self.data_manager.load_data(FILES["SIGNUP_LOCK"], default=False)
+        self.signup_locked = bool(lock_data)
+        
+        # Load blocked users
+        blocked_data = await self.data_manager.load_data(FILES["BLOCKED"], default={})
+        self.blocked_users = blocked_data
 
     def _default_events(self):
         """
