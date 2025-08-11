@@ -17,7 +17,7 @@ class SheetsManager(SheetsOperations):
     This is the primary interface that should be imported and used by the bot.
     Provides a clean API for all sheets operations while maintaining backwards compatibility.
     """
-    
+
 
     def create_notification_preferences(self, notification_data=None):
         """Create Notification Preferences sheet template."""
@@ -177,7 +177,7 @@ class SheetsManager(SheetsOperations):
 
     # Also add this import at the top of your services/sheets_manager.py file if it's not already there:
     from datetime import datetime
-    
+
     def __init__(self):
         """Initialize the sheets manager."""
         super().__init__()

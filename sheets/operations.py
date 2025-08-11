@@ -724,3 +724,93 @@ class SheetsOperations(SheetsClient):
 
         logger.info(f"Template creation completed: {successes}/{total} successful")
         return results
+
+    def create_match_statistics_template(self) -> bool:
+        """Create match statistics template."""
+        if not self.is_connected():
+            return False
+
+        try:
+            # Create worksheet
+            worksheet = self.get_or_create_worksheet("Match Statistics", 150, 10)
+            if not worksheet:
+                return False
+
+            logger.info("Creating Match Statistics template...")
+
+            # Clear worksheet first
+            if not self._safe_batch_operation(worksheet, "clear Match Statistics", worksheet.clear):
+                return False
+
+            # Headers
+            headers = ["📅 Date", "⚔️ Match Type", "👥 Our Team", "🏆 Result", "💪 Our Power", "🏰 Enemy Alliance", "⚡ Enemy Power", "📊 Power Difference", "🎯 Strategy Used", "📝 Notes"]
+            
+            if not self._safe_batch_operation(worksheet, "add Match Statistics headers",
+                                            worksheet.append_row, headers):
+                return False
+
+            # Add sample data
+            sample_matches = [
+                [datetime.utcnow().strftime("%Y-%m-%d"), "Alliance War", "Main Team", "Win", "500M", "Enemy Alliance", "450M", "+50M", "Cavalry Rush", "Great coordination"],
+                [datetime.utcnow().strftime("%Y-%m-%d"), "Alliance War", "Team 2", "Loss", "300M", "Strong Enemy", "400M", "-100M", "Defensive", "Need more power"],
+            ]
+
+            for i, match_data in enumerate(sample_matches):
+                time.sleep(1)
+                result = self.safe_worksheet_operation(worksheet, worksheet.append_row, match_data)
+                if result is None:
+                    logger.warning(f"Failed to add sample match {i}")
+
+            # Apply formatting
+            time.sleep(1)
+            self._apply_header_formatting(worksheet, len(headers), "orange")
+
+            logger.info("✅ Created Match Statistics template")
+            return True
+
+        except Exception as e:
+            logger.error(f"❌ Failed to create match statistics template: {e}")
+            return False
+
+    def create_error_summary_template(self) -> bool:
+        """Create error summary template."""
+        if not self.is_connected():
+            return False
+
+        try:
+            # Create worksheet
+            worksheet = self.get_or_create_worksheet("Error Summary", 100, 8)
+            if not worksheet:
+                return False
+
+            logger.info("Creating Error Summary template...")
+
+            # Clear worksheet first
+            if not self._safe_batch_operation(worksheet, "clear Error Summary", worksheet.clear):
+                return False
+
+            # Headers
+            headers = ["🕐 Timestamp", "⚠️ Error Type", "📍 Source", "💬 Message", "👤 User ID", "🔧 Status", "✅ Resolved", "📝 Notes"]
+            
+            if not self._safe_batch_operation(worksheet, "add Error Summary headers",
+                                            worksheet.append_row, headers):
+                return False
+
+            # Add sample error
+            sample_error = [datetime.utcnow().strftime("%Y-%m-%d %H:%M"), "API Error", "Sheets Sync", "Rate limit exceeded", "Bot", "Resolved", "✅", "Implemented retry logic"]
+            
+            time.sleep(1)
+            result = self.safe_worksheet_operation(worksheet, worksheet.append_row, sample_error)
+            if result is None:
+                logger.warning("Failed to add sample error")
+
+            # Apply formatting
+            time.sleep(1)
+            self._apply_header_formatting(worksheet, len(headers), "red")
+
+            logger.info("✅ Created Error Summary template")
+            return True
+
+        except Exception as e:
+            logger.error(f"❌ Failed to create error summary template: {e}")
+            return False
