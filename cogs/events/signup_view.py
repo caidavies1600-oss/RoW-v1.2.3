@@ -148,7 +148,7 @@ class JoinButton(Button):
         manager.events[self.team_key].append(user_ign)
 
         # Save updated team data
-        if manager.save_events():
+        if await manager.save_events():
             logger.info(f"{interaction.user} ({user_ign}) joined {self.team_key}")
             await interaction.response.send_message(
                 f"{EMOJIS['SUCCESS']} {user_ign} joined {TEAM_DISPLAY[self.team_key]}!",
@@ -227,7 +227,7 @@ class LeaveButton(Button):
                 break
 
         if removed:
-            if manager.save_events():
+            if await manager.save_events():
                 logger.info(f"{interaction.user} ({user_ign}) left {removed_from}")
                 await interaction.response.send_message(
                     f"{EMOJIS['WARNING']} {user_ign} has been removed from {TEAM_DISPLAY[removed_from]}.",

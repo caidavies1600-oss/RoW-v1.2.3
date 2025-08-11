@@ -69,9 +69,9 @@ class EventManager(commands.Cog, name="EventManager"):
         """
         return {"main_team": [], "team_2": [], "team_3": []}
 
-    def save_blocked_users(self):
+    async def save_blocked_users(self):
         """Save blocked users data to file and sync to Google Sheets."""
-        if not self.data_manager.save_data(
+        if not await self.data_manager.save_data(
             FILES["BLOCKED"], self.blocked_users, sync_to_sheets=True
         ):
             logger.error("❌ Failed to save blocked_users.json")
@@ -127,7 +127,7 @@ class EventManager(commands.Cog, name="EventManager"):
         if len(history) > 50:
             history = history[-50:]
 
-        if self.data_manager.save_data(FILES["HISTORY"], history):
+        if await self.data_manager.save_data(FILES["HISTORY"], history):
             logger.info("✅ Event history updated")
         else:
             logger.error("❌ Failed to save events_history.json")
@@ -156,14 +156,14 @@ class EventManager(commands.Cog, name="EventManager"):
             expiry = datetime.fromisoformat(blocked_at) + timedelta(days=duration)
             if datetime.utcnow() >= expiry:
                 del self.blocked_users[str(user_id)]
-                self.save_blocked_users()
+                await self.save_blocked_users()
                 return False
             return True
         except Exception as e:
             logger.warning(f"⚠️ Malformed block entry for {user_id}: {e}")
             return False
 
-    def block_user(self, user_id: int, blocked_by: int, days: int):
+    async def block_user(self, user_id: int, blocked_by: int, days: int):
         """
         Block a user from signing up for events.
 
@@ -177,14 +177,14 @@ class EventManager(commands.Cog, name="EventManager"):
             "blocked_at": datetime.utcnow().isoformat(),
             "ban_duration_days": days,
         }
-        self.save_blocked_users()
+        await self.save_blocked_users()
         logger.info(f"🚫 User {user_id} blocked by {blocked_by} for {days} days")
 
-    def unblock_user(self, user_id: int):
+    async def unblock_user(self, user_id: int):
         """Unblock a user, allowing them to sign up again."""
         if str(user_id) in self.blocked_users:
             del self.blocked_users[str(user_id)]
-            self.save_blocked_users()
+            await self.save_blocked_users()
             logger.info(f"✅ User {user_id} unblocked")
 
     async def get_user_display_name(self, user: discord.User) -> str:
