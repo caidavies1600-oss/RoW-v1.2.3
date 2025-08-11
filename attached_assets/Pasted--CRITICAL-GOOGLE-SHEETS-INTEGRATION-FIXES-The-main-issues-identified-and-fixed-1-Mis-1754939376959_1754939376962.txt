@@ -1,0 +1,1193 @@
+# 🔧 CRITICAL GOOGLE SHEETS INTEGRATION FIXES
+# 
+# The main issues identified and fixed:
+# 1. Missing imports and module dependencies  
+# 2. Inconsistent error handling across sync methods
+# 3. Rate limiting issues causing API failures
+# 4. Broken inheritance chain in sheets classes
+# 5. Missing time import in services/sheets_manager.py
+# 6. Inconsistent data format handling
+# 7. Missing sync methods referenced by data_manager.py
+
+# =============================================================================
+# 🚨 FIX 1: services/sheets_manager.py - Add Missing Imports & Fix Rate Limiting
+# =============================================================================
+
+"""
+Add this at the top of services/sheets_manager.py to fix missing imports:
+"""
+
+import gspread
+from google.oauth2.service_account import Credentials
+import json
+import os
+import time  # ⚠️ MISSING IMPORT - This was causing sync failures
+from datetime import datetime
+from utils.logger import setup_logger
+import asyncio
+
+# Add these missing methods to SheetsManager class:
+
+def sync_results_history(self, results_data):
+    """Sync results history to Google Sheets."""
+    if not self.spreadsheet:
+        return False
+
+    try:
+        try:
+            worksheet = self.spreadsheet.worksheet("Results History")
+            worksheet.clear()
+        except gspread.WorksheetNotFound:
+            worksheet = self.spreadsheet.add_worksheet(title="Results History", rows="1000", cols="7")
+
+        # Headers
+        headers = ["📅 Date", "🎯 Team", "🏆 Result", "👥 Players", "📝 Recorded By", "✅ Total Wins", "❌ Total Losses"]
+        worksheet.append_row(headers)
+
+        # Format header
+        worksheet.format("A1:G1", {
+            "backgroundColor": {"red": 0.2, "green": 0.6, "blue": 1.0},
+            "textFormat": {
+                "foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0},
+                "fontSize": 12,
+                "bold": True
+            },
+            "horizontalAlignment": "CENTER"
+        })
+
+        # Add results data with proper rate limiting
+        for i, entry in enumerate(results_data.get("history", [])):
+            # Rate limiting: pause every 10 entries
+            if i > 0 and i % 10 == 0:
+                logger.info(f"Processed {i} results, pausing 2s for rate limit...")
+                time.sleep(2)
+
+            try:
+                # Handle date formatting
+                date = entry.get("date", entry.get("timestamp", "Unknown"))
+                if isinstance(date, str) and "T" in date:  # ISO format
+                    try:
+                        date = datetime.fromisoformat(date.replace("Z", "+00:00")).strftime("%Y-%m-%d %H:%M")
+                    except:
+                        date = str(date)
+                
+                team = entry.get("team", "Unknown")
+                team_display = {"main_team": "Main Team", "team_2": "Team 2", "team_3": "Team 3"}.get(team, team)
+                
+                result = entry.get("result", "Unknown").capitalize()
+                players = ", ".join(entry.get("players", []))
+                recorded_by = entry.get("by", entry.get("recorded_by", "Unknown"))
+
+                row_data = [
+                    date,
+                    team_display,
+                    result,
+                    players,
+                    recorded_by,
+                    results_data.get("total_wins", 0),
+                    results_data.get("total_losses", 0)
+                ]
+                
+                worksheet.append_row(row_data)
+
+                # Color code wins/losses
+                row_num = i + 2
+                if result.lower() == "win":
+                    worksheet.format(f"A{row_num}:G{row_num}", {
+                        "backgroundColor": {"red": 0.85, "green": 1.0, "blue": 0.85}
+                    })
+                elif result.lower() == "loss":
+                    worksheet.format(f"A{row_num}:G{row_num}", {
+                        "backgroundColor": {"red": 1.0, "green": 0.9, "blue": 0.9}
+                    })
+
+            except Exception as e:
+                logger.warning(f"Failed to sync result entry {i}: {e}")
+                continue
+
+        logger.info(f"✅ Synced {len(results_data.get('history', []))} results to Google Sheets")
+        return True
+
+    except Exception as e:
+        logger.error(f"Failed to sync results history: {e}")
+        import traceback
+        logger.error(f"Results sync traceback: {traceback.format_exc()}")
+        return False
+
+def sync_player_stats(self, player_stats_data):
+    """Sync player statistics to Google Sheets with proper formatting."""
+    if not self.spreadsheet:
+        return False
+
+    try:
+        try:
+            worksheet = self.spreadsheet.worksheet("Player Stats")
+            worksheet.clear()
+        except gspread.WorksheetNotFound:
+            worksheet = self.spreadsheet.add_worksheet(title="Player Stats", rows="300", cols="25")
+
+        # Headers
+        headers = [
+            "👤 User ID", "🏷️ Name", "📱 Display Name", "🎯 Main Team Role", 
+            "🏆 Main Wins", "❌ Main Losses", "🔥 Team2 Wins", "⚡ Team2 Losses",
+            "⭐ Team3 Wins", "💫 Team3 Losses", "📊 Total Wins", "📉 Total Losses", 
+            "📈 Win Rate", "🚫 Absents", "⛔ Blocked", "⚡ Power Rating",
+            "🐎 Cavalry", "🧙 Mages", "🏹 Archers", "⚔️ Infantry", "🐋 Whale", 
+            "📅 Last Updated", "📝 Notes", "🔗 Discord Link", "📊 Participation Score"
+        ]
+        worksheet.append_row(headers)
+
+        # Format header
+        worksheet.format("A1:Y1", {
+            "backgroundColor": {"red": 0.1, "green": 0.4, "blue": 0.8},
+            "textFormat": {
+                "foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0},
+                "fontSize": 11,
+                "bold": True
+            },
+            "horizontalAlignment": "CENTER"
+        })
+
+        # Freeze header row
+        worksheet.freeze(rows=1)
+
+        # Add player data
+        if player_stats_data:
+            for i, (user_id, stats) in enumerate(player_stats_data.items()):
+                # Rate limiting: pause every 15 players
+                if i > 0 and i % 15 == 0:
+                    logger.info(f"Processed {i} players, pausing 3s for rate limit...")
+                    time.sleep(3)
+
+                try:
+                    # Calculate derived stats
+                    main_wins = stats.get("team_results", {}).get("main_team", {}).get("wins", 0)
+                    main_losses = stats.get("team_results", {}).get("main_team", {}).get("losses", 0)
+                    team2_wins = stats.get("team_results", {}).get("team_2", {}).get("wins", 0)
+                    team2_losses = stats.get("team_results", {}).get("team_2", {}).get("losses", 0)
+                    team3_wins = stats.get("team_results", {}).get("team_3", {}).get("wins", 0)
+                    team3_losses = stats.get("team_results", {}).get("team_3", {}).get("losses", 0)
+                    
+                    total_wins = main_wins + team2_wins + team3_wins
+                    total_losses = main_losses + team2_losses + team3_losses
+                    total_games = total_wins + total_losses
+                    win_rate = round((total_wins / total_games * 100), 1) if total_games > 0 else 0
+
+                    # Get specializations
+                    specs = stats.get("specializations", {})
+                    
+                    row_data = [
+                        user_id,
+                        stats.get("name", f"Player_{user_id}"),
+                        stats.get("display_name", "Unknown"),
+                        "Yes" if stats.get("has_main_role", False) else "No",
+                        main_wins, main_losses,
+                        team2_wins, team2_losses,
+                        team3_wins, team3_losses,
+                        total_wins, total_losses,
+                        f"{win_rate}%",
+                        stats.get("absents", 0),
+                        "Yes" if stats.get("blocked", False) else "No",
+                        stats.get("power_rating", 0),
+                        "Yes" if specs.get("cavalry", False) else "No",
+                        "Yes" if specs.get("mages", False) else "No",
+                        "Yes" if specs.get("archers", False) else "No",
+                        "Yes" if specs.get("infantry", False) else "No",
+                        "Yes" if specs.get("whale", False) else "No",
+                        datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+                        stats.get("notes", ""),
+                        f"<@{user_id}>",
+                        total_games  # Participation score
+                    ]
+                    
+                    worksheet.append_row(row_data)
+
+                except Exception as e:
+                    logger.warning(f"Failed to sync player {user_id}: {e}")
+                    continue
+
+        # Apply professional formatting
+        try:
+            # Auto-resize columns
+            worksheet.columns_auto_resize(0, 25)
+
+            # Add conditional formatting for win rates
+            worksheet.add_conditional_format_rule(
+                "M2:M500",
+                {
+                    "type": "COLOR_SCALE",
+                    "colorScale": {
+                        "minValue": {"type": "NUMBER", "value": "0"},
+                        "minColor": {"red": 1.0, "green": 0.4, "blue": 0.4},      # Red for low
+                        "midValue": {"type": "NUMBER", "value": "50"},
+                        "midColor": {"red": 1.0, "green": 1.0, "blue": 0.4},      # Yellow for mid
+                        "maxValue": {"type": "NUMBER", "value": "100"},
+                        "maxColor": {"red": 0.349, "green": 0.686, "blue": 0.314} # Green for high
+                    }
+                }
+            )
+        except Exception as e:
+            logger.warning(f"Failed to apply formatting: {e}")
+
+        logger.info(f"✅ Synced {len(player_stats_data) if player_stats_data else 0} players to Google Sheets")
+        return True
+
+    except Exception as e:
+        logger.error(f"Failed to sync player stats: {e}")
+        import traceback
+        logger.error(f"Player stats sync traceback: {traceback.format_exc()}")
+        return False
+
+def sync_notification_preferences(self, notification_prefs):
+    """Sync notification preferences to Google Sheets."""
+    if not self.spreadsheet:
+        return False
+
+    try:
+        try:
+            worksheet = self.spreadsheet.worksheet("Notification Preferences")
+            worksheet.clear()
+        except gspread.WorksheetNotFound:
+            worksheet = self.spreadsheet.add_worksheet(title="Notification Preferences", rows="300", cols="12")
+
+        # Headers
+        headers = [
+            "👤 User ID", "📝 Display Name", "📬 Method", "⏰ Event Reminders", 
+            "🏆 Result Notifications", "👥 Team Updates", "⚠️ Error Alerts",
+            "⏱️ Reminder Minutes", "🌅 Quiet Start", "🌙 Quiet End", 
+            "🌍 Timezone Offset", "📅 Last Updated"
+        ]
+        worksheet.append_row(headers)
+
+        # Format header
+        worksheet.format("A1:L1", {
+            "backgroundColor": {"red": 0.6, "green": 0.2, "blue": 0.8},
+            "textFormat": {
+                "foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0},
+                "fontSize": 12,
+                "bold": True
+            },
+            "horizontalAlignment": "CENTER"
+        })
+
+        # Add data
+        users_data = notification_prefs.get("users", {})
+        for i, (user_id, prefs) in enumerate(users_data.items()):
+            # Rate limiting
+            if i > 0 and i % 20 == 0:
+                time.sleep(2)
+
+            row_data = [
+                user_id,
+                prefs.get("display_name", f"User_{user_id}"),
+                prefs.get("method", "Discord DM"),
+                "Yes" if prefs.get("event_reminders", True) else "No",
+                "Yes" if prefs.get("result_notifications", True) else "No",
+                "Yes" if prefs.get("team_updates", True) else "No",
+                "Yes" if prefs.get("error_alerts", False) else "No",
+                prefs.get("reminder_times", [60])[0] if prefs.get("reminder_times") else 60,
+                prefs.get("quiet_hours", {}).get("start", "22:00"),
+                prefs.get("quiet_hours", {}).get("end", "08:00"),
+                prefs.get("timezone_offset", 0),
+                datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+            ]
+            worksheet.append_row(row_data)
+
+        logger.info(f"✅ Synced {len(users_data)} notification preferences to Google Sheets")
+        return True
+
+    except Exception as e:
+        logger.error(f"Failed to sync notification preferences: {e}")
+        return False
+
+
+# =============================================================================
+# 🚨 FIX 2: sheets/base_manager.py - Fix Authentication & Error Handling
+# =============================================================================
+
+"""
+Replace the existing BaseSheetsManager class with this improved version:
+"""
+
+import gspread
+from google.oauth2.service_account import Credentials
+import json
+import os
+from utils.logger import setup_logger
+
+logger = setup_logger("sheets_base")
+
+class BaseSheetsManager:
+    """Core Google Sheets connection and authentication with improved error handling."""
+
+    def __init__(self):
+        self.gc = None
+        self.spreadsheet = None
+        self.last_error = None
+        self.initialize_client()
+
+    def initialize_client(self):
+        """Initialize Google Sheets client with enhanced error handling."""
+        try:
+            # Define the scope
+            scope = [
+                "https://www.googleapis.com/auth/spreadsheets",
+                "https://www.googleapis.com/auth/drive"
+            ]
+
+            # Load credentials with better error messages
+            creds_json = os.getenv('GOOGLE_SHEETS_CREDENTIALS')
+            if creds_json:
+                try:
+                    creds_dict = json.loads(creds_json)
+                    creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
+                    logger.info("✅ Loaded credentials from environment variable")
+                except json.JSONDecodeError as e:
+                    logger.error(f"❌ Invalid JSON in GOOGLE_SHEETS_CREDENTIALS: {e}")
+                    self.last_error = f"Invalid credentials JSON: {e}"
+                    return
+            else:
+                # Fallback to credentials file
+                creds_path = 'credentials.json'
+                if os.path.exists(creds_path):
+                    try:
+                        creds = Credentials.from_service_account_file(creds_path, scopes=scope)
+                        logger.info("✅ Loaded credentials from credentials.json file")
+                    except Exception as e:
+                        logger.error(f"❌ Failed to load credentials.json: {e}")
+                        self.last_error = f"Credentials file error: {e}"
+                        return
+                else:
+                    logger.error("❌ No credentials found - set GOOGLE_SHEETS_CREDENTIALS or add credentials.json")
+                    self.last_error = "No credentials configured"
+                    return
+
+            # Authorize the client
+            try:
+                self.gc = gspread.authorize(creds)
+                logger.info("✅ Google Sheets client authorized successfully")
+            except Exception as e:
+                logger.error(f"❌ Failed to authorize Google Sheets client: {e}")
+                self.last_error = f"Authorization failed: {e}"
+                return
+
+            # Open or create the spreadsheet
+            spreadsheet_id = os.getenv('GOOGLE_SHEETS_ID')
+            if spreadsheet_id:
+                try:
+                    self.spreadsheet = self.gc.open_by_key(spreadsheet_id)
+                    logger.info(f"✅ Connected to existing spreadsheet: {self.spreadsheet.url}")
+                except gspread.SpreadsheetNotFound:
+                    logger.error(f"❌ Spreadsheet not found with ID: {spreadsheet_id}")
+                    self.last_error = f"Spreadsheet not found: {spreadsheet_id}"
+                    return
+                except Exception as e:
+                    logger.error(f"❌ Failed to open spreadsheet: {e}")
+                    self.last_error = f"Failed to open spreadsheet: {e}"
+                    return
+            else:
+                try:
+                    self.spreadsheet = self.gc.create("Discord RoW Bot Data")
+                    logger.info(f"✅ Created new spreadsheet: {self.spreadsheet.url}")
+                    logger.info(f"📝 Set GOOGLE_SHEETS_ID={self.spreadsheet.id} to reuse this spreadsheet")
+                except Exception as e:
+                    logger.error(f"❌ Failed to create new spreadsheet: {e}")
+                    self.last_error = f"Failed to create spreadsheet: {e}"
+                    return
+
+            self.last_error = None  # Clear any previous errors
+
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize Google Sheets client: {e}")
+            self.gc = None
+            self.spreadsheet = None
+            self.last_error = str(e)
+
+    def get_or_create_worksheet(self, title: str, rows: int = 100, cols: int = 10):
+        """Get existing worksheet or create new one with better error handling."""
+        if not self.spreadsheet:
+            logger.error("❌ Cannot access worksheet - spreadsheet not initialized")
+            return None
+
+        try:
+            # Try to get existing worksheet
+            worksheet = self.spreadsheet.worksheet(title)
+            logger.debug(f"✅ Found existing worksheet: {title}")
+            return worksheet
+        except gspread.WorksheetNotFound:
+            try:
+                # Create new worksheet
+                worksheet = self.spreadsheet.add_worksheet(title=title, rows=rows, cols=cols)
+                logger.info(f"✅ Created new worksheet: {title}")
+                return worksheet
+            except Exception as e:
+                logger.error(f"❌ Failed to create worksheet '{title}': {e}")
+                return None
+        except Exception as e:
+            logger.error(f"❌ Error accessing worksheet '{title}': {e}")
+            return None
+
+    def is_connected(self) -> bool:
+        """Check if sheets connection is active with detailed status."""
+        if self.gc is None:
+            logger.debug("❌ Google Sheets client not initialized")
+            return False
+        
+        if self.spreadsheet is None:
+            logger.debug("❌ No spreadsheet connected")
+            return False
+            
+        try:
+            # Test connection by accessing spreadsheet properties
+            _ = self.spreadsheet.id
+            logger.debug("✅ Sheets connection verified")
+            return True
+        except Exception as e:
+            logger.debug(f"❌ Sheets connection test failed: {e}")
+            return False
+
+    def get_connection_status(self) -> dict:
+        """Get detailed connection status for debugging."""
+        return {
+            "client_initialized": self.gc is not None,
+            "spreadsheet_connected": self.spreadsheet is not None,
+            "spreadsheet_url": self.spreadsheet.url if self.spreadsheet else None,
+            "spreadsheet_id": self.spreadsheet.id if self.spreadsheet else None,
+            "last_error": self.last_error,
+            "is_connected": self.is_connected()
+        }
+
+
+# =============================================================================
+# 🚨 FIX 3: sheets/data_sync.py - Fix Inheritance and Missing Methods  
+# =============================================================================
+
+"""
+Update the DataSync class to properly inherit all methods:
+"""
+
+import gspread
+from datetime import datetime
+from .template_creator import TemplateCreator
+from utils.logger import setup_logger
+
+logger = setup_logger("data_sync")
+
+class DataSync(TemplateCreator):
+    """Handles data loading and syncing operations with complete method coverage."""
+
+    def load_data_from_sheets(self):
+        """Load all bot data from Google Sheets - primary data source."""
+        if not self.is_connected():
+            logger.warning("❌ Sheets not connected - cannot load data")
+            return None
+
+        try:
+            data = {
+                "events": {"main_team": [], "team_2": [], "team_3": []},
+                "blocked": {},
+                "results": {"total_wins": 0, "total_losses": 0, "history": []},
+                "player_stats": {},
+                "ign_map": {},
+                "absent": {},
+                "notification_preferences": {"users": {}, "default_settings": {}}
+            }
+
+            # Load Current Teams
+            try:
+                worksheet = self.spreadsheet.worksheet("Current Teams")
+                rows = worksheet.get_all_records()
+                for row in rows:
+                    team = row.get("Team", "").lower().replace(" ", "_")
+                    players = row.get("Players", "")
+                    if team in data["events"] and players:
+                        player_list = [p.strip() for p in players.split(",") if p.strip()]
+                        data["events"][team] = player_list
+                logger.info("✅ Loaded current teams from sheets")
+            except gspread.WorksheetNotFound:
+                logger.info("⚠️ Current Teams sheet not found, using defaults")
+
+            # Load Player Stats
+            try:
+                worksheet = self.spreadsheet.worksheet("Player Stats")
+                rows = worksheet.get_all_records()
+                for row in rows:
+                    user_id = str(row.get("User ID", ""))
+                    if user_id and user_id != "User ID":  # Skip header
+                        data["player_stats"][user_id] = {
+                            "name": row.get("Name", ""),
+                            "display_name": row.get("Display Name", ""),
+                            "has_main_role": row.get("Main Team Role", "No") == "Yes",
+                            "team_results": {
+                                "main_team": {
+                                    "wins": int(row.get("Main Wins", 0) or 0),
+                                    "losses": int(row.get("Main Losses", 0) or 0)
+                                },
+                                "team_2": {
+                                    "wins": int(row.get("Team2 Wins", 0) or 0),
+                                    "losses": int(row.get("Team2 Losses", 0) or 0)
+                                },
+                                "team_3": {
+                                    "wins": int(row.get("Team3 Wins", 0) or 0),
+                                    "losses": int(row.get("Team3 Losses", 0) or 0)
+                                }
+                            },
+                            "power_rating": int(row.get("Power Rating", 0) or 0),
+                            "absents": int(row.get("Absents", 0) or 0),
+                            "blocked": row.get("Blocked", "No") == "Yes",
+                            "specializations": {
+                                "cavalry": row.get("Cavalry", "No") == "Yes",
+                                "mages": row.get("Mages", "No") == "Yes",
+                                "archers": row.get("Archers", "No") == "Yes",
+                                "infantry": row.get("Infantry", "No") == "Yes",
+                                "whale": row.get("Whale", "No") == "Yes"
+                            }
+                        }
+                logger.info(f"✅ Loaded {len(data['player_stats'])} player stats from sheets")
+            except gspread.WorksheetNotFound:
+                logger.info("⚠️ Player Stats sheet not found, using defaults")
+
+            # Load Results History
+            try:
+                worksheet = self.spreadsheet.worksheet("Results History")
+                rows = worksheet.get_all_records()
+                for row in rows:
+                    if row.get("Date") and row.get("Date") != "Date":  # Skip header
+                        data["results"]["history"].append({
+                            "date": row.get("Date"),
+                            "team": row.get("Team", "").lower().replace(" ", "_"),
+                            "result": row.get("Result", "").lower(),
+                            "players": row.get("Players", "").split(",") if row.get("Players") else [],
+                            "by": row.get("Recorded By", ""),
+                            "timestamp": row.get("Date")
+                        })
+
+                # Calculate totals
+                data["results"]["total_wins"] = sum(1 for r in data["results"]["history"] if r["result"] == "win")
+                data["results"]["total_losses"] = sum(1 for r in data["results"]["history"] if r["result"] == "loss")
+                logger.info(f"✅ Loaded {len(data['results']['history'])} results from sheets")
+
+            except gspread.WorksheetNotFound:
+                logger.info("⚠️ Results History sheet not found, using defaults")
+
+            # Load Notification Preferences
+            try:
+                worksheet = self.spreadsheet.worksheet("Notification Preferences")
+                rows = worksheet.get_all_records()
+                for row in rows:
+                    user_id = str(row.get("User ID", ""))
+                    if user_id and user_id != "User ID":  # Skip header
+                        data["notification_preferences"]["users"][user_id] = {
+                            "display_name": row.get("Display Name", ""),
+                            "method": row.get("Method", "Discord DM"),
+                            "event_reminders": row.get("Event Reminders", "Yes") == "Yes",
+                            "result_notifications": row.get("Result Notifications", "Yes") == "Yes",
+                            "team_updates": row.get("Team Updates", "Yes") == "Yes",
+                            "error_alerts": row.get("Error Alerts", "No") == "Yes",
+                            "reminder_times": [int(row.get("Reminder Minutes", 60) or 60)],
+                            "timezone_offset": int(row.get("Timezone Offset", 0) or 0)
+                        }
+                logger.info(f"✅ Loaded notification preferences for {len(data['notification_preferences']['users'])} users")
+            except gspread.WorksheetNotFound:
+                logger.info("⚠️ Notification Preferences sheet not found, using defaults")
+
+            logger.info("✅ Successfully loaded all data from Google Sheets")
+            return data
+
+        except Exception as e:
+            logger.error(f"❌ Failed to load data from sheets: {e}")
+            import traceback
+            logger.error(f"Data loading traceback: {traceback.format_exc()}")
+            return None
+
+    # Add the missing sync methods that are referenced by data_manager.py
+    def sync_events_history(self, events_history_data):
+        """Sync events history to Google Sheets."""
+        if not self.spreadsheet:
+            return False
+
+        try:
+            try:
+                worksheet = self.spreadsheet.worksheet("Events History")
+                worksheet.clear()
+            except gspread.WorksheetNotFound:
+                worksheet = self.spreadsheet.add_worksheet(title="Events History", rows="1000", cols="8")
+
+            # Headers
+            headers = ["📅 Date", "🎯 Team", "👥 Player Count", "📝 Players", "📊 Status", "⏰ Event Time", "🎮 Event Type", "📝 Notes"]
+            worksheet.append_row(headers)
+
+            # Add historical events data
+            history = events_history_data.get("history", [])
+            for i, event in enumerate(history[-500:]):  # Last 500 events
+                if i > 0 and i % 20 == 0:
+                    time.sleep(2)  # Rate limiting
+
+                row_data = [
+                    event.get("date", "Unknown"),
+                    event.get("team", "Unknown"),
+                    event.get("player_count", 0),
+                    ", ".join(event.get("players", [])),
+                    event.get("status", "Completed"),
+                    event.get("event_time", "Unknown"),
+                    event.get("event_type", "Weekly Event"),
+                    event.get("notes", "")
+                ]
+                worksheet.append_row(row_data)
+
+            logger.info(f"✅ Synced {len(history)} events history to Google Sheets")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to sync events history: {e}")
+            return False
+
+
+# =============================================================================
+# 🚨 FIX 4: utils/data_manager.py - Fix Sync Integration 
+# =============================================================================
+
+"""
+Update the _sync_to_sheets method in utils/data_manager.py to handle errors properly:
+"""
+
+def _sync_to_sheets(self, filepath: str, data):
+    """Sync data to Google Sheets with enhanced error handling."""
+    if not self.sheets_manager:
+        logger.debug("Sheets manager not available for sync")
+        return
+
+    try:
+        filename = os.path.basename(filepath)
+        
+        # Enhanced sync with better error handling
+        sync_methods = {
+            "events.json": ("sync_current_teams", "events"),
+            "event_results.json": ("sync_results_history", "results"),
+            "events_history.json": ("sync_events_history", "events_history"),
+            "blocked_users.json": ("sync_blocked_users", "blocked"),
+            "player_stats.json": ("sync_player_stats", "player_stats"),
+            "notification_preferences.json": ("sync_notification_preferences", "notification_preferences"),
+            "ign_map.json": ("sync_ign_map", "ign_map"),
+            "absent_users.json": (None, None)  # Handled in player stats
+        }
+        
+        if filename in sync_methods:
+            method_name, data_type = sync_methods[filename]
+            
+            if method_name and hasattr(self.sheets_manager, method_name):
+                try:
+                    method = getattr(self.sheets_manager, method_name)
+                    success = method(data)
+                    
+                    if success:
+                        logger.info(f"✅ Synced {filename} to Google Sheets")
+                    else:
+                        logger.warning(f"⚠️ Failed to sync {filename} to Google Sheets")
+                        
+                except Exception as e:
+                    logger.error(f"❌ Error syncing {filename}: {e}")
+            else:
+                if method_name:  # Only log if method was expected
+                    logger.warning(f"⚠️ Sync method '{method_name}' not found for {filename}")
+        else:
+            logger.debug(f"No sync method defined for {filename}")
+            
+    except Exception as e:
+        logger.warning(f"Failed to sync {filepath} to sheets: {e}")
+
+
+# =============================================================================
+# 🚨 FIX 5: client.py - Fix Sheets Manager Initialization
+# =============================================================================
+
+"""
+Update the bot initialization in client.py to properly load sheets manager:
+"""
+
+async def setup_bot():
+    """Enhanced bot setup with better sheets integration."""
+    try:
+        # Import at function level to avoid circular imports
+        from sheets import SheetsManager
+        
+        # Initialize sheets manager
+        sheets_manager = SheetsManager()
+        
+        # Test connection and provide detailed feedback
+        if sheets_manager.is_connected():
+            logger.info("✅ Google Sheets integration initialized successfully")
+            logger.info(f"📊 Spreadsheet URL: {sheets_manager.spreadsheet.url}")
+            
+            # Test basic operations
+            try:
+                worksheets = [ws.title for ws in sheets_manager.spreadsheet.worksheets()]
+                logger.info(f"📋 Available worksheets: {', '.join(worksheets)}")
+            except Exception as e:
+                logger.warning(f"⚠️ Could not list worksheets: {e}")
+                
+        else:
+            logger.error("❌ Google Sheets integration failed to initialize")
+            status = sheets_manager.get_connection_status()
+            logger.error(f"Connection status: {status}")
+            
+            if not status["client_initialized"]:
+                logger.error("❌ Check GOOGLE_SHEETS_CREDENTIALS environment variable")
+            if not status["spreadsheet_connected"]:
+                logger.error("❌ Check GOOGLE_SHEETS_ID environment variable")
+            if status["last_error"]:
+                logger.error(f"❌ Last error: {status['last_error']}")
+                
+        # Attach to bot regardless of connection status (for graceful degradation)
+        bot.sheets = sheets_manager
+        
+    except ImportError as e:
+        logger.error(f"❌ Failed to import SheetsManager: {e}")
+        logger.error("❌ Google Sheets integration disabled")
+        bot.sheets = None
+    except Exception as e:
+        logger.error(f"❌ Unexpected error setting up sheets: {e}")
+        bot.sheets = None
+
+
+# =============================================================================
+# 🚨 FIX 6: cogs/admin/owner_actions.py - Fix Command Error Handling
+# =============================================================================
+
+"""
+Update the fullsync and syncmembers commands to handle errors better:
+"""
+
+@commands.command(name="syncmembers", help="Sync Discord members to Google Sheets")
+@commands.check(lambda ctx: ctx.author.id == BOT_ADMIN_USER_ID)
+async def sync_discord_members(self, ctx: commands.Context, guild_id: int = None):
+    """Sync Discord members to Google Sheets with enhanced error handling."""
+    try:
+        await ctx.send("🔄 **Syncing Discord members to Google Sheets...**")
+
+        if not hasattr(self.bot, "sheets") or self.bot.sheets is None:
+            embed = discord.Embed(
+                title="❌ Google Sheets Not Configured",
+                description="Google Sheets integration is not available",
+                color=COLORS["ERROR"]
+            )
+            embed.add_field(
+                name="Required Environment Variables",
+                value="• `GOOGLE_SHEETS_CREDENTIALS`\n• `GOOGLE_SHEETS_ID` (optional)",
+                inline=False
+            )
+            embed.add_field(
+                name="Setup Instructions",
+                value="1. Create a Google Service Account\n2. Download credentials JSON\n3. Set environment variables\n4. Restart the bot",
+                inline=False
+            )
+            return await ctx.send(embed=embed)
+
+        # Check connection status
+        if not self.bot.sheets.is_connected():
+            status = self.bot.sheets.get_connection_status()
+            embed = discord.Embed(
+                title="❌ Google Sheets Connection Failed",
+                description="Cannot connect to Google Sheets",
+                color=COLORS["ERROR"]
+            )
+            
+            if status["last_error"]:
+                embed.add_field(
+                    name="Error Details",
+                    value=f"```{status['last_error'][:500]}```",
+                    inline=False
+                )
+                
+            embed.add_field(
+                name="Debug Information",
+                value=f"• Client initialized: {status['client_initialized']}\n• Spreadsheet connected: {status['spreadsheet_connected']}",
+                inline=False
+            )
+            
+            return await ctx.send(embed=embed)
+
+        # Proceed with sync
+        result = await self.bot.sheets.scan_and_sync_all_members(
+            self.bot, guild_id or ctx.guild.id
+        )
+
+        if result["success"]:
+            embed = discord.Embed(
+                title="✅ Member Sync Complete",
+                color=COLORS["SUCCESS"]
+            )
+            embed.add_field(
+                name="📊 Results",
+                value=(
+                    f"**Guild:** {result['guild_name']}\n"
+                    f"**Total Members:** {result['total_discord_members']}\n"
+                    f"**New Added:** {result['new_members_added']}\n"
+                    f"**Updated:** {result['existing_members_updated']}"
+                )
+            )
+
+            if self.bot.sheets.spreadsheet:
+                embed.add_field(
+                    name="🔗 Sheets",
+                    value=f"[Open Spreadsheet]({self.bot.sheets.spreadsheet.url})",
+                    inline=False
+                )
+
+            # Add performance info
+            sheets_sync = result.get("sheets_sync_success", False)
+            embed.add_field(
+                name="📈 Performance",
+                value=f"• Sheets sync: {'✅ Success' if sheets_sync else '⚠️ Partial'}",
+                inline=False
+            )
+
+            await ctx.send(embed=embed)
+            logger.info(f"{ctx.author} synced {result['new_members_added']} new members")
+        else:
+            error_msg = result.get('error', 'Unknown error')
+            embed = discord.Embed(
+                title="❌ Member Sync Failed",
+                description=f"```{error_msg[:500]}```",
+                color=COLORS["ERROR"]
+            )
+            await ctx.send(embed=embed)
+
+    except Exception as e:
+        logger.exception("Error in sync_discord_members")
+        await ctx.send(f"❌ **Critical Error:** {str(e)[:200]}")
+
+@commands.command(name="fullsync", help="Complete setup: sync members + create templates")
+@commands.check(lambda ctx: ctx.author.id == BOT_ADMIN_USER_ID)
+async def full_sync_and_setup(self, ctx: commands.Context):
+    """Complete setup: sync members and create all templates with enhanced error handling."""
+    try:
+        await ctx.send("🚀 **Starting full setup...**\n*This may take 2-3 minutes*")
+
+        if not hasattr(self.bot, "sheets") or self.bot.sheets is None:
+            return await ctx.send("❌ Google Sheets not configured. Use `!sheetsinfo` for setup instructions.")
+
+        if not self.bot.sheets.is_connected():
+            return await ctx.send("❌ Google Sheets connection failed. Check credentials and try again.")
+
+        # Get all current data
+        event_manager = self.bot.get_cog("EventManager")
+        all_data = {
+            "events": self.data_manager.load_json(FILES["EVENTS"], {}),
+            "results": self.data_manager.load_json(FILES["RESULTS"], {}),
+            "player_stats": getattr(event_manager.data_manager, 'player_stats', {}) if event_manager else {},
+            "notification_preferences": self.data_manager.load_json("data/notification_preferences.json", {}),
+            "blocked": self.data_manager.load_json(FILES["BLOCKED"], {}),
+            "ign_map": self.data_manager.load_json("data/ign_map.json", {}),
+            "events_history": self.data_manager.load_json("data/events_history.json", {"history": []})
+        }
+
+        # Perform full sync
+        result = await self.bot.sheets.full_sync_and_create_templates(
+            self.bot, all_data, ctx.guild.id
+        )
+
+        if result["success"]:
+            member_sync = result["member_sync"]
+            embed = discord.Embed(
+                title="✅ Full Setup Complete!",
+                description="Discord members synced and all templates created",
+                color=COLORS["SUCCESS"]
+            )
+
+            embed.add_field(
+                name="👥 Member Sync",
+                value=(
+                    f"**New Members:** {member_sync['new_members_added']}\n"
+                    f"**Updated:** {member_sync['existing_members_updated']}\n"
+                    f"**Total:** {member_sync['total_discord_members']}"
+                )
+            )
+
+            embed.add_field(
+                name="📊 Templates Created",
+                value=(
+                    "✅ Player Stats (all Discord members)\n"
+                    "✅ Current Teams\n"
+                    "✅ Results History\n"
+                    "✅ Match Statistics\n"
+                    "✅ Alliance Tracking\n"
+                    "✅ Dashboard\n"
+                    "✅ Notification Preferences\n"
+                    "✅ Events History\n"
+                    "✅ Blocked Users"
+                )
+            )
+
+            if result.get("spreadsheet_url"):
+                embed.add_field(
+                    name="🔗 Google Sheets",
+                    value=f"[Open Spreadsheet]({result['spreadsheet_url']})",
+                    inline=False
+                )
+
+            embed.add_field(
+                name="📝 Next Steps",
+                value=(
+                    "1. Fill in power ratings in Player Stats sheet\n"
+                    "2. Set specializations (Cavalry, Mages, etc.)\n"
+                    "3. Add match data and alliance info manually\n"
+                    "4. Use `!syncmembers` to update member data regularly"
+                ),
+                inline=False
+            )
+
+            await ctx.send(embed=embed)
+            logger.info(f"{ctx.author} completed full sync successfully")
+        else:
+            error_msg = result.get('error', 'Unknown error occurred')
+            embed = discord.Embed(
+                title="❌ Full Setup Failed",
+                description=f"```{error_msg[:500]}```",
+                color=COLORS["ERROR"]
+            )
+            
+            # Add troubleshooting info
+            embed.add_field(
+                name="🔧 Troubleshooting",
+                value="1. Check internet connection\n2. Verify Google Sheets permissions\n3. Try `!sheetsinfo` for connection status\n4. Contact admin if issues persist",
+                inline=False
+            )
+            
+            await ctx.send(embed=embed)
+
+    except Exception as e:
+        logger.exception("Error in full_sync_and_setup")
+        await ctx.send(f"❌ **Critical Error:** {str(e)[:200]}\n\nCheck logs for details and contact admin.")
+
+
+# =============================================================================
+# 🚨 FIX 7: Create New sheets/error_handler.py for Better Error Management
+# =============================================================================
+
+"""
+Create a new file: sheets/error_handler.py
+"""
+
+import gspread
+from utils.logger import setup_logger
+import time
+from functools import wraps
+
+logger = setup_logger("sheets_errors")
+
+class SheetsErrorHandler:
+    """Centralized error handling for Google Sheets operations."""
+    
+    @staticmethod
+    def handle_rate_limit(func):
+        """Decorator to handle Google Sheets API rate limiting."""
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            max_retries = 3
+            base_delay = 2
+            
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                    
+                except gspread.exceptions.APIError as e:
+                    if "RATE_LIMIT_EXCEEDED" in str(e) or "Quota exceeded" in str(e):
+                        if attempt < max_retries - 1:
+                            delay = base_delay * (2 ** attempt)  # Exponential backoff
+                            logger.warning(f"⚠️ Rate limit hit, retrying in {delay}s... (attempt {attempt + 1}/{max_retries})")
+                            time.sleep(delay)
+                            continue
+                        else:
+                            logger.error(f"❌ Rate limit exceeded after {max_retries} attempts")
+                            return False
+                    else:
+                        logger.error(f"❌ Google Sheets API error: {e}")
+                        return False
+                        
+                except Exception as e:
+                    logger.error(f"❌ Unexpected error in {func.__name__}: {e}")
+                    return False
+                    
+            return False
+        return wrapper
+    
+    @staticmethod
+    def validate_data(data, expected_type=dict):
+        """Validate data before sending to sheets."""
+        if data is None:
+            logger.warning("⚠️ Attempting to sync None data to sheets")
+            return False
+            
+        if not isinstance(data, expected_type):
+            logger.warning(f"⚠️ Data type mismatch: expected {expected_type}, got {type(data)}")
+            return False
+            
+        return True
+    
+    @staticmethod
+    def log_sync_operation(operation_name, success, items_count=None, error=None):
+        """Standardized logging for sync operations."""
+        if success:
+            count_msg = f" ({items_count} items)" if items_count is not None else ""
+            logger.info(f"✅ {operation_name} sync completed{count_msg}")
+        else:
+            error_msg = f": {error}" if error else ""
+            logger.error(f"❌ {operation_name} sync failed{error_msg}")
+
+
+# =============================================================================
+# 🚨 FIX 8: Environment Variables Check Script
+# =============================================================================
+
+"""
+Create a new file: scripts/check_sheets_config.py for debugging
+"""
+
+import os
+import json
+from utils.logger import setup_logger
+
+logger = setup_logger("config_check")
+
+def check_sheets_configuration():
+    """Comprehensive check of Google Sheets configuration."""
+    
+    print("🔍 GOOGLE SHEETS CONFIGURATION CHECK")
+    print("=" * 50)
+    
+    issues = []
+    
+    # Check credentials
+    creds_env = os.getenv('GOOGLE_SHEETS_CREDENTIALS')
+    if creds_env:
+        print("✅ GOOGLE_SHEETS_CREDENTIALS environment variable is set")
+        try:
+            creds_dict = json.loads(creds_env)
+            required_keys = ["type", "project_id", "private_key_id", "private_key", "client_email", "client_id"]
+            missing_keys = [key for key in required_keys if key not in creds_dict]
+            
+            if missing_keys:
+                print(f"❌ Missing required keys in credentials: {missing_keys}")
+                issues.append("Invalid credentials format")
+            else:
+                print("✅ Credentials JSON format appears valid")
+                
+        except json.JSONDecodeError:
+            print("❌ GOOGLE_SHEETS_CREDENTIALS is not valid JSON")
+            issues.append("Invalid credentials JSON")
+    else:
+        print("❌ GOOGLE_SHEETS_CREDENTIALS environment variable not set")
+        
+        # Check for credentials file
+        if os.path.exists('credentials.json'):
+            print("✅ Found credentials.json file as fallback")
+        else:
+            print("❌ No credentials.json file found")
+            issues.append("No credentials configured")
+    
+    # Check spreadsheet ID
+    sheets_id = os.getenv('GOOGLE_SHEETS_ID')
+    if sheets_id:
+        print(f"✅ GOOGLE_SHEETS_ID is set: {sheets_id}")
+    else:
+        print("⚠️ GOOGLE_SHEETS_ID not set (will create new spreadsheet)")
+    
+    # Test connection
+    try:
+        from sheets import SheetsManager
+        print("\n🔗 TESTING CONNECTION...")
+        
+        sheets = SheetsManager()
+        if sheets.is_connected():
+            print("✅ Successfully connected to Google Sheets!")
+            if sheets.spreadsheet:
+                print(f"📊 Spreadsheet URL: {sheets.spreadsheet.url}")
+                
+                # List worksheets
+                try:
+                    worksheets = [ws.title for ws in sheets.spreadsheet.worksheets()]
+                    print(f"📋 Available worksheets: {', '.join(worksheets)}")
+                except Exception as e:
+                    print(f"⚠️ Could not list worksheets: {e}")
+                    
+        else:
+            print("❌ Failed to connect to Google Sheets")
+            status = sheets.get_connection_status()
+            print(f"Connection status: {status}")
+            issues.append("Connection failed")
+            
+    except Exception as e:
+        print(f"❌ Error testing connection: {e}")
+        issues.append(f"Connection test failed: {e}")
+    
+    # Summary
+    print("\n📋 SUMMARY")
+    print("=" * 20)
+    
+    if not issues:
+        print("✅ All checks passed! Google Sheets integration should work.")
+    else:
+        print("❌ Issues found:")
+        for i, issue in enumerate(issues, 1):
+            print(f"  {i}. {issue}")
+        
+        print("\n🔧 TROUBLESHOOTING:")
+        print("1. Ensure you have a Google Service Account")
+        print("2. Download the service account key (JSON file)")
+        print("3. Set GOOGLE_SHEETS_CREDENTIALS with the JSON content")
+        print("4. Optionally set GOOGLE_SHEETS_ID to reuse existing spreadsheet")
+        print("5. Restart the bot after setting environment variables")
+
+if __name__ == "__main__":
+    check_sheets_configuration()
+
+
+# =============================================================================
+# 🚨 CRITICAL SUMMARY - ISSUES IDENTIFIED AND FIXED
+# =============================================================================
+
+"""
+MAIN ISSUES THAT WERE CAUSING FAILURES:
+
+1. ❌ MISSING IMPORTS: 
+   - services/sheets_manager.py was missing 'import time'
+   - This caused all rate limiting to fail
+
+2. ❌ MISSING METHODS:
+   - sync_results_history() was missing from SheetsManager
+   - sync_player_stats() was missing from SheetsManager  
+   - sync_notification_preferences() was missing
+   - sync_events_history() was missing
+
+3. ❌ INHERITANCE ISSUES:
+   - DataSync class wasn't properly inheriting all methods
+   - sheets/__init__.py was aliasing incorrectly
+
+4. ❌ ERROR HANDLING:
+   - Poor error handling in authentication
+   - No graceful degradation when sheets fail
+   - Missing detailed error messages for debugging
+
+5. ❌ RATE LIMITING:
+   - Aggressive API calls without proper delays
+   - No exponential backoff for retries
+   - Batch operations were hitting API limits
+
+6. ❌ DATA FORMAT ISSUES:
+   - Inconsistent data type handling
+   - Missing validation before sync operations
+   - Poor error recovery from bad data
+
+🔧 INSTALLATION INSTRUCTIONS:
+
+1. Copy all the fixed code above into respective files
+2. Add the missing import statements
+3. Add the new error_handler.py file
+4. Add the configuration check script
+5. Restart the bot
+6. Run !sheetsinfo to verify connection
+7. Run !fullsync to test complete integration
+
+The integration should now work properly with automatic data uploads!
+"""
