@@ -14,6 +14,7 @@ from config.constants import (  # Fixed import
 )
 from utils.helpers import Helpers
 from utils.logger import setup_logger
+from utils.validators import validate_days
 
 logger = setup_logger("admin_actions")
 
@@ -84,6 +85,8 @@ class AdminActions(commands.Cog):
 
     @commands.command()
     @commands.has_any_role(*ADMIN_ROLE_IDS)
+    @commands.cooldown(1, 30, commands.BucketType.user)
+    @commands.cooldown(3, 300, commands.BucketType.guild)
     async def block(self, ctx, member: discord.Member, days: int):
         """
         Block a user from signing up for RoW events.
@@ -102,6 +105,12 @@ class AdminActions(commands.Cog):
             - Sends confirmation to admin channel
             - DMs bot admin
         """
+        # Validate inputs
+        valid_days, error = validate_days(days)
+        if not valid_days:
+            await ctx.send(MESSAGES["INVALID_INPUT"].format(detail=error))
+            return
+
         user_id = str(member.id)
         blocked_by = ctx.author.name
         blocked_at = datetime.utcnow().isoformat()
@@ -145,6 +154,7 @@ class AdminActions(commands.Cog):
 
     @commands.command()
     @commands.has_any_role(*ADMIN_ROLE_IDS)
+    @commands.cooldown(1, 30, commands.BucketType.user)
     async def unblock(self, ctx, member: discord.Member):
         """
         Manually unblock a user from RoW events.

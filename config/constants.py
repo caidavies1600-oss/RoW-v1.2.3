@@ -214,13 +214,11 @@ Includes error messages, command help, and common notifications."""
 # Common message templates
 MESSAGES = {
     "NO_PERMISSION": "❌ You don't have permission to use this command.",
-    "EVENT_NOT_AVAILABLE": "❌ Event system not available.",
-    "SIGNUPS_LOCKED": "🔒 Signups are currently locked! Teams have been finalized for this week.",
-    "USER_BLOCKED": "🚫 You are currently blocked from signing up.",
-    "TEAM_FULL": "❌ Team is full ({max_size}/{max_size}).",
-    "ALREADY_IN_TEAM": "✅ You're already in that team!",
-    "NOT_IN_ANY_TEAM": "ℹ️ You're not signed up for any team.",
-    "IGN_NOT_SET": "⚠️ You haven't set your IGN yet. Use `!setign YourName`.",
+    "INVALID_INPUT": "❌ Invalid input: {detail}",
+    "SYSTEM_ERROR": "❌ System error occurred. Please try again.",
+    "COOLDOWN": "⏰ Command on cooldown. Try again in {time:.1f}s",
+    "SUCCESS": "✅ {detail}",
+    "WARNING": "⚠️ {detail}",
 }
 
 # Command help descriptions
@@ -288,3 +286,8 @@ FEATURES = {
     "RATE_LIMITING": True,
     "HEALTH_MONITORING": True,
 }
+
+# System limits
+MAX_TEAM_SIZE = 40
+MAX_BAN_DAYS = 365
+DEFAULT_SLEEP_TIME = 300

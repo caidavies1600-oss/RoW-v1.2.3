@@ -21,6 +21,7 @@ from typing import Optional
 
 import discord
 
+from config.constants import MAX_BAN_DAYS
 from config.settings import ADMIN_ROLE_IDS, MAIN_TEAM_ROLE_ID
 
 
@@ -135,23 +136,25 @@ class Validators:
         return team_mapping.get(team.lower().strip())
 
     @staticmethod
-    def validate_days(days: int) -> tuple[bool, Optional[str]]:
-        """
-        Validate day count for blocking users.
+    def validate_days(days: int) -> tuple[bool, str]:
+        """Validate number of days for blocking users."""
+        try:
+            days = int(days)
+            if days < 1:
+                return False, "Days must be at least 1"
+            if days > MAX_BAN_DAYS:
+                return False, f"Days cannot exceed {MAX_BAN_DAYS}"
+            return True, None
+        except ValueError:
+            return False, "Days must be a valid number"
 
-        Args:
-            days: Number of days to validate
-
-        Returns:
-            tuple: (valid: bool, error_message: Optional[str])
-
-        Validates:
-        - Positive integer
-        - Maximum 365 days
-        - Non-zero value
-        """
-        if days < 1:
-            return False, "Days must be at least 1"
-        if days > 365:
-            return False, "Days cannot exceed 365"
+    @staticmethod
+    def validate_user_id(user_id: str) -> tuple[bool, str]:
+        """Validate Discord user ID format."""
+        if not isinstance(user_id, str):
+            user_id = str(user_id)
+        if not user_id.isdigit():
+            return False, "User ID must contain only numbers"
+        if len(user_id) < 17 or len(user_id) > 20:
+            return False, "Invalid user ID length"
         return True, None

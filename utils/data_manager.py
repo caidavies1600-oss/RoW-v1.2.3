@@ -18,8 +18,11 @@ Components:
 - Data validation and recovery
 """
 
+import asyncio
 import json
 import os
+import shutil
+from contextlib import asynccontextmanager
 from typing import Any
 
 from utils.logger import setup_logger
@@ -47,6 +50,7 @@ class DataManager:
     def __init__(self):
         self.sheets_manager = None
         self.player_stats = {}
+        self.file_locks = {}
         self._initialize_sheets()
 
     def _initialize_sheets(self):
@@ -325,3 +329,70 @@ class DataManager:
         except Exception as e:
             logger.error(f"Error loading {filepath}: {e}")
             return default
+
+    @asynccontextmanager
+    async def file_lock(self, filepath):
+        """Thread-safe file access."""
+        if filepath not in self.file_locks:
+            self.file_locks[filepath] = asyncio.Lock()
+
+        async with self.file_locks[filepath]:
+            yield
+
+    async def safe_json_operation(self, filepath, operation):
+        """Execute JSON operation with locking and error handling."""
+        async with self.file_lock(filepath):
+            try:
+                return await operation()
+            except json.JSONDecodeError as e:
+                logger.error(f"Corrupt JSON in {filepath}: {e}")
+                await self.create_backup_and_reset(filepath)
+                return {}
+            except Exception as e:
+                logger.error(f"Failed to access {filepath}: {e}")
+                return {}
+
+    async def atomic_save_json(self, filepath: str, data: Any) -> bool:
+        """Save JSON data atomically with backup."""
+        temp_file = f"{filepath}.tmp"
+        backup_file = f"{filepath}.bak"
+
+        try:
+            # Save to temporary file
+            with open(temp_file, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=4, ensure_ascii=False)
+
+            # Create backup of existing file
+            if os.path.exists(filepath):
+                shutil.copy2(filepath, backup_file)
+
+            # Atomic replace
+            shutil.move(temp_file, filepath)
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to save {filepath}: {e}")
+            if os.path.exists(temp_file):
+                os.remove(temp_file)
+            return False
+
+    async def create_backup_and_reset(self, filepath):
+        """Create a backup of the corrupt file and reset it."""
+        backup_file = f"{filepath}.bak"
+
+        try:
+            # Remove existing backup if present
+            if os.path.exists(backup_file):
+                os.remove(backup_file)
+
+            # Backup the corrupt file
+            shutil.copy2(filepath, backup_file)
+            logger.info(f"Backup created for {filepath}")
+
+            # Reset the file with empty data
+            with open(filepath, "w", encoding="utf-8") as f:
+                json.dump({}, f, indent=4, ensure_ascii=False)
+            logger.info(f"Reset {filepath} to empty state")
+
+        except Exception as e:
+            logger.error(f"Failed to create backup or reset {filepath}: {e}")
