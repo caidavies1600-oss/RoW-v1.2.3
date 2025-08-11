@@ -1,3 +1,6 @@
+import os
+import json
+import shutil
 from typing import Any
 
 from utils.file_ops import FileOps
@@ -118,6 +121,63 @@ class IntegratedDataManager:
         except Exception as e:
             logger.error(f"Failed to update player stats: {e}")
             return False
+
+
+    async def atomic_save_json(self, filepath: str, data: Any) -> bool:
+        """Save JSON data atomically with backup."""
+        temp_file = f"{filepath}.tmp"
+        backup_file = f"{filepath}.bak"
+
+        try:
+            # Save to temporary file
+            with open(temp_file, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=4, ensure_ascii=False)
+
+            # Create backup of existing file
+            if os.path.exists(filepath):
+                shutil.copy2(filepath, backup_file)
+
+            # Atomic replace
+            shutil.move(temp_file, filepath)
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to save {filepath}: {e}")
+            if os.path.exists(temp_file):
+                os.remove(temp_file)
+            return False
+
+    async def _live_sync_file(self, filepath: str, data: Any):
+        """Live sync specific file types to Google Sheets."""
+        try:
+            filename = os.path.basename(filepath)
+
+            if filename == "events.json" and self.sheets_manager:
+                await self._safe_sync_operation(lambda: self.sheets_manager.sync_current_teams(data))
+                logger.info("🔄 Synced events to Google Sheets")
+            elif filename == "events_history.json" and self.sheets_manager:
+                await self._safe_sync_operation(lambda: self.sheets_manager.sync_events_history(data))
+                logger.info("🔄 Synced events history to Google Sheets")
+            elif filename == "blocked_users.json" and self.sheets_manager:
+                await self._safe_sync_operation(lambda: self.sheets_manager.sync_blocked_users(data))
+                logger.info("🔄 Synced blocked users to Google Sheets")
+            elif filename == "event_results.json" and self.sheets_manager:
+                await self._safe_sync_operation(lambda: self.sheets_manager.sync_results_history(data))
+                logger.info("🔄 Synced results to Google Sheets")
+
+        except Exception as e:
+            logger.warning(f"Failed to sync {filepath} to sheets: {e}")
+
+    async def _safe_sync_operation(self, sync_func):
+        """Safely execute a sync operation with error handling."""
+        try:
+            # Run the sync operation in a thread pool to avoid blocking
+            import asyncio
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, sync_func)
+        except Exception as e:
+            logger.error(f"Sync operation failed: {e}")
+            raise
 
 
 # Global instance

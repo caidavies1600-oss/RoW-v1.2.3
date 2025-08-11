@@ -135,7 +135,7 @@ class EventManager(commands.Cog, name="EventManager"):
         if len(history) > 50:
             history = history[-50:]
 
-        if await self.data_manager.save_data(FILES["HISTORY"], history):
+        if await self.data_manager.save_data(FILES["HISTORY"], history, sync_to_sheets=True):
             logger.info("✅ Event history updated")
         else:
             logger.error("❌ Failed to save events_history.json")
