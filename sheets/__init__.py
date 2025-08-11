@@ -21,12 +21,13 @@ from .base_manager import RateLimitedSheetsManager
 class SheetsManager(RateLimitedSheetsManager):
     """Enhanced SheetsManager with all required methods."""
 
-    async def scan_and_sync_all_members(self, bot):
+    async def scan_and_sync_all_members(self, bot, guild_id=None):
         """
         Scan all Discord members and sync to Google Sheets.
 
         Args:
             bot: Discord bot instance
+            guild_id: Optional guild ID to scan (if None, scans all guilds)
 
         Returns:
             dict: Sync results with success status and member count
@@ -39,9 +40,17 @@ class SheetsManager(RateLimitedSheetsManager):
             logger = setup_logger("sheets_sync")
             logger.info("🔄 Syncing Discord members to Google Sheets...")
 
-            # Get all members from all guilds
+            # Get members from specified guild or all guilds
             all_members = []
-            for guild in bot.guilds:
+            if guild_id:
+                guild = bot.get_guild(guild_id)
+                if not guild:
+                    return {"success": False, "error": f"Guild {guild_id} not found"}
+                guilds_to_scan = [guild]
+            else:
+                guilds_to_scan = bot.guilds
+
+            for guild in guilds_to_scan:
                 for member in guild.members:
                     if not member.bot:  # Exclude bots
                         all_members.append({
