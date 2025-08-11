@@ -39,7 +39,8 @@ class IntegratedDataManager:
     def __init__(self):
         if not self._initialized:
             self.file_ops = FileOps()
-            self.sheets_manager = SheetsManager()
+            # Initialize with None to let SheetsManager handle spreadsheet_id from environment
+            self.sheets_manager = SheetsManager() if SHEETS_AVAILABLE else None
             self._initialized = True
 
     async def save_data(

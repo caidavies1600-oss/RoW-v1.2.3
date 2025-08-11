@@ -38,9 +38,10 @@ class RateLimitedSheetsManager:
     - Error handling with detailed logging
     """
 
-    def __init__(self):
+    def __init__(self, spreadsheet_id=None):
         self.gc = None
         self.spreadsheet = None
+        self.spreadsheet_id = spreadsheet_id
         self.request_count = 0
         self.last_request_time = 0
         self.min_request_interval = 0.1  # 100ms between requests
@@ -80,11 +81,12 @@ class RateLimitedSheetsManager:
             self.gc = gspread.authorize(creds)
 
             # Open the spreadsheet
-            spreadsheet_id = os.getenv("GOOGLE_SHEETS_ID")
+            spreadsheet_id = self.spreadsheet_id or os.getenv("GOOGLE_SHEETS_ID")
             if spreadsheet_id:
                 self.spreadsheet = self.rate_limited_request(
                     lambda: self.gc.open_by_key(spreadsheet_id)
                 )
+                self.spreadsheet_id = spreadsheet_id
                 logger.info(
                     f"✅ Connected to existing spreadsheet: {self.spreadsheet.url}"
                 )
@@ -92,6 +94,7 @@ class RateLimitedSheetsManager:
                 self.spreadsheet = self.rate_limited_request(
                     lambda: self.gc.create("Discord RoW Bot Data")
                 )
+                self.spreadsheet_id = self.spreadsheet.id
                 logger.info(f"✅ Created new spreadsheet: {self.spreadsheet.url}")
                 logger.warning(
                     "⚠️ Set GOOGLE_SHEETS_ID environment variable to reuse this spreadsheet"
@@ -895,6 +898,87 @@ class RateLimitedSheetsManager:
 
         except Exception as e:
             logger.warning(f"⚠️ Failed to apply results formatting: {e}")
+
+    def sync_events_history(self, history_data):
+        """Sync events history to Google Sheets."""
+        if not self.is_connected():
+            return False
+
+        try:
+            worksheet = self.get_or_create_worksheet("Events History", 100, 6)
+            if not worksheet:
+                return False
+
+            # Clear and set headers
+            self.rate_limited_request(worksheet.clear)
+            headers = [
+                "📅 Timestamp",
+                "🏆 Main Team",
+                "🥈 Team 2", 
+                "🥉 Team 3",
+                "📊 Total Players",
+                "📝 Notes"
+            ]
+            self.rate_limited_request(worksheet.append_row, headers)
+
+            # Add history data
+            for entry in history_data:
+                timestamp = entry.get("timestamp", "Unknown")
+                teams = entry.get("teams", {})
+                
+                main_team = len(teams.get("main_team", []))
+                team_2 = len(teams.get("team_2", []))
+                team_3 = len(teams.get("team_3", []))
+                total = main_team + team_2 + team_3
+                
+                row = [timestamp, main_team, team_2, team_3, total, ""]
+                self.rate_limited_request(worksheet.append_row, row)
+
+            logger.info("✅ Synced events history to Google Sheets")
+            return True
+
+        except Exception as e:
+            logger.error(f"❌ Failed to sync events history: {e}")
+            return False
+
+    def sync_blocked_users(self, blocked_data):
+        """Sync blocked users to Google Sheets."""
+        if not self.is_connected():
+            return False
+
+        try:
+            worksheet = self.get_or_create_worksheet("Blocked Users", 50, 5)
+            if not worksheet:
+                return False
+
+            # Clear and set headers
+            self.rate_limited_request(worksheet.clear)
+            headers = [
+                "👤 User ID",
+                "📝 Display Name", 
+                "🚫 Blocked Date",
+                "👮 Blocked By",
+                "📋 Reason"
+            ]
+            self.rate_limited_request(worksheet.append_row, headers)
+
+            # Add blocked users data
+            for user_id, user_data in blocked_data.items():
+                row = [
+                    user_id,
+                    user_data.get("name", "Unknown"),
+                    user_data.get("blocked_date", "Unknown"),
+                    user_data.get("blocked_by", "Unknown"),
+                    user_data.get("reason", "No reason provided")
+                ]
+                self.rate_limited_request(worksheet.append_row, row)
+
+            logger.info("✅ Synced blocked users to Google Sheets")
+            return True
+
+        except Exception as e:
+            logger.error(f"❌ Failed to sync blocked users: {e}")
+            return False
 
     def create_all_templates(self, all_data):
         """Create all sheet templates for manual data entry."""
