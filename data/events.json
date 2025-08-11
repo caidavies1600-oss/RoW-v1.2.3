@@ -1,7 +1,7 @@
 {
-  "main_team": [],
-  "team_2": [
-    "Demon"
-  ],
-  "team_3": []
+    "main_team": [],
+    "team_2": [],
+    "team_3": [
+        "Demon"
+    ]
 }
