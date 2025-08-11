@@ -7,9 +7,15 @@ from discord.ext import commands
 
 from cogs.events.signup_view import EventSignupView
 from config.constants import ALERT_CHANNEL_ID, COLORS, EMOJIS, FILES, TEAM_DISPLAY
-from config.settings import DEFAULT_TIMES, MAX_TEAM_SIZE, ROW_NOTIFICATION_ROLE_ID, MAIN_TEAM_ROLE_ID, RESTRICT_MAIN_TEAM
-from utils.integrated_data_manager import data_manager
+from config.settings import (
+    DEFAULT_TIMES,
+    MAIN_TEAM_ROLE_ID,
+    MAX_TEAM_SIZE,
+    RESTRICT_MAIN_TEAM,
+    ROW_NOTIFICATION_ROLE_ID,
+)
 from utils.helpers import Helpers
+from utils.integrated_data_manager import data_manager
 from utils.logger import setup_logger
 from utils.validators import Validators
 
@@ -184,7 +190,10 @@ class EventManager(commands.Cog, name="EventManager"):
         return profile_cog.get_ign(user) if profile_cog else user.display_name
 
     @commands.command(name="startevent")
-    @commands.check(lambda ctx: isinstance(ctx.author, discord.Member) and Validators.is_admin(ctx.author))
+    @commands.check(
+        lambda ctx: isinstance(ctx.author, discord.Member)
+        and Validators.is_admin(ctx.author)
+    )
     async def start_event(self, ctx):
         """
         Start a new event, resetting signups and notifying users.
@@ -290,7 +299,10 @@ class EventManager(commands.Cog, name="EventManager"):
         await ctx.send(embed=embed)
 
     @commands.command(name="locksignups")
-    @commands.check(lambda ctx: isinstance(ctx.author, discord.Member) and Validators.is_admin(ctx.author))
+    @commands.check(
+        lambda ctx: isinstance(ctx.author, discord.Member)
+        and Validators.is_admin(ctx.author)
+    )
     async def lock_signups_command(self, ctx):
         """
         Manually lock signups.
@@ -319,7 +331,10 @@ class EventManager(commands.Cog, name="EventManager"):
         await ctx.send("✅ Signups have been locked.")
 
     @commands.command(name="unlocksignups")
-    @commands.check(lambda ctx: isinstance(ctx.author, discord.Member) and Validators.is_admin(ctx.author))
+    @commands.check(
+        lambda ctx: isinstance(ctx.author, discord.Member)
+        and Validators.is_admin(ctx.author)
+    )
     async def unlock_signups_command(self, ctx):
         """
         Manually unlock signups.
@@ -444,19 +459,13 @@ class EventManager(commands.Cog, name="EventManager"):
         """
         try:
             # Reset all team signups to empty lists
-            self.events = {
-                "main_team": [],
-                "team_2": [],
-                "team_3": []
-            }
-            
+            self.events = {"main_team": [], "team_2": [], "team_3": []}
+
             # Save the cleared state
             success = await self.data_manager.save_data(
-                FILES["EVENTS"],
-                self.events,
-                sync_to_sheets=True
+                FILES["EVENTS"], self.events, sync_to_sheets=True
             )
-            
+
             if success:
                 logger.info("✅ Test signups cleared successfully")
             return success
