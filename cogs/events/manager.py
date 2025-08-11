@@ -436,20 +436,21 @@ class EventManager(commands.Cog, name="EventManager"):
 
     async def clear_all_signups(self) -> bool:
         """
-        Clear all event signups and persist changes.
+        Clear all event signups from storage.
+        Used for testing and emergency resets.
 
         Returns:
             bool: Success status of clearing operation
         """
         try:
-            # Reset all team signups
+            # Reset all team signups to empty lists
             self.events = {
                 "main_team": [],
                 "team_2": [],
                 "team_3": []
             }
             
-            # Persist cleared state
+            # Save the cleared state
             success = await self.data_manager.save_data(
                 FILES["EVENTS"],
                 self.events,
@@ -457,14 +458,11 @@ class EventManager(commands.Cog, name="EventManager"):
             )
             
             if success:
-                logger.info("✅ All event signups cleared successfully")
-            else:
-                logger.error("Failed to save cleared event state")
-            
+                logger.info("✅ Test signups cleared successfully")
             return success
 
         except Exception as e:
-            logger.error(f"Failed to clear all signups: {e}")
+            logger.error(f"Failed to clear signups: {e}")
             return False
 
 

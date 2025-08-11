@@ -17,7 +17,7 @@ Features:
 """
 
 import re
-from typing import Optional
+from typing import Optional, Tuple
 
 import discord
 
@@ -136,7 +136,7 @@ class Validators:
         return team_mapping.get(team.lower().strip())
 
     @staticmethod
-    def validate_days(days: int) -> tuple[bool, str]:
+    def validate_days(days: int) -> Tuple[bool, str]:
         """
         Validate the number of days for blocking a user.
         
@@ -144,17 +144,17 @@ class Validators:
             days: Number of days to validate
             
         Returns:
-            tuple[bool, str]: (is_valid, error_message)
+            Tuple[bool, str]: (is_valid, error_message)
         """
         try:
-            days = int(days)
+            days = int(days)  # Convert to int in case passed as string
             if days < 1:
-                return False, "Duration must be at least 1 day."
-            if days > MAX_BAN_DAYS:
-                return False, f"Duration cannot exceed {MAX_BAN_DAYS} days."
+                return False, "Days must be at least 1"
+            if days > MAX_BAN_DAYS:  # Use constant instead of hardcoded 365
+                return False, f"Days cannot exceed {MAX_BAN_DAYS}"
             return True, ""
         except ValueError:
-            return False, "Duration must be a whole number."
+            return False, "Days must be a whole number"
 
     @staticmethod
     def validate_team_size(team: list) -> tuple[bool, str]:

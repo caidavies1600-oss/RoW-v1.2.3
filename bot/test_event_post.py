@@ -120,10 +120,9 @@ async def post_test_event():
             # Keep bot running for 5 minutes to allow testing
             await asyncio.sleep(300)  # 5 minutes
 
-            # Clear test signups before closing
-            await event_manager.clear_all_signups()
-            logger.info("✅ Test signups cleared")
-
+            # Close the bot without clearing signups
+            # TODO: Implement proper cleanup if needed
+            logger.info("✅ Test completed")
             await bot.close()
 
         except Exception as e:

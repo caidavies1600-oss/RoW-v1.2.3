@@ -30,6 +30,20 @@ from utils.logger import setup_logger
 logger = setup_logger("data_manager")
 
 
+try:
+    from services.sheets_manager import SheetsManager
+except ImportError:
+    class SheetsManager:
+        def __init__(self):
+            self.spreadsheet = None
+
+        def is_connected(self):
+            return False
+
+        def load_data_from_sheets(self):
+            return None
+
+
 class DataManager:
     """
     Enhanced data manager with Google Sheets as primary data source.
@@ -116,21 +130,8 @@ class DataManager:
 
     def update_player_stats(
         self, user_id: str, team: str, result: str, user_name: str = ""
-    ):
-        """
-        Update player statistics for wins/losses per team.
-
-        Args:
-            user_id: Discord user ID
-            team: Team identifier (main_team, team_2, team_3)
-            result: Match result (win/loss)
-            user_name: Optional display name
-
-        Updates:
-            - Win/loss records per team
-            - Player name if provided
-            - Creates new player entry if needed
-        """
+    ) -> None:
+        """Update player statistics for wins/losses per team."""
         user_id = str(user_id)
 
         if user_id not in self.player_stats:
@@ -153,11 +154,9 @@ class DataManager:
                 },
             }
 
-        # Update name if provided
         if user_name:
             self.player_stats[user_id]["name"] = user_name
 
-        # Update team result
         if team in self.player_stats[user_id]["team_results"]:
             if result == "win":
                 self.player_stats[user_id]["team_results"][team]["wins"] += 1
@@ -395,4 +394,5 @@ class DataManager:
             logger.info(f"Reset {filepath} to empty state")
 
         except Exception as e:
+            logger.error(f"Failed to create backup or reset {filepath}: {e}")
             logger.error(f"Failed to create backup or reset {filepath}: {e}")

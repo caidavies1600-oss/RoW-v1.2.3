@@ -7,6 +7,7 @@ import discord
 from discord.ext import commands
 
 from config.constants import DEFAULT_TIMES, TEAM_DISPLAY
+from config.settings import BOT_ADMIN_USER_ID
 from utils.data_manager import DataManager
 from utils.logger import setup_logger
 
@@ -458,6 +459,127 @@ class MentionHandler(commands.Cog):
         # Default fallback
         return "general"
 
+    async def _handle_team_command(self, message: discord.Message, content: str) -> bool:
+        """Handle team-related commands through mentions."""
+        try:
+            words = content.lower().split()
+            team_map = {
+                "1": "main_team",
+                "2": "team_2",
+                "3": "team_3",
+                "main": "main_team",
+                "second": "team_2",
+                "third": "team_3"
+            }
+
+            # Find team reference
+            team_key = None
+            for word in words:
+                if word in team_map:
+                    team_key = team_map[word]
+                    break
+
+            if not team_key:
+                return False
+
+            event_cog = self.bot.get_cog("EventManager")
+            if not event_cog:
+                await message.reply("❌ Event system unavailable")
+                return True
+
+            # Handle different team commands
+            if "stats" in words or "info" in words:
+                # Show team stats
+                team = event_cog.events.get(team_key, [])
+                team_display = TEAM_DISPLAY.get(team_key, team_key)
+                embed = discord.Embed(
+                    title=f"{team_display} Status",
+                    description=f"**{len(team)} members signed up**",
+                    color=discord.Color.blue()
+                )
+                if team:
+                    embed.add_field(name="Members", value="\n".join(team))
+                await message.reply(embed=embed)
+                return True
+
+            elif "clear" in words and message.author.id == BOT_ADMIN_USER_ID:
+                # Clear team signups (admin only)
+                event_cog.events[team_key] = []
+                await event_cog.save_events()
+                await message.reply(f"✅ Cleared {TEAM_DISPLAY[team_key]} signups")
+                return True
+
+            elif "time" in words or "when" in words:
+                # Show team time
+                times = event_cog.event_times
+                if times and team_key in times:
+                    await message.reply(f"⏰ {TEAM_DISPLAY[team_key]} plays at `{times[team_key]}`")
+                else:
+                    await message.reply("❌ No time set for this team")
+                return True
+
+        except Exception as e:
+            logger.error(f"Error handling team command: {e}")
+            return False
+
+        return False
+
+    async def _parse_command(self, message: discord.Message, content: str) -> bool:
+        """Parse and execute commands from mentions."""
+        try:
+            # Try team commands first
+            if await self._handle_team_command(message, content):
+                return True
+
+            words = content.lower().split()
+            if not words:
+                return False
+
+            # Team stats commands
+            if "team" in words and any(str(num) in words for num in [1, 2, 3]):
+                team_num = next(str(num) for num in [1, 2, 3] if str(num) in words)
+                team_key = f"team_{team_num}" if team_num != "1" else "main_team"
+
+                if "stats" in words or "status" in words:
+                    event_cog = self.bot.get_cog("EventManager")
+                    if event_cog:
+                        team = event_cog.events.get(team_key, [])
+                        team_display = TEAM_DISPLAY.get(team_key, team_key)
+                        response = f"**{team_display}** has {len(team)} members signed up"
+                        await message.reply(response)
+                        return True
+
+            # Admin commands (for bot owner only)
+            if message.author.id == BOT_ADMIN_USER_ID:
+                # Ban command: @bot ban @user 5
+                if "ban" in words or "block" in words:
+                    mentions = message.mentions[1:]  # Skip bot mention
+                    if mentions and any(w.isdigit() for w in words):
+                        days = next(int(w) for w in words if w.isdigit())
+                        user = mentions[0]
+                        admin_cog = self.bot.get_cog("AdminActions")
+                        if admin_cog:
+                            ctx = await self.bot.get_context(message)
+                            await admin_cog.block(ctx, user, days)
+                            return True
+
+                # Unban command: @bot unban @user
+                if "unban" in words or "unblock" in words:
+                    mentions = message.mentions[1:]  # Skip bot mention
+                    if mentions:
+                        user = mentions[0]
+                        admin_cog = self.bot.get_cog("AdminActions")
+                        if admin_cog:
+                            ctx = await self.bot.get_context(message)
+                            await admin_cog.unblock(ctx, user)
+                            return True
+
+            return False
+
+        except Exception as e:
+            logger.error(f"Error parsing command: {e}")
+            return False
+
     @commands.Cog.listener()
     async def on_message(self, message):
         """Handle @ mentions to the bot."""
@@ -473,22 +595,18 @@ class MentionHandler(commands.Cog):
         if not any(mention.id == self.bot.user.id for mention in message.mentions):
             return
 
-        # Don't respond to commands (they start with !)
-        if message.content.strip().startswith("!"):
-            return
-
         try:
-            # Clean the message content (remove mentions)
+            # Clean message content
             content = message.content
             for mention in message.mentions:
-                content = content.replace(f"<@{mention.id}>", "").replace(
-                    f"<@!{mention.id}>", ""
-                )
-            content = content.strip().lower()
+                content = content.replace(f"<@{mention.id}>", "").replace(f"<@!{mention.id}>", "")
+            content = content.strip()
 
-            logger.info(f"Bot mentioned by {message.author} with: '{content}'")
+            # Try to parse as command first
+            if await self._parse_command(message, content):
+                return
 
-            # Analyze message intent first
+            # If not a command, handle as regular mention
             intent = self._analyze_message_intent(content)
             logger.info(f"Message intent detected: {intent}")
 

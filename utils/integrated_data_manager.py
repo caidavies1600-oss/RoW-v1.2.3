@@ -66,6 +66,59 @@ class IntegratedDataManager:
             logger.error(f"Failed to load data: {e}")
             return default
 
+    async def update_player_stats(
+        self, player_id: str, team_key: str, result: str, player_name: str = ""
+    ) -> bool:
+        """
+        Update player statistics after a match.
+
+        Args:
+            player_id: Player's Discord ID
+            team_key: Team identifier
+            result: 'win' or 'loss'
+            player_name: Player's in-game name
+
+        Returns:
+            bool: Success status of update operation
+        """
+        try:
+            stats = await self.load_data("data/player_stats.json", {})
+
+            # Initialize player entry if needed
+            player_id = str(player_id)
+            if player_id not in stats:
+                stats[player_id] = {
+                    "name": player_name,
+                    "team_results": {
+                        "main_team": {"wins": 0, "losses": 0},
+                        "team_2": {"wins": 0, "losses": 0},
+                        "team_3": {"wins": 0, "losses": 0},
+                    },
+                    "absents": 0,
+                    "blocked": False,
+                }
+
+            # Update name if provided
+            if player_name:
+                stats[player_id]["name"] = player_name
+
+            # Update team result
+            if team_key in stats[player_id]["team_results"]:
+                if result == "win":
+                    stats[player_id]["team_results"][team_key]["wins"] += 1
+                elif result == "loss":
+                    stats[player_id]["team_results"][team_key]["losses"] += 1
+
+            # Save updated stats
+            success = await self.save_data("data/player_stats.json", stats)
+            if success:
+                logger.info(f"Updated stats for {player_id}: {team_key} {result}")
+            return success
+
+        except Exception as e:
+            logger.error(f"Failed to update player stats: {e}")
+            return False
+
 
 # Global instance
 data_manager = IntegratedDataManager()
