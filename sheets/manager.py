@@ -455,7 +455,7 @@ class SheetsManager(SheetsOperations):
 
     async def scan_and_sync_all_members(self, bot, guild_id: int) -> Dict[str, Any]:
         """
-        Scan Discord guild and sync all members to Google Sheets.
+        Scan Discord guild and sync all members to Player Stats sheet.
 
         Args:
             bot: Discord bot instance
@@ -475,75 +475,82 @@ class SheetsManager(SheetsOperations):
             if not guild:
                 return {"success": False, "error": f"Guild {guild_id} not found"}
 
-            # Get or create Discord Members worksheet
-            worksheet = self.get_or_create_worksheet("Discord Members", 1000, 8)
+            # Get or create Player Stats worksheet (sync to existing sheet)
+            config = SHEET_CONFIGS["Player Stats"]
+            worksheet = self.get_or_create_worksheet("Player Stats", config["rows"], config["cols"])
             if not worksheet:
-                return {"success": False, "error": "Failed to create Discord Members worksheet"}
+                return {"success": False, "error": "Failed to get Player Stats worksheet"}
 
-            # Headers for Discord Members sheet
-            headers = ["👤 User ID", "📝 Display Name", "🏷️ Username", "🎭 Nickname", "📅 Joined", "🏆 Roles", "🤖 Bot", "📊 Status"]
+            logger.info("🔄 Syncing Discord members to existing Player Stats sheet...")
+
+            # Get existing data to preserve stats
+            existing_data = self.safe_worksheet_operation(worksheet, worksheet.get_all_values)
+            existing_players = {}
+            
+            if existing_data and len(existing_data) > 1:
+                # Parse existing data (skip headers)
+                for row in existing_data[1:]:
+                    if len(row) > 0 and row[0]:
+                        user_id = row[0].strip()
+                        existing_players[user_id] = row
 
             # Clear and add headers
-            if not self._safe_batch_operation(worksheet, "clear Discord Members", worksheet.clear):
+            if not self._safe_batch_operation(worksheet, "clear Player Stats", worksheet.clear):
                 return {"success": False, "error": "Failed to clear worksheet"}
 
-            if not self._safe_batch_operation(worksheet, "add Discord Members headers",
-                                            worksheet.append_row, headers):
+            if not self._safe_batch_operation(worksheet, "add Player Stats headers",
+                                            worksheet.append_row, config["headers"]):
                 return {"success": False, "error": "Failed to add headers"}
 
-            # Collect member data
-            member_data = []
+            # Collect member data and merge with existing stats
             new_members_added = 0
             existing_members_updated = 0
 
             for member in guild.members:
-                # Skip bots if desired
+                # Skip bots
                 if member.bot:
                     continue
 
-                roles = [role.name for role in member.roles if role.name != "@everyone"]
-                roles_str = ", ".join(roles[:5])  # Limit to first 5 roles
-
-                row = [
-                    str(member.id),
-                    member.display_name,
-                    member.name,
-                    member.nick or "No nickname",
-                    member.joined_at.strftime("%Y-%m-%d") if member.joined_at else "Unknown",
-                    roles_str,
-                    "Yes" if member.bot else "No",
-                    str(member.status).title()
-                ]
-                member_data.append(row)
-                new_members_added += 1
-
-            # Add members in chunks to avoid API limits
-            chunk_size = 50
-            for i in range(0, len(member_data), chunk_size):
-                chunk = member_data[i:i + chunk_size]
+                user_id = str(member.id)
                 
-                for row in chunk:
-                    time.sleep(0.5)  # Rate limiting
-                    result = self.safe_worksheet_operation(worksheet, worksheet.append_row, row)
-                    if result is None:
-                        logger.warning(f"Failed to add member: {row[1]}")
+                if user_id in existing_players:
+                    # Update existing member data (preserve stats, update name)
+                    row = existing_players[user_id].copy()
+                    if len(row) > 1:
+                        row[1] = member.display_name  # Update display name
+                    existing_members_updated += 1
+                else:
+                    # New member - create fresh row
+                    row = [
+                        user_id,
+                        member.display_name,
+                        "ENTER_POWER_HERE",  # Power rating placeholder
+                        0, 0,  # Main team wins/losses
+                        0, 0,  # Team 2 wins/losses  
+                        0, 0,  # Team 3 wins/losses
+                        0,     # Total events
+                        datetime.utcnow().strftime("%Y-%m-%d"),  # Last active
+                        "New member from Discord sync"  # Notes
+                    ]
+                    new_members_added += 1
 
-                logger.info(f"Added member chunk {i//chunk_size + 1}/{(len(member_data) + chunk_size - 1)//chunk_size}")
-
-                # Longer delay between chunks
-                if i + chunk_size < len(member_data):
-                    time.sleep(3)
+                # Add the row
+                time.sleep(0.3)  # Rate limiting
+                result = self.safe_worksheet_operation(worksheet, worksheet.append_row, row)
+                if result is None:
+                    logger.warning(f"Failed to add member: {member.display_name}")
 
             # Apply formatting
             time.sleep(2)
-            self._apply_header_formatting(worksheet, len(headers), "blue")
+            self._apply_header_formatting(worksheet, len(config["headers"]), "blue")
 
-            logger.info(f"✅ Successfully synced {len(member_data)} Discord members")
+            total_members = new_members_added + existing_members_updated
+            logger.info(f"✅ Successfully synced {total_members} Discord members to Player Stats")
 
             return {
                 "success": True,
                 "guild_name": guild.name,
-                "total_discord_members": len(member_data),
+                "total_discord_members": total_members,
                 "new_members_added": new_members_added,
                 "existing_members_updated": existing_members_updated,
                 "spreadsheet_url": self.get_spreadsheet_url()

@@ -688,6 +688,8 @@ class SheetsOperations(SheetsClient):
              lambda: self.create_error_summary_template())
         ]
 
+        successes = 0
+        
         for template_key, template_name, create_func in templates:
             try:
                 logger.info(f"📋 Creating {template_name}...")
@@ -706,6 +708,7 @@ class SheetsOperations(SheetsClient):
                 }
 
                 if success:
+                    successes += 1
                     logger.info(f"✅ {template_name} created in {duration:.1f}s")
                 else:
                     logger.error(f"❌ {template_name} creation failed")
@@ -718,9 +721,6 @@ class SheetsOperations(SheetsClient):
                     "name": template_name
                 }
 
-        # Calculate summary
-        successes = sum(1 for k, v in results.items() 
-                       if isinstance(v, dict) and v.get("success"))
         total = len(templates)
 
         results["summary"] = {
