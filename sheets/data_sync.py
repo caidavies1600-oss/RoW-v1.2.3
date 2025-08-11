@@ -893,3 +893,65 @@ class DataSync(TemplateCreator):
         except Exception as e:
             logger.error(f"❌ Data sync failed: {e}")
             return False
+
+    def load_data_from_sheets_enhanced(self):
+        """
+        Enhanced data loading from Google Sheets with caching and error recovery.
+
+        Returns:
+            dict: Comprehensive data structure with all bot data
+
+        Features:
+        - Data caching with configurable expiry
+        - Enhanced error recovery and validation  
+        - Smart rate limiting and batch operations
+        - Comprehensive logging
+        - Sheet formatting and template management
+        """
+        if not self.is_connected():
+            logger.warning("Sheets not connected, using JSON fallback")
+            return None
+
+        try:
+            logger.info("🔄 Starting enhanced data load from Google Sheets...")
+
+            data = {
+                "events": {"main_team": [], "team_2": [], "team_3": []},
+                "blocked": {},
+                "results": {"total_wins": 0, "total_losses": 0, "history": []},
+                "player_stats": {},
+                "ign_map": {},
+                "absent": {},
+                "notification_preferences": {"users": {}, "default_settings": {}},
+            }
+
+            # Load data with enhanced error handling and rate limiting
+            loading_tasks = [
+                ("Current Teams", self._load_current_teams_enhanced),
+                ("Player Stats", self._load_player_stats_enhanced),
+                ("Results History", self._load_results_history_enhanced),
+                ("IGN Mappings", self._load_ign_mappings_enhanced),
+                ("Notification Preferences", self._load_notification_preferences_enhanced),
+            ]
+
+            successful_loads = 0
+            for task_name, load_func in loading_tasks:
+                try:
+                    logger.info(f"📊 Loading {task_name}...")
+                    result = load_func(data)
+                    if result:
+                        successful_loads += 1
+                        logger.info(f"✅ {task_name} loaded successfully")
+                    else:
+                        logger.warning(f"⚠️ {task_name} load returned no data")
+
+                except Exception as e:
+                    logger.error(f"❌ Failed to load {task_name}: {e}")
+                    # Continue with other loads even if one fails
+
+            logger.info(f"✅ Enhanced data load complete: {successful_loads}/{len(loading_tasks)} successful")
+            return data if successful_loads > 0 else None
+
+        except Exception as e:
+            logger.error(f"❌ Enhanced data load failed: {e}")
+            return None

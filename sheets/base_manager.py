@@ -1530,6 +1530,147 @@ class RateLimitedSheetsManager:
             logger.error(f"❌ Failed to sync members to sheets: {e}")
             return False
 
+    def sync_events_history(self, history_data):
+        """
+        Sync events history to Google Sheets.
+        
+        Args:
+            history_data: List of event history entries
+            
+        Returns:
+            bool: Success status of sync operation
+            
+        Features:
+        - Historical event tracking
+        - Team participation records
+        - Timestamp formatting
+        - Player count summaries
+        """
+        if not self.is_connected():
+            return False
+
+        try:
+            worksheet = self.get_or_create_worksheet("Events History", 100, 6)
+            if not worksheet:
+                return False
+
+            # Clear and set headers
+            self.rate_limited_request(worksheet.clear)
+            headers = [
+                "📅 Timestamp",
+                "🏆 Main Team",
+                "🥈 Team 2", 
+                "🥉 Team 3",
+                "📊 Total Players",
+                "📝 Notes"
+            ]
+            self.rate_limited_request(worksheet.append_row, headers)
+
+            # Add history data
+            for entry in history_data:
+                timestamp = entry.get("timestamp", "Unknown")
+                teams = entry.get("teams", {})
+                
+                main_team = len(teams.get("main_team", []))
+                team_2 = len(teams.get("team_2", []))
+                team_3 = len(teams.get("team_3", []))
+                total = main_team + team_2 + team_3
+                
+                row = [timestamp, main_team, team_2, team_3, total, ""]
+                self.rate_limited_request(worksheet.append_row, row)
+
+            # Apply basic formatting
+            self.rate_limited_request(
+                worksheet.format,
+                "A1:F1",
+                {
+                    "backgroundColor": {"red": 0.4, "green": 0.7, "blue": 0.4},
+                    "textFormat": {
+                        "bold": True,
+                        "foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0},
+                    },
+                    "horizontalAlignment": "CENTER",
+                },
+            )
+            
+            self.rate_limited_request(worksheet.freeze, rows=1)
+
+            logger.info("✅ Synced events history to Google Sheets")
+            return True
+
+        except Exception as e:
+            logger.error(f"❌ Failed to sync events history: {e}")
+            return False
+
+    def sync_blocked_users(self, blocked_data):
+        """
+        Sync blocked users to Google Sheets.
+        
+        Args:
+            blocked_data: Dictionary of blocked user data
+            
+        Returns:
+            bool: Success status of sync operation
+            
+        Features:
+        - User blocking records
+        - Reason tracking
+        - Admin action logging
+        - Date/time stamps
+        """
+        if not self.is_connected():
+            return False
+
+        try:
+            worksheet = self.get_or_create_worksheet("Blocked Users", 50, 5)
+            if not worksheet:
+                return False
+
+            # Clear and set headers
+            self.rate_limited_request(worksheet.clear)
+            headers = [
+                "👤 User ID",
+                "📝 Display Name", 
+                "🚫 Blocked Date",
+                "👮 Blocked By",
+                "📋 Reason"
+            ]
+            self.rate_limited_request(worksheet.append_row, headers)
+
+            # Add blocked users data
+            for user_id, user_data in blocked_data.items():
+                row = [
+                    user_id,
+                    user_data.get("name", "Unknown"),
+                    user_data.get("blocked_date", "Unknown"),
+                    user_data.get("blocked_by", "Unknown"),
+                    user_data.get("reason", "No reason provided")
+                ]
+                self.rate_limited_request(worksheet.append_row, row)
+
+            # Apply basic formatting
+            self.rate_limited_request(
+                worksheet.format,
+                "A1:E1",
+                {
+                    "backgroundColor": {"red": 0.8, "green": 0.2, "blue": 0.2},
+                    "textFormat": {
+                        "bold": True,
+                        "foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0},
+                    },
+                    "horizontalAlignment": "CENTER",
+                },
+            )
+            
+            self.rate_limited_request(worksheet.freeze, rows=1)
+
+            logger.info("✅ Synced blocked users to Google Sheets")
+            return True
+
+        except Exception as e:
+            logger.error(f"❌ Failed to sync blocked users: {e}")
+            return False
+
     def __del__(self):
         """Log usage summary when object is destroyed."""
         try:

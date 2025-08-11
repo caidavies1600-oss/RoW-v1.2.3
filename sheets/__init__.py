@@ -1,4 +1,3 @@
-
 """
 Google Sheets Integration Module for Discord RoW Bot.
 
@@ -32,7 +31,7 @@ logger = setup_logger("sheets_manager")
 class SheetsManager:
     """
     Main Google Sheets manager with comprehensive functionality.
-    
+
     Features:
     - Rate-limited API access with exponential backoff
     - Comprehensive error handling and recovery
@@ -178,27 +177,27 @@ class SheetsManager:
     async def scan_and_sync_all_members(self, bot, guild_id=None):
         """
         Scan Discord guild and sync all members to Google Sheets.
-        
+
         Args:
             bot: Discord bot instance
             guild_id: Discord guild ID to scan
-            
+
         Returns:
             dict: Results of the sync operation
         """
         if not self.is_connected():
             return {"success": False, "error": "Sheets not connected"}
-            
+
         try:
             guild = bot.get_guild(guild_id)
             if not guild:
                 return {"success": False, "error": f"Guild {guild_id} not found"}
-                
+
             logger.info(f"🔄 Scanning guild: {guild.name} ({guild.id})")
-            
+
             # Get all non-bot members
             members = [member for member in guild.members if not member.bot]
-            
+
             # Create member data for sheets
             member_data = []
             for member in members:
@@ -211,10 +210,10 @@ class SheetsManager:
                     "status": str(member.status),
                     "synced_at": datetime.utcnow().isoformat()
                 })
-            
+
             # Sync to sheets
             success = await self._sync_members_to_sheets(member_data, guild.name)
-            
+
             return {
                 "success": success,
                 "guild_name": guild.name,
@@ -222,7 +221,7 @@ class SheetsManager:
                 "new_members_added": len(member_data),
                 "existing_members_updated": 0
             }
-            
+
         except Exception as e:
             logger.error(f"❌ Failed to scan and sync members: {e}")
             return {"success": False, "error": str(e)}
@@ -233,7 +232,7 @@ class SheetsManager:
             worksheet = self.get_or_create_worksheet("Discord Members", 1000, 10)
             if not worksheet:
                 return False
-                
+
             # Clear and set headers
             self.rate_limited_request(worksheet.clear)
             headers = [
@@ -248,7 +247,7 @@ class SheetsManager:
                 "📊 Notes"
             ]
             self.rate_limited_request(worksheet.append_row, headers)
-            
+
             # Add member data
             for member in member_data:
                 row = [
@@ -263,7 +262,7 @@ class SheetsManager:
                     ""
                 ]
                 self.rate_limited_request(worksheet.append_row, row)
-            
+
             # Apply formatting
             self.rate_limited_request(
                 worksheet.format,
@@ -277,12 +276,12 @@ class SheetsManager:
                     "horizontalAlignment": "CENTER",
                 },
             )
-            
+
             self.rate_limited_request(worksheet.freeze, rows=1)
-            
+
             logger.info(f"✅ Synced {len(member_data)} members to Discord Members sheet")
             return True
-            
+
         except Exception as e:
             logger.error(f"❌ Failed to sync members to sheets: {e}")
             return False
@@ -424,12 +423,12 @@ class SheetsManager:
             for entry in history_data:
                 timestamp = entry.get("timestamp", "Unknown")
                 teams = entry.get("teams", {})
-                
+
                 main_team = len(teams.get("main_team", []))
                 team_2 = len(teams.get("team_2", []))
                 team_3 = len(teams.get("team_3", []))
                 total = main_team + team_2 + team_3
-                
+
                 row = [timestamp, main_team, team_2, team_3, total, ""]
                 self.rate_limited_request(worksheet.append_row, row)
 
@@ -506,6 +505,29 @@ class SheetsManager:
         except Exception as e:
             logger.error(f"❌ Failed to create templates: {e}")
             return False
+
+    def smart_delay(self, delay_type="small"):
+        """
+        Smart delay implementation for rate limiting.
+
+        Args:
+            delay_type: Type of delay ('small', 'medium', 'large')
+
+        Features:
+        - Configurable delay periods
+        - Rate limit management  
+        - Performance optimization
+        """
+        import time
+
+        delay_map = {
+            "small": 0.5,
+            "medium": 1.0, 
+            "large": 2.0
+        }
+
+        delay_time = delay_map.get(delay_type, 0.5)
+        time.sleep(delay_time)
 
 
 # Export the main class

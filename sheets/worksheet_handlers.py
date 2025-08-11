@@ -15,7 +15,27 @@ from typing import Dict, Any, List
 from utils.logger import setup_logger
 
 from .base_manager import RateLimitedSheetsManager
-from .config import SHEET_CONFIGS, TEAM_MAPPING
+try:
+    from .config import SHEET_CONFIGS, TEAM_MAPPING
+except ImportError:
+    # Fallback configurations if not available in config
+    SHEET_CONFIGS = {
+        "Current Teams": {
+            "rows": 50,
+            "cols": 8, 
+            "headers": ["🕐 Timestamp", "⚔️ Team", "👥 Player Count", "📝 Players", "📊 Status"]
+        },
+        "Results History": {
+            "rows": 200,
+            "cols": 8,
+            "headers": ["📅 Date", "⚔️ Team", "🏆 Result", "👥 Players", "📝 Recorded By", "📊 Total Wins", "📊 Total Losses"]
+        }
+    }
+    TEAM_MAPPING = {
+        "main_team": "🏆 Main Team",
+        "team_2": "🥈 Team 2",
+        "team_3": "🥉 Team 3"
+    }
 
 logger = setup_logger("worksheet_handlers")
 

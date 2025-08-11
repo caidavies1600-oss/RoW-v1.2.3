@@ -30,6 +30,7 @@ class EnhancedSheetsManager(TemplateCreator):
     def __init__(self, spreadsheet_id=None):
         super().__init__(spreadsheet_id)
         self.rate_limit_delay = 1.0  # Additional delay for enhanced operations
+        self.last_api_call = 0  # Track last API call time for rate limiting
 
     def rate_limited_request(self, func, *args, **kwargs):
         """Execute a function with rate limiting."""

@@ -71,3 +71,49 @@ class SheetsConfig:
 
 # Global config instance
 config = SheetsConfig()
+
+# Sheet configurations referenced by worksheet_handlers.py
+SHEET_CONFIGS = {
+    "Current Teams": {
+        "rows": 50,
+        "cols": 8,
+        "headers": [
+            "🕐 Timestamp",
+            "⚔️ Team", 
+            "👥 Player Count",
+            "📝 Players",
+            "📊 Status"
+        ]
+    },
+    "Results History": {
+        "rows": 200,
+        "cols": 8,
+        "headers": [
+            "📅 Date",
+            "⚔️ Team",
+            "🏆 Result", 
+            "👥 Players",
+            "📝 Recorded By",
+            "📊 Total Wins",
+            "📊 Total Losses"
+        ]
+    },
+    "Player Stats": {
+        "rows": 300,
+        "cols": 21,
+        "headers": [
+            "User ID", "Display Name", "Main Team Role", "Main Wins", "Main Losses",
+            "Team2 Wins", "Team2 Losses", "Team3 Wins", "Team3 Losses",
+            "Total Wins", "Total Losses", "Win Rate", "Absents", "Blocked",
+            "Power Rating", "Cavalry", "Mages", "Archers", "Infantry",
+            "Whale Status", "Last Updated"
+        ]
+    }
+}
+
+# Team mapping constants referenced by worksheet_handlers.py  
+TEAM_MAPPING = {
+    "main_team": "🏆 Main Team",
+    "team_2": "🥈 Team 2", 
+    "team_3": "🥉 Team 3"
+}
