@@ -108,6 +108,18 @@ class UserCommands(commands.Cog):
                 "`!syncmembers` — Sync Discord members to Google Sheets",
                 "`!fullsync` — Complete setup: sync members + create templates",
                 "`!healthcheck` — Run comprehensive bot health diagnostics",
+                "`!backup` — Create manual backup of bot data",
+                "`!restore` — Restore from backup file",
+                "`!addresult` — Add match result",
+                "`!createtemplate` — Create Google Sheets templates",
+                "`!sheetstest` — Test Google Sheets connection",
+                "`!sheetsstatus` — Check Google Sheets status",
+                "`!formatsheets` — Format Google Sheets",
+                "`!export` — General export command",
+                "`!importdata` — Import data",
+                "`!cleardata` — Clear specific data",
+                "`!resetstats` — Reset player statistics",
+                "`!migratedata` — Migrate data between formats",
             ]
 
             # Admin commands - only showing actually implemented ones
@@ -124,8 +136,6 @@ class UserCommands(commands.Cog):
                 "`!absentees` — Show all users marked absent",
                 "`!exportteams` — Export current team signups to a text file",
                 "`!exporthistory` — Export event history to a text file",
-                "`!backup` — Create manual backup of bot data",
-                "`!restore` — Restore from backup file",
             ]
 
             # User commands
