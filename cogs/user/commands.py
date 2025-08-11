@@ -120,6 +120,16 @@ class UserCommands(commands.Cog):
                 "`!cleardata` — Clear specific data",
                 "`!resetstats` — Reset player statistics",
                 "`!migratedata` — Migrate data between formats",
+                "`!reloadcog` — Reload a specific cog",
+                "`!unloadcog` — Unload a cog",
+                "`!loadcog` — Load a cog",
+                "`!serverinfo` — Get server information",
+                "`!botinfo` — Get bot information",
+                "`!shutdown` — Shutdown the bot",
+                "`!restart` — Restart the bot",
+                "`!logs` — View bot logs",
+                "`!cleanlogs` — Clean log files",
+                "`!maintenance` — Enable/disable maintenance mode",
             ]
 
             # Admin commands - only showing actually implemented ones
@@ -136,6 +146,13 @@ class UserCommands(commands.Cog):
                 "`!absentees` — Show all users marked absent",
                 "`!exportteams` — Export current team signups to a text file",
                 "`!exporthistory` — Export event history to a text file",
+                "`!lockteams` — Lock team signups",
+                "`!unlockteams` — Unlock team signups",
+                "`!settime` — Set event time",
+                "`!gettime` — Get event time",
+                "`!notify` — Send notifications",
+                "`!announce` — Make announcements",
+                "`!notifications remind` — Send team reminders",
             ]
 
             # User commands
@@ -144,6 +161,13 @@ class UserCommands(commands.Cog):
                 "`!setign` — Set your in-game name",
                 "`!clearign` — Clear your stored IGN",
                 "`!myign` — View your stored IGN",
+                "`!signup` — Join an event",
+                "`!leave` — Leave an event",
+                "`!events` — View current signups",
+                "`!mystats` — View your personal statistics",
+                "`!teams` — View current team compositions",
+                "`!notifications settings` — Configure notification preferences",
+                "`!notifications test` — Test notification delivery",
             ]
 
             embed = discord.Embed(
