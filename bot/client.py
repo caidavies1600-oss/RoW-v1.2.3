@@ -237,9 +237,9 @@ class RowBot(commands.Bot):
                     print(
                         "DEBUG: Both environment variables found, initializing SheetsManager..."
                     )
-                    from sheets import SheetsManager
+                    from utils.sheets_manager import SheetsManager
 
-                    self.sheets = SheetsManager()
+                    self.sheets = SheetsManager(sheets_id_env)
                     print(
                         f"DEBUG: SheetsManager created, connected: {self.sheets.is_connected()}"
                     )
