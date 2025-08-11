@@ -161,8 +161,6 @@ class UserCommands(commands.Cog):
                 "`!setign` — Set your in-game name",
                 "`!clearign` — Clear your stored IGN",
                 "`!myign` — View your stored IGN",
-                "`!signup` — Join an event",
-                "`!leave` — Leave an event",
                 "`!events` — View current signups",
                 "`!mystats` — View your personal statistics",
                 "`!teams` — View current team compositions",
