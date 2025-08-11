@@ -43,7 +43,9 @@ ADMIN_ROLE_IDS: List[int] = [
     1258214711124688967,  # Role: Moderator
 ]
 
-MAIN_TEAM_ROLE_ID: int = 1346414253992574976
+# Main team access control
+RESTRICT_MAIN_TEAM: bool = False  # Set to True to enable role restriction
+MAIN_TEAM_ROLE_ID: int = 0  # Set to actual role ID when RESTRICT_MAIN_TEAM is True
 ROW_NOTIFICATION_ROLE_ID: int = 1235729244605120572
 
 # Channel IDs (these will be different per server)

@@ -7,7 +7,7 @@ from discord.ext import commands
 
 from cogs.events.signup_view import EventSignupView
 from config.constants import ALERT_CHANNEL_ID, COLORS, EMOJIS, FILES, TEAM_DISPLAY
-from config.settings import DEFAULT_TIMES, MAX_TEAM_SIZE, ROW_NOTIFICATION_ROLE_ID
+from config.settings import DEFAULT_TIMES, MAX_TEAM_SIZE, ROW_NOTIFICATION_ROLE_ID, MAIN_TEAM_ROLE_ID, RESTRICT_MAIN_TEAM
 from utils.integrated_data_manager import data_manager
 from utils.helpers import Helpers
 from utils.logger import setup_logger
@@ -464,6 +464,12 @@ class EventManager(commands.Cog, name="EventManager"):
         except Exception as e:
             logger.error(f"Failed to clear signups: {e}")
             return False
+
+    def can_join_team(self, member: discord.Member, team: str) -> bool:
+        """Check if member can join specific team."""
+        if team == "main_team" and RESTRICT_MAIN_TEAM:
+            return any(role.id == MAIN_TEAM_ROLE_ID for role in member.roles)
+        return True  # Allow anyone to join any team if no restrictions
 
 
 async def setup(bot):
