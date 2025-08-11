@@ -244,7 +244,7 @@ if git push -u origin "$VERSION_BRANCH"; then
     
     echo "📤 Pushing to main branch..."
     if git push origin main; then
-    echo "✅ Successfully pushed to GitHub!"
+        echo "✅ Successfully pushed to GitHub!"
         echo "🌐 Repository: $REPO_URL"
         echo "📋 Version: $NEW_VERSION"
         echo "🌿 Main branch: Updated with latest deployment"
