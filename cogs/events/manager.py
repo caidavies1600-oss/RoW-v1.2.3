@@ -83,21 +83,23 @@ class EventManager(commands.Cog, name="EventManager"):
         if not self.data_manager.save_data(FILES["TIMES"], self.event_times):
             logger.error("❌ Failed to save row_times.json")
 
-    def save_signup_lock(self):
-        """Save signup lock state to file."""
-        if not self.data_manager.save_data(FILES["SIGNUP_LOCK"], self.signup_locked):
-            logger.error("❌ Failed to save signup_lock.json")
+    async def save_signup_lock(self):
+        """Save signup lock state."""
+        try:
+            await self.data_manager.save_data(FILES["SIGNUP_LOCK"], self.signup_locked)
+        except Exception as e:
+            logger.error(f"Failed to save signup lock: {e}")
 
-    def lock_signups(self):
+    async def lock_signups(self):
         """Lock signups and save state."""
         self.signup_locked = True
-        self.save_signup_lock()
+        await self.save_signup_lock()
         logger.info("🔒 Signups have been locked")
 
-    def unlock_signups(self):
+    async def unlock_signups(self):
         """Unlock signups and save state."""
         self.signup_locked = False
-        self.save_signup_lock()
+        await self.save_signup_lock()
         logger.info("🔓 Signups have been unlocked")
 
     def is_signup_locked(self) -> bool:
@@ -202,9 +204,9 @@ class EventManager(commands.Cog, name="EventManager"):
             ctx: Command context
         """
         try:
-            self.save_history()
+            await self.save_history()
             self.events = self._default_events()
-            self.unlock_signups()  # Reset signup lock when starting new event
+            await self.unlock_signups()  # Reset signup lock when starting new event
             await self.save_events()
 
             logger.info(f"{ctx.author} started new event")
@@ -316,7 +318,7 @@ class EventManager(commands.Cog, name="EventManager"):
             await ctx.send("🔒 Signups are already locked.")
             return
 
-        self.lock_signups()
+        await self.lock_signups()
 
         embed = discord.Embed(
             title="🔒 Signups Locked",
@@ -348,7 +350,7 @@ class EventManager(commands.Cog, name="EventManager"):
             await ctx.send("🔓 Signups are already unlocked.")
             return
 
-        self.unlock_signups()
+        await self.unlock_signups()
 
         embed = discord.Embed(
             title="🔓 Signups Unlocked",
@@ -396,7 +398,7 @@ class EventManager(commands.Cog, name="EventManager"):
         """
         try:
             # Lock signups first
-            self.lock_signups()
+            await self.lock_signups()
 
             # Get alert channel
             alert_channel = self.bot.get_channel(ALERT_CHANNEL_ID)
