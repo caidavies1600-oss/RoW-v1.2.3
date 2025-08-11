@@ -320,7 +320,7 @@ class Results(commands.Cog):
         """
         if user is None:
             user = ctx.author
-        
+
         if user is None:
             await ctx.send("❌ Could not resolve user")
             return
@@ -377,56 +377,110 @@ class Results(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @commands.command(name="createsheets")
+    @commands.command(name="createtemplates", aliases=["templates"])
     @commands.has_any_role(*ADMIN_ROLE_IDS)
     async def create_sheets_templates(self, ctx):
-        """Create Google Sheets templates with current players for manual data entry."""
+        """Create Google Sheets templates with current player data for manual entry."""
+        if not hasattr(self.data_manager, 'sheets_manager') or not self.data_manager.sheets_manager:
+            await ctx.send("❌ Google Sheets not configured. Set environment variables and restart bot.")
+            return
+
         try:
-            await ctx.send(
-                "🔄 Creating Google Sheets templates with current players..."
-            )
+            # Send initial message
+            status_msg = await ctx.send("🔄 Creating Google Sheets templates... This may take a few minutes due to rate limiting.")
 
             # Gather current player data for template creation
             all_data = {
-                "events": await self.data_manager.load_data(FILES["EVENTS"], {}),
-                "blocked": await self.data_manager.load_data(FILES["BLOCKED"], {}),
+                "events": self.data_manager.load_json(FILES["EVENTS"], {}),
+                "blocked": self.data_manager.load_json(FILES["BLOCKED"], {}),
                 "results": self.results,
-                "player_stats": await self.data_manager.load_data(FILES["PLAYER_STATS"], {}),
-                "ign_map": await self.data_manager.load_data(FILES["IGN_MAP"], {}),
-                "absent": await self.data_manager.load_data(FILES["ABSENT"], {}),
-                "notification_preferences": await self.data_manager.load_data(
-                    "data/notification_preferences.json", {}
-                ),
+                "player_stats": self.data_manager.player_stats,
+                "ign_map": self.data_manager.load_json(FILES["IGN_MAP"], {}),
+                "absent": self.data_manager.load_json(FILES["ABSENT"], {}),
+                "notification_preferences": self.data_manager.load_json("data/notification_preferences.json", {})
             }
 
-            # Create templates
-            if self.data_manager.sheets_manager and self.data_manager.sheets_manager.create_all_templates(all_data):
-                sheets_url = (
-                    self.data_manager.sheets_manager.get_spreadsheet_url()
-                    if self.data_manager.sheets_manager
-                    else "Check console for URL"
-                )
-                embed = discord.Embed(
-                    title="✅ Google Sheets Templates Created!",
-                    description=f"All templates are ready for manual data entry.\n\n**Sheets Created:**\n• Player Stats (with current players)\n• Match Statistics\n• Alliance Tracking\n• Current Teams\n• Results History\n• Dashboard\n• Notification Preferences\n\n[📊 Open Spreadsheet]({sheets_url})",
-                    color=discord.Color.green(),
-                )
-                embed.add_field(
-                    name="📝 Manual Entry Required",
-                    value="Fill in player power ratings, specializations, match statistics, and alliance data directly in the sheets.",
-                    inline=False,
-                )
-                await ctx.send(embed=embed)
+            # Create templates with detailed results
+            if hasattr(self.data_manager.sheets_manager, 'setup_templates'):
+                results = self.data_manager.sheets_manager.setup_templates(all_data)
             else:
-                await ctx.send(
-                    "⚠️ Some templates may not have been created. Check logs for details."
+                # Fallback to old method if setup_templates doesn't exist
+                success = self.data_manager.sheets_manager.create_all_templates(all_data)
+                results = {"connected": success, "summary": {"success_count": 1 if success else 0, "total_count": 1}}
+
+            if not results.get("connected", False):
+                await status_msg.edit(content="❌ Could not connect to Google Sheets. Check credentials.")
+                return
+
+            # Build detailed results message
+            embed = discord.Embed(
+                title="📊 Google Sheets Template Creation Results",
+                color=discord.Color.green() if results.get("summary", {}).get("success_count", 0) >= 3 else discord.Color.orange()
+            )
+
+            # Add summary
+            summary = results.get("summary", {})
+            success_count = summary.get("success_count", 0)
+            total_count = summary.get("total_count", 0)
+
+            embed.add_field(
+                name="📈 Summary",
+                value=f"**{success_count}/{total_count}** templates created successfully",
+                inline=False
+            )
+
+            # Add individual results
+            template_status = []
+            template_names = {
+                "player_stats": "📊 Player Stats",
+                "alliance_tracking": "🏰 Alliance Tracking",
+                "dashboard": "📋 Dashboard",
+                "current_teams": "👥 Current Teams"
+            }
+
+            for key, name in template_names.items():
+                status = "✅" if results.get(key, False) else "❌"
+                template_status.append(f"{status} {name}")
+
+            embed.add_field(
+                name="📝 Template Status",
+                value="\n".join(template_status),
+                inline=False
+            )
+
+            # Add spreadsheet link if available
+            if hasattr(self.data_manager.sheets_manager, 'spreadsheet') and self.data_manager.sheets_manager.spreadsheet:
+                sheets_url = self.data_manager.sheets_manager.spreadsheet.url
+                embed.add_field(
+                    name="🔗 Spreadsheet",
+                    value=f"[📊 Open Google Sheets]({sheets_url})",
+                    inline=False
+                )
+            elif hasattr(self.data_manager.sheets_manager, 'get_spreadsheet_url'):
+                sheets_url = self.data_manager.sheets_manager.get_spreadsheet_url()
+                if sheets_url:
+                    embed.add_field(
+                        name="🔗 Spreadsheet",
+                        value=f"[📊 Open Google Sheets]({sheets_url})",
+                        inline=False
+                    )
+
+            # Add instructions
+            if success_count > 0:
+                embed.add_field(
+                    name="📝 Next Steps",
+                    value="• Fill in player power ratings in Player Stats sheet\n• Add match data manually\n• Update alliance information\n• All changes sync automatically",
+                    inline=False
                 )
 
-        except Exception:
+            # Add footer with timing info
+            embed.set_footer(text="Templates created with rate limiting to prevent API errors")
+
+            await status_msg.edit(content="", embed=embed)
+
+        except Exception as e:
             logger.exception("Failed to create sheets templates")
-            await ctx.send(
-                "❌ Failed to create Google Sheets templates. Check logs for details."
-            )
+            await ctx.send(f"❌ Failed to create templates: {str(e)[:100]}...")
 
 
 async def setup(bot):
