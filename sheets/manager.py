@@ -2,6 +2,7 @@
 Main Google Sheets manager class - the primary interface for the bot.
 """
 
+import time
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 from .operations import SheetsOperations
