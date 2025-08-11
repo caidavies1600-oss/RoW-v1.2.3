@@ -8,7 +8,7 @@ from discord.ext import commands
 from cogs.events.signup_view import EventSignupView
 from config.constants import ALERT_CHANNEL_ID, COLORS, EMOJIS, FILES, TEAM_DISPLAY
 from config.settings import DEFAULT_TIMES, MAX_TEAM_SIZE, ROW_NOTIFICATION_ROLE_ID
-from utils.data_manager import DataManager
+from utils.integrated_data_manager import data_manager
 from utils.helpers import Helpers
 from utils.logger import setup_logger
 from utils.validators import Validators
@@ -31,24 +31,26 @@ class EventManager(commands.Cog, name="EventManager"):
 
     def __init__(self, bot):
         self.bot = bot
-        self.data_manager = DataManager()
+        self.events = {"main_team": [], "team_2": [], "team_3": []}
+        self.data_manager = data_manager
 
-        # Load data from Google Sheets first, then fallback to JSON
-        try:
-            all_data = self.data_manager.load_all_data_from_sheets()
-            self.events = all_data.get("events", self._default_events())
-            self.blocked_users = all_data.get("blocked", {})
-            self.data_manager.player_stats = all_data.get("player_stats", {})
-            logger.info("✅ Loaded data from Google Sheets")
-        except Exception as e:
-            logger.warning(f"Failed to load from Sheets, using JSON fallback: {e}")
-            self.events = self.data_manager.load_json(
-                FILES["EVENTS"], self._default_events()
-            )
-            self.blocked_users = self.data_manager.load_json(FILES["BLOCKED"], {})
+    async def load_events(self):
+        """Load events with new integrated manager."""
+        data = await self.data_manager.load_data(
+            FILES["EVENTS"],
+            default={"main_team": [], "team_2": [], "team_3": []},
+        )
+        self.events = data
 
-        self.event_times = self.data_manager.load_json(FILES["TIMES"], DEFAULT_TIMES)
-        self.signup_locked = self.data_manager.load_json(FILES["SIGNUP_LOCK"], False)
+    async def save_events(self) -> bool:
+        """Save events with atomic operations."""
+        return await self.data_manager.save_data(
+            FILES["EVENTS"], self.events, sync_to_sheets=True
+        )
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        await self.load_events()
 
     def _default_events(self):
         """
@@ -58,15 +60,6 @@ class EventManager(commands.Cog, name="EventManager"):
             dict: Default event structure with empty teams
         """
         return {"main_team": [], "team_2": [], "team_3": []}
-
-    def save_events(self):
-        """Save event data to file and sync to Google Sheets."""
-        if not self.data_manager.save_json(
-            FILES["EVENTS"], self.events, sync_to_sheets=True
-        ):
-            logger.error("❌ Failed to save events.json")
-        else:
-            logger.info("✅ Events saved and synced to Sheets")
 
     def save_blocked_users(self):
         """Save blocked users data to file and sync to Google Sheets."""
@@ -435,6 +428,13 @@ class EventManager(commands.Cog, name="EventManager"):
     async def reset_event_state(self):
         """Reset all event-related state variables to defaults."""
         self.bot.event_active = False
+        self.bot.event_team = None
+        self.bot.attendance = {}
+        self.bot.checked_in = set()
+
+
+async def setup(bot):
+    await bot.add_cog(EventManager(bot))
         self.bot.event_team = None
         self.bot.attendance = {}
         self.bot.checked_in = set()

@@ -17,7 +17,7 @@ import discord
 from discord.ext import commands, tasks
 
 from config.constants import COLORS, DEFAULT_TIMES, EMOJIS, TEAM_DISPLAY
-from utils.data_manager import DataManager
+from utils.integrated_data_manager import data_manager
 from utils.logger import setup_logger
 
 logger = setup_logger("smart_notifications")
@@ -31,105 +31,23 @@ async def setup(bot):
 class SmartNotifications:
     def __init__(self, bot):
         self.bot = bot
-        self.data_manager = DataManager()
-        self.notification_prefs = self.load_notification_preferences()
-        self.notification_queue = []
+        self.data_manager = data_manager
+        self.notification_prefs = {"users": {}, "default_settings": {}}
 
-    def load_notification_preferences(self) -> Dict[str, Any]:
-        """Load user notification preferences from Google Sheets first, then fallback to JSON."""
-        default_prefs = {
-            "users": {},
-            "default_settings": {
-                "method": "channel",  # "dm", "channel", "both"
-                "event_reminders": True,
-                "result_notifications": True,
-                "team_updates": True,
-                "reminder_times": [60, 15],  # Minutes before event
-                "quiet_hours": {"start": 22, "end": 8},  # UTC hours
-                "timezone_offset": 0,
-            },
-        }
-
-        # Try to load from Google Sheets first
-        sheets_prefs = None
-        if hasattr(self.bot, "sheets") and self.bot.sheets:
-            try:
-                logger.debug(
-                    "Attempting to load notification preferences from Google Sheets..."
-                )
-                sheets_prefs = (
-                    self.bot.sheets.load_notification_preferences_from_sheets()
-                )
-                if sheets_prefs and isinstance(sheets_prefs, dict):
-                    # Validate the structure
-                    if "users" in sheets_prefs and "default_settings" in sheets_prefs:
-                        logger.info(
-                            f"✅ Loaded notification preferences from Google Sheets ({len(sheets_prefs.get('users', {}))} users)"
-                        )
-                        return sheets_prefs
-                    else:
-                        logger.warning(
-                            "⚠️ Invalid structure in sheets preferences, falling back to JSON"
-                        )
-                        sheets_prefs = None
-                else:
-                    logger.debug(
-                        "No valid preferences found in Google Sheets, falling back to JSON"
-                    )
-            except Exception as e:
-                logger.warning(
-                    f"Failed to load notification preferences from Sheets: {e}"
-                )
-                import traceback
-
-                logger.debug(f"Sheets loading traceback: {traceback.format_exc()}")
-
-        # Fallback to JSON file
-        try:
-            json_prefs = self.data_manager.load_json(
-                "data/notification_preferences.json", default_prefs
-            )
-            if sheets_prefs is None:
-                logger.info(
-                    f"📄 Loaded notification preferences from JSON file ({len(json_prefs.get('users', {}))} users)"
-                )
-            else:
-                logger.info(
-                    "📄 Using JSON file as fallback due to sheets loading issues"
-                )
-            return json_prefs
-        except Exception as e:
-            logger.error(f"Failed to load preferences from both Sheets and JSON: {e}")
-            logger.warning("Using default preferences")
-            return default_prefs
-
-    def save_notification_preferences(self):
-        """Save notification preferences to both JSON and Google Sheets."""
-        # Save to JSON file
-        json_success = self.data_manager.save_json(
+    async def load_preferences(self):
+        """Load preferences with integrated manager."""
+        self.notification_prefs = await self.data_manager.load_data(
             "data/notification_preferences.json",
-            self.notification_prefs,
-            sync_to_sheets=False,
+            default={"users": {}, "default_settings": {}},
         )
 
-        # Sync to Google Sheets
-        sheets_success = True
-        if hasattr(self.bot, "sheets") and self.bot.sheets:
-            try:
-                sheets_success = self.bot.sheets.sync_notification_preferences(
-                    self.notification_prefs
-                )
-                if sheets_success:
-                    logger.info("✅ Synced notification preferences to Google Sheets")
-                else:
-                    logger.warning(
-                        "⚠️ Failed to sync notification preferences to Sheets"
-                    )
-            except Exception as e:
-                logger.error(f"Error syncing notification preferences to Sheets: {e}")
-                sheets_success = False
-
-        return json_success and sheets_success
+    async def save_preferences(self) -> bool:
+        """Save preferences with atomic operations."""
+        return await self.data_manager.save_data(
+            "data/notification_preferences.json",
+            self.notification_prefs,
+            sync_to_sheets=True,
+        )
 
     def get_user_preferences(self, user_id: str) -> Dict[str, Any]:
         """Get notification preferences for a specific user."""
@@ -180,7 +98,7 @@ class SmartNotifications:
             self.notification_prefs["users"][user_id].update(preferences)
 
             logger.info(f"Updated preferences for {display_name} ({user_id})")
-            return self.save_notification_preferences()
+            return self.save_preferences()
         except Exception as e:
             logger.error(f"Failed to update preferences for {user_id}: {e}")
             return False
@@ -244,7 +162,7 @@ class SmartNotifications:
             self.notification_prefs["users"][user_id].update(preferences)
 
             logger.info(f"Updated preferences for {display_name} ({user_id})")
-            return self.save_notification_preferences()
+            return self.save_preferences()
         except Exception as e:
             logger.error(f"Failed to update preferences for {user_id}: {e}")
             return False
@@ -1108,6 +1026,88 @@ class NotificationsCog(commands.Cog):
         # Send to all teams
         if team.lower() == "all":
             (
+                total_sent,
+                summary,
+            ) = await self.smart_notifications.send_all_teams_reminders(message)
+
+            embed = discord.Embed(
+                title="📢 Team Reminders Sent",
+                description="Sent reminders to all teams with members.",
+                color=COLORS["SUCCESS"],
+            )
+            embed.add_field(
+                name="Summary",
+                value="\n".join(summary) or "No teams have members currently.",
+                inline=False,
+            )
+            embed.add_field(
+                name="Total Notifications",
+                value=f"{total_sent} notifications sent",
+                inline=True,
+            )
+            if message:
+                embed.add_field(
+                    name="Custom Message", value=f"```{message}```", inline=False
+                )
+            await ctx.send(embed=embed)
+            return
+
+        # Validate team name
+        valid_teams = ["main_team", "team_2", "team_3"]
+        if team not in valid_teams:
+            embed = discord.Embed(
+                title="❌ Invalid Team",
+                description=f"Team `{team}` not found.",
+                color=COLORS["DANGER"],
+            )
+            embed.add_field(
+                name="Valid Teams",
+                value="\n".join([f"• `{t}`" for t in valid_teams]),
+                inline=False,
+            )
+            await ctx.send(embed=embed)
+            return
+
+        # Send to specific team
+        sent_count = await self.smart_notifications.send_team_specific_reminders(
+            team, message, include_team_roster=True
+        )
+
+        team_display = TEAM_DISPLAY.get(team, team.replace("_", " ").title())
+
+        # Get team member count
+        event_manager = self.bot.get_cog("EventManager")
+        team_members = event_manager.events.get(team, []) if event_manager else []
+
+        embed = discord.Embed(
+            title="📢 Team Reminder Sent",
+            description=f"Sent reminder to {team_display}",
+            color=COLORS["SUCCESS"] if sent_count > 0 else COLORS["WARNING"],
+        )
+        embed.add_field(
+            name="Notifications Sent",
+            value=f"{sent_count}/{len(team_members)} members notified",
+            inline=True,
+        )
+        if message:
+            embed.add_field(
+                name="Custom Message", value=f"```{message}```", inline=False
+            )
+        if sent_count == 0 and len(team_members) > 0:
+            embed.add_field(
+                name="Note",
+                value="Some members may have team notifications disabled.",
+                inline=False,
+            )
+        elif len(team_members) == 0:
+            embed.description = f"No members currently signed up for {team_display}"
+            embed.color = COLORS["WARNING"]
+
+        await ctx.send(embed=embed)
+
+
+async def setup(bot):
+    await bot.add_cog(NotificationsCog(bot))
                 total_sent,
                 summary,
             ) = await self.smart_notifications.send_all_teams_reminders(message)

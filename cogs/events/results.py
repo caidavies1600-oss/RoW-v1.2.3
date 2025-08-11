@@ -6,8 +6,7 @@ from discord.ext import commands
 
 from config.constants import COLORS, FILES, TEAM_DISPLAY
 from config.settings import ADMIN_ROLE_IDS
-from utils.data_manager import DataManager
-from utils.helpers import Helpers
+from utils.integrated_data_manager import data_manager
 
 logger = logging.getLogger("results")
 
@@ -32,22 +31,21 @@ class Results(commands.Cog):
             bot: The Discord bot instance
         """
         self.bot = bot
-        self.data_manager = DataManager()
-        self.results = self.load_results()
+        self.data_manager = data_manager
+        self.results = {"wins": 0, "losses": 0, "history": []}
 
-    def load_results(self):
-        """Load result data using DataManager."""
-        default_results = {"total_wins": 0, "total_losses": 0, "history": []}
-        return self.data_manager.load_json(FILES["RESULTS"], default_results)
+    async def load_results(self):
+        """Load results with integrated manager."""
+        self.results = await self.data_manager.load_data(
+            FILES["RESULTS"],
+            default={"wins": 0, "losses": 0, "history": []},
+        )
 
-    def save_results(self):
-        """Save result data using DataManager with live sync."""
-        success = self.data_manager.save_json(
+    async def save_results(self) -> bool:
+        """Save results with atomic operations."""
+        return await self.data_manager.save_data(
             FILES["RESULTS"], self.results, sync_to_sheets=True
         )
-        if not success:
-            logger.error("❌ Failed to save results data")
-        return success
 
     def get_current_team_players(self, team_key: str):
         """
@@ -147,7 +145,7 @@ class Results(commands.Cog):
         # Update individual player stats
         self.update_player_stats_for_result(team_key, "win", current_players)
 
-        if self.save_results():
+        if await self.save_results():
             # Send smart notifications to players
             notifications_cog = self.bot.get_cog("NotificationsCog")
             if notifications_cog:
@@ -218,7 +216,7 @@ class Results(commands.Cog):
         # Update individual player stats
         self.update_player_stats_for_result(team_key, "loss", current_players)
 
-        if self.save_results():
+        if await self.save_results():
             # Send smart notifications to players
             notifications_cog = self.bot.get_cog("NotificationsCog")
             if notifications_cog:
@@ -426,5 +424,7 @@ async def setup(bot):
 
     Args:
         bot: The Discord bot instance
+    """
+    await bot.add_cog(Results(bot))
     """
     await bot.add_cog(Results(bot))

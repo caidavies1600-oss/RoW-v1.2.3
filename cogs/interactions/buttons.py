@@ -540,3 +540,50 @@ async def setup(bot):
         bot: The Discord bot instance
     """
     await bot.add_cog(ButtonCog(bot))
+
+
+class ButtonHandler(commands.Cog):
+    """
+    Cog for handling button interactions.
+
+    Listens to button clicks and performs actions like joining/leaving teams.
+    """
+
+    def __init__(self, bot):
+        """
+        Initialize the button handler cog.
+
+        Args:
+            bot: The Discord bot instance
+        """
+        self.bot = bot
+
+    @commands.Cog.listener()
+    async def on_button_click(self, interaction: discord.Interaction):
+        if interaction.custom_id.startswith("join_"):
+            team = interaction.custom_id.split("_")[1]
+            event_manager = self.bot.get_cog("EventManager")
+
+            # Add member
+            event_manager.events[team].append(interaction.user.display_name)
+
+            # Save with atomic operations
+            success = await event_manager.save_events()
+
+            if success:
+                await interaction.response.send_message("✅ Joined team!", ephemeral=True)
+            else:
+                await interaction.response.send_message("❌ Failed to join team", ephemeral=True)
+
+    async def cog_load(self):
+        """
+        Register the button handler when the cog loads.
+
+        Effects:
+            - Activates the on_button_click listener
+        """
+        logger.info("ButtonHandler cog loaded")
+
+    def cog_unload(self):
+        """Clean up resources when cog is unloaded."""
+        logger.info("ButtonHandler cog unloaded")
