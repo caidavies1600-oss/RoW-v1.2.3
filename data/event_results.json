@@ -1,0 +1,59 @@
+{
+    "total_wins": 2,
+    "total_losses": 3,
+    "history": [
+        {
+            "timestamp": "2025-08-05T17:04:40.271793",
+            "date": "2025-08-05 17:04 UTC",
+            "result": "win",
+            "team": "main_team",
+            "players": [
+                1096858315826397354
+            ],
+            "recorded_by": "_cai_1",
+            "by": "_cai_1"
+        },
+        {
+            "timestamp": "2025-08-05T17:04:54.702145",
+            "date": "2025-08-05 17:04 UTC",
+            "result": "loss",
+            "team": "team_2",
+            "players": [
+                1236396477853728865
+            ],
+            "recorded_by": "_cai_1",
+            "by": "_cai_1"
+        },
+        {
+            "timestamp": "2025-08-05T17:07:15.390998",
+            "date": "2025-08-05 17:07 UTC",
+            "result": "loss",
+            "team": "team_2",
+            "players": [
+                1236396477853728865
+            ],
+            "recorded_by": "_cai_1",
+            "by": "_cai_1"
+        },
+        {
+            "timestamp": "2025-08-05T17:07:47.686382",
+            "date": "2025-08-05 17:07 UTC",
+            "result": "loss",
+            "team": "team_2",
+            "players": [
+                1236396477853728865
+            ],
+            "recorded_by": "_cai_1",
+            "by": "_cai_1"
+        },
+        {
+            "timestamp": "2025-08-05T17:09:23.468768",
+            "date": "2025-08-05 17:09 UTC",
+            "result": "win",
+            "team": "team_3",
+            "players": [],
+            "recorded_by": "_cai_1",
+            "by": "_cai_1"
+        }
+    ]
+}
