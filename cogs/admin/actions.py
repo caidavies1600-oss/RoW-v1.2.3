@@ -17,6 +17,7 @@ from utils.helpers import Helpers
 from utils.logger import setup_logger
 from utils.sheets_manager import SheetsManager
 from utils.validators import validate_days
+from utils.integrated_data_manager import data_manager
 
 logger = setup_logger("admin_actions")
 
@@ -38,8 +39,7 @@ class AdminActions(commands.Cog):
         self.blocked_file = FILES["BLOCKED"]
         self.history_file = FILES["HISTORY"]
         self.results_file = FILES["RESULTS"]
-        self.file_ops = file_ops  # Use global instance
-        self.sheets_manager = SheetsManager()
+        self.data_manager = data_manager  # Use global integrated instance
 
     async def load_results(self):
         """
@@ -48,16 +48,10 @@ class AdminActions(commands.Cog):
         Returns:
             dict: Dictionary containing wins, losses, and history data
         """
-        try:
-            if self.sheets_manager.is_connected():
-                sheet_data = await self.sheets_manager.load_results()
-                if sheet_data:
-                    return sheet_data
-        except Exception as e:
-            logger.warning(f"Failed to load from sheets: {e}")
-
-        return await self.file_ops.load_json(
-            self.results_file, {"wins": 0, "losses": 0, "history": []}
+        return await self.data_manager.load_data(
+            self.results_file,
+            default={"wins": 0, "losses": 0, "history": []},
+            prefer_sheets=True,
         )
 
     async def load_blocked_users(self):
@@ -89,9 +83,9 @@ class AdminActions(commands.Cog):
 
     async def save_blocked_users(self, data):
         """Save blocked users to both JSON and sheets."""
-        success = await self.file_ops.save_json(self.blocked_file, data)
-        await self.sync_to_sheets("blocked", data)
-        return success
+        return await self.data_manager.save_data(
+            self.blocked_file, data, sync_to_sheets=True
+        )
 
     @commands.command()
     @commands.has_any_role(*ADMIN_ROLE_IDS)
@@ -399,6 +393,12 @@ class AdminActions(commands.Cog):
 # Required setup
 async def setup(bot):
     """
+    Set up the AdminActions cog.
+
+    Args:
+        bot: The Discord bot instance
+    """
+    await bot.add_cog(AdminActions(bot))
     Set up the AdminActions cog.
 
     Args:

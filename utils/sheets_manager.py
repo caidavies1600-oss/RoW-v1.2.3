@@ -1,5 +1,6 @@
 import asyncio
-from typing import Optional, Any
+import time
+from typing import Any, Optional
 import gspread
 from utils.logger import setup_logger
 
@@ -15,7 +16,7 @@ class SheetsManager:
 
     def _initialize(self):
         try:
-            // ...existing initialization code...
+            # ...existing initialization code...
 
     async def _rate_limited_request(self, func):
         """Execute request with rate limiting and retries."""
@@ -52,7 +53,7 @@ class SheetsManager:
         try:
             def _update():
                 worksheet = self.spreadsheet.worksheet("Blocked Users")
-                // ...update sheet with data...
+                # ...update sheet with data...
                 
             await self._rate_limited_request(_update)
             return True
@@ -61,4 +62,29 @@ class SheetsManager:
             logger.error(f"Failed to sync blocked users: {e}")
             return False
 
-    // ...similar improvements for other sheet operations...
+    async def sync_data(self, filepath: str, data: Any) -> bool:
+        """Smart sync based on file type."""
+        async with self._rate_limit():
+            try:
+                if "blocked" in filepath:
+                    return await self.sync_blocked_users(data)
+                elif "results" in filepath:
+                    return await self.sync_results(data)
+                # ...handle other file types...
+                return True
+            except Exception as e:
+                logger.error(f"Sheet sync failed: {e}")
+                return False
+
+    @asyncio.contextmanager
+    async def _rate_limit(self):
+        """Rate limiting context manager."""
+        now = time.time()
+        if now - self.last_request < self.min_request_interval:
+            await asyncio.sleep(self.min_request_interval)
+        try:
+            yield
+        finally:
+            self.last_request = time.time()
+
+    # ...similar improvements for other sheet operations...
