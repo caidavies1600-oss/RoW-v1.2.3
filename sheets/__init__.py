@@ -1,37 +1,14 @@
+
 """
-Google Sheets Integration Module for Discord RoW Bot.
+Comprehensive Google Sheets Manager for Discord RoW Bot.
 
-This module provides comprehensive Google integration capabilities:
-- Rate-limited Google Sheets access with exponential backoff
-- Template creation and advanced formatting
-- Real-time data synchronization between bot and sheets
-- Comprehensive error handling and connection management
+This module provides complete Google Sheets integration with advanced features:
+- Template creation and management
+- Data synchronization and validation
 - Performance monitoring and optimization
-- Advanced worksheet management and operations
-
-Components:
-- SheetsManager: Main interface for all sheets operations
-- Enhanced rate limiting with intelligent backoff strategies
-- Automatic retry mechanisms with exponential delays
-- Template-based sheet creation with standardized formatting
-- Real-time data synchronization with conflict resolution
-- Comprehensive error tracking and recovery systems
-- Performance metrics and optimization insights
-- Advanced validation and data integrity checks
-- Batch processing for efficient operations
-- Multi-threading support for concurrent access
-
-Key Features:
-- Seamless Discord-to-Sheets data flow
-- Automatic template creation and management
-- Real-time member synchronization
-- Event history tracking and analytics
-- Player statistics and performance metrics
-- Results tracking with comprehensive analysis
-- Blocked user management and moderation tools
-- Alliance tracking and diplomatic relationship management
-- Match statistics with detailed performance analysis
-- Administrative oversight and audit trails
+- Error handling and recovery
+- Discord member synchronization
+- Real-time analytics and reporting
 
 Usage Examples:
     # Basic initialization
@@ -77,23 +54,15 @@ import logging
 
 import gspread
 from google.oauth2.service_account import Credentials
+from google.auth.exceptions import RefreshError
+from google.auth.transport.requests import Request
+import gspread.exceptions
 
-# Import our configuration and utilities
-from .config import (
-    SUPPORTED_SHEETS, 
-    COLORS, 
-    TEXT_FORMATS,
-    VALIDATION_RULES,
-    INTEGRITY_CONSTRAINTS,
-    BATCH_SETTINGS,
-    FEATURE_FLAGS,
-    PERFORMANCE_THRESHOLDS
-)
+from utils.logger import setup_logger
 from .base_manager import BaseGoogleSheetsManager as BaseSheetsManager
 from .template_creator import SheetsTemplateCreator
 from .worksheet_handlers import WorksheetHandlers
-
-from utils.logger import setup_logger
+from .config import BATCH_SETTINGS
 
 logger = setup_logger("sheets_manager")
 
@@ -223,11 +192,6 @@ class SheetsManager(BaseSheetsManager):
             "stats_updates": [],
             "result_updates": []
         }
-
-        # Initialize the connection with debug logging
-        logger.debug(f"🔄 Initializing connection for spreadsheet ID: {spreadsheet_id}")
-        self.initialize_client()
-        logger.debug(f"✅ Initialization complete. Connected: {self.is_connected()}")
 
         logger.info("✅ Advanced SheetsManager initialized with comprehensive functionality")
         logger.info(f"📊 Performance monitoring: {'Enabled' if self.config['enable_performance_monitoring'] else 'Disabled'}")
@@ -887,66 +851,5 @@ class SheetsManager(BaseSheetsManager):
             pass
 
 
-# Export the main class and utilities
-__all__ = [
-    "SheetsManager",
-    "SheetsTemplateCreator", 
-    "WorksheetHandlers",
-    "SUPPORTED_SHEETS",
-    "COLORS",
-    "TEXT_FORMATS"
-]
-
-# Module metadata
-__version__ = "2.1.0"
-__author__ = "RoW Bot Development Team"
-__description__ = "Comprehensive Google Sheets integration with advanced features"
-__last_updated__ = "2024-01-15"
-__requirements__ = [
-    "gspread>=5.0.0",
-    "google-auth>=2.0.0",
-    "google-auth-oauthlib>=0.5.0",
-    "google-auth-httplib2>=0.1.0"
-]
-__min_python_version__ = "3.8"
-
-# Configuration constants
-DEFAULT_REQUEST_INTERVAL = 0.1
-DEFAULT_MAX_RETRIES = 5
-DEFAULT_BATCH_SIZE = 50
-DEFAULT_CACHE_TTL = 300
-
-# Performance thresholds
-PERFORMANCE_THRESHOLDS = {
-    "MAX_OPERATION_TIME": 30.0,
-    "MAX_BATCH_SIZE": 100,
-    "CACHE_SIZE_LIMIT": 500,
-    "ERROR_RATE_WARNING": 10.0,
-    "SUCCESS_RATE_WARNING": 90.0
-}
-
-# Feature availability matrix
-FEATURE_MATRIX = {
-    "template_creation": True,
-    "data_synchronization": True,
-    "member_management": True,
-    "performance_monitoring": True,
-    "advanced_formatting": True,
-    "batch_operations": True,
-    "caching_system": True,
-    "error_recovery": True,
-    "analytics_integration": True,
-    "multi_threading": True
-}
-
-# Logging configuration
-LOGGING_CONFIG = {
-    "level": "INFO",
-    "format": "%(asctime)s | %(name)s | %(levelname)s | %(message)s",
-    "handlers": ["console", "file"],
-    "max_file_size": "10MB",
-    "backup_count": 5
-}
-
-logger.info("📦 Google Sheets Integration Module loaded successfully")
-logger.info(f"✨ Version: {__version__} | Features: {sum(FEATURE_MATRIX.values())}/{len(FEATURE_MATRIX)} enabled")
+# Export the main class
+__all__ = ["SheetsManager"]
