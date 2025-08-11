@@ -1656,6 +1656,119 @@ class RateLimitedSheetsManager:
             logger.error(f"❌ Failed to create Dashboard Summary worksheet: {e}")
             return False
 
+    async def scan_and_sync_all_members(self, bot, guild_id):
+        """
+        Scan Discord guild and sync all members to Google Sheets.
+        
+        Args:
+            bot: Discord bot instance
+            guild_id: Discord guild ID to scan
+            
+        Returns:
+            dict: Results of the sync operation
+        """
+        if not self.is_connected():
+            return {"success": False, "error": "Sheets not connected"}
+            
+        try:
+            guild = bot.get_guild(guild_id)
+            if not guild:
+                return {"success": False, "error": f"Guild {guild_id} not found"}
+                
+            logger.info(f"🔄 Scanning guild: {guild.name} ({guild.id})")
+            
+            # Get all non-bot members
+            members = [member for member in guild.members if not member.bot]
+            
+            # Create member data for sheets
+            member_data = []
+            for member in members:
+                member_data.append({
+                    "user_id": str(member.id),
+                    "username": member.name,
+                    "display_name": member.display_name,
+                    "joined_at": member.joined_at.isoformat() if member.joined_at else None,
+                    "roles": [role.name for role in member.roles if role.name != "@everyone"],
+                    "status": str(member.status),
+                    "synced_at": datetime.utcnow().isoformat()
+                })
+            
+            # Sync to sheets
+            success = await self._sync_members_to_sheets(member_data, guild.name)
+            
+            return {
+                "success": success,
+                "guild_name": guild.name,
+                "total_discord_members": len(members),
+                "new_members_added": len(member_data),  # Simplified for now
+                "existing_members_updated": 0  # Simplified for now
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to scan and sync members: {e}")
+            return {"success": False, "error": str(e)}
+    
+    async def _sync_members_to_sheets(self, member_data, guild_name):
+        """Sync member data to Google Sheets."""
+        try:
+            worksheet = self.get_or_create_worksheet("Discord Members", 1000, 10)
+            if not worksheet:
+                return False
+                
+            # Clear and set headers
+            self.rate_limited_request(worksheet.clear)
+            headers = [
+                "👤 User ID",
+                "📝 Username", 
+                "💬 Display Name",
+                "📅 Joined At",
+                "🎭 Roles",
+                "🟢 Status",
+                "🔄 Synced At",
+                "🏰 Guild",
+                "📊 Notes"
+            ]
+            self.rate_limited_request(worksheet.append_row, headers)
+            
+            # Add member data
+            for member in member_data:
+                row = [
+                    member["user_id"],
+                    member["username"],
+                    member["display_name"],
+                    member["joined_at"] or "Unknown",
+                    ", ".join(member["roles"]),
+                    member["status"],
+                    member["synced_at"],
+                    guild_name,
+                    ""
+                ]
+                self.rate_limited_request(worksheet.append_row, row)
+            
+            # Apply formatting
+            self.rate_limited_request(
+                worksheet.format,
+                "A1:I1",
+                {
+                    "backgroundColor": {"red": 0.2, "green": 0.6, "blue": 0.8},
+                    "textFormat": {
+                        "bold": True,
+                        "foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0},
+                    },
+                    "horizontalAlignment": "CENTER",
+                },
+            )
+            
+            self.rate_limited_request(worksheet.freeze, rows=1)
+            self.rate_limited_request(worksheet.columns_auto_resize, 0, 9)
+            
+            logger.info(f"✅ Synced {len(member_data)} members to Discord Members sheet")
+            return True
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to sync members to sheets: {e}")
+            return False
+
     def __del__(self):
         """Log usage summary when object is destroyed."""
         try:

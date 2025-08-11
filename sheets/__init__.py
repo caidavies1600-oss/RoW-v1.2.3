@@ -1,4 +1,3 @@
-
 """
 Google Sheets Integration Module for Discord RoW Bot.
 
@@ -17,63 +16,10 @@ Components:
 
 from .base_manager import RateLimitedSheetsManager
 
+# Main export - this is what should be imported
 class SheetsManager(RateLimitedSheetsManager):
-    """
-    Complete Google Sheets Manager combining all functionality.
-
-    Features:
-    - Rate limited API access
-    - Error handling and retries
-    - Template creation and formatting
-    - Data synchronization
-    - Sheet formatting
-    - Formula management
-
-    Configuration:
-    - Uses GOOGLE_SHEETS_CREDENTIALS from environment
-    - Uses GOOGLE_SHEETS_ID for spreadsheet
-    - Automatically creates required worksheets
-    """
-
-    # Rate limiting settings
-    MAX_RETRIES = 3
-    BACKOFF_FACTOR = 1.5
-    REQUEST_TIMEOUT = 30
-
-    def __init__(self, spreadsheet_id=None):
-        """
-        Initialize sheets manager with rate limiting and error handling.
-
-        Establishes connection to Google Sheets API and
-        verifies credentials and permissions.
-        """
-        super().__init__(spreadsheet_id)
-
-    async def full_sync_and_create_templates(self, bot, all_data, guild_id=None):
-        """Enhanced full sync with all template creation and formatting."""
-        if not self.is_connected():
-            return {"success": False, "error": "Sheets not available"}
-
-        try:
-            # Create all templates with proper formatting
-            success = self.create_all_templates(all_data)
-            
-            result = {
-                "success": success,
-                "spreadsheet_url": self.spreadsheet.url if self.spreadsheet else None,
-                "templates_created": [
-                    "Player Stats (with formulas and formatting)",
-                    "Current Teams",
-                    "Results History",
-                    "Match Statistics",
-                    "Alliance Tracking",
-                ],
-            }
-
-            return result
-
-        except Exception as e:
-            return {"success": False, "error": str(e)}
+    """Enhanced SheetsManager with all required methods."""
+    pass
 
 
 # Export the main class
