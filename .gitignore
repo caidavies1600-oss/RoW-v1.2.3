@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+data/logs/
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+deploy_temp/
+
+# Local environment files (Railway will use environment variables)
+.env
+token.txt
+
+# Replit specific (not needed on Railway)
+.replit
+replit.nix
+.upm/
+
+# Local backups
+data/backups/
+
+# Development files
+attached_assets/
+dashboard/
