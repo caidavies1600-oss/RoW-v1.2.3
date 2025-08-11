@@ -192,4 +192,24 @@ class SheetsManager:
             return f"https://docs.google.com/spreadsheets/d/{self.spreadsheet_id}"
         return ""
 
+    def create_error_summary(self):
+        """Create comprehensive Error Summary sheet with formatting."""
+        try:
+            worksheet = self._get_or_create_sheet("Error Summary")
+            
+            # Set up headers
+            headers = [
+                "🕐 Timestamp", "⚠️ Error Type", "💬 Command", 
+                "👤 User ID", "📝 Error Message", "🔍 Traceback",
+                "⚡ Severity", "🛠️ Status", "📋 Notes"
+            ]
+            
+            worksheet.update('A1:I1', [headers])
+            # ...formatting implementation...
+            
+            return True
+        except Exception as e:
+            logger.error(f"Failed to create error summary: {e}")
+            return False
+
     # ...similar improvements for other sheet operations...

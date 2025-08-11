@@ -65,6 +65,14 @@ except Exception as e:
     setup_automatic_monitoring = lambda *args: None
     MONITORING_AVAILABLE = False
 
+# Error logging setup
+try:
+    from services.error_logger import setup_error_logger
+
+    ERROR_LOGGING_AVAILABLE = True
+except ImportError:
+    ERROR_LOGGING_AVAILABLE = False
+
 logger = setup_logger("bot_client")
 
 
@@ -91,6 +99,11 @@ class RowBot(commands.Bot):
         self.startup_completed = False
         self.startup_time = time.time()
         print("DEBUG: RowBot initialization complete")
+
+        # Error logger initialization
+        if ERROR_LOGGING_AVAILABLE:
+            setup_error_logger(self)
+            logger.info("✅ Enhanced error logging initialized")
 
     async def setup_hook(self):
         """
