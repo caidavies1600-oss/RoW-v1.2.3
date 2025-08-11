@@ -1,10 +1,11 @@
 """
-Google Sheets operations for bot data syncing.
+Google Sheets operations for bot data syncing - FIXED VERSION.
 """
 
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 import gspread
+import time
 from .client import SheetsClient
 from .config import SHEET_CONFIGS, TEAM_MAPPING
 from utils.logger import setup_logger
@@ -18,24 +19,108 @@ class SheetsOperations(SheetsClient):
         super().__init__()
         self.initialized = self.initialize()
 
+    def _safe_batch_operation(self, worksheet, operation_name: str, operation_func, *args, **kwargs):
+        """Execute batch operations with enhanced error handling and rate limiting."""
+        if not worksheet:
+            logger.error(f"Cannot perform {operation_name} - worksheet is None")
+            return False
+
+        try:
+            logger.info(f"Starting {operation_name}...")
+            time.sleep(2)  # Rate limiting
+
+            result = operation_func(*args, **kwargs)
+
+            if result is None:
+                logger.error(f"❌ {operation_name} returned None (likely failed)")
+                return False
+
+            logger.info(f"✅ {operation_name} completed successfully")
+            return True
+
+        except gspread.exceptions.APIError as e:
+            logger.error(f"❌ Google Sheets API error in {operation_name}: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"❌ Unexpected error in {operation_name}: {e}")
+            return False
+
+    def _freeze_header_row(self, worksheet, num_rows: int = 1):
+        """Freeze the top row(s) of a worksheet."""
+        try:
+            # Use batch_update to freeze rows
+            requests = [{
+                "updateSheetProperties": {
+                    "properties": {
+                        "sheetId": worksheet.id,
+                        "gridProperties": {
+                            "frozenRowCount": num_rows
+                        }
+                    },
+                    "fields": "gridProperties.frozenRowCount"
+                }
+            }]
+
+            self.spreadsheet.batch_update({"requests": requests})
+            logger.info(f"✅ Froze {num_rows} header row(s) in {worksheet.title}")
+            return True
+        except Exception as e:
+            logger.warning(f"⚠️ Could not freeze rows in {worksheet.title}: {e}")
+            return False
+
+    def _apply_header_formatting(self, worksheet, num_cols: int, color_scheme: str = "blue"):
+        """Apply consistent header formatting with freezing."""
+        try:
+            # Color schemes
+            colors = {
+                "blue": {"red": 0.2, "green": 0.6, "blue": 1.0},
+                "orange": {"red": 0.8, "green": 0.4, "blue": 0.2},
+                "red": {"red": 0.8, "green": 0.3, "blue": 0.3},
+                "green": {"red": 0.1, "green": 0.5, "blue": 0.2}
+            }
+
+            bg_color = colors.get(color_scheme, colors["blue"])
+            header_range = f"A1:{chr(ord('A') + num_cols - 1)}1"
+
+            # Apply formatting
+            worksheet.format(header_range, {
+                "backgroundColor": bg_color,
+                "textFormat": {
+                    "foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0},
+                    "fontSize": 12,
+                    "bold": True
+                },
+                "horizontalAlignment": "CENTER"
+            })
+
+            # Freeze the header row
+            self._freeze_header_row(worksheet, 1)
+
+            logger.info(f"✅ Applied {color_scheme} header formatting to {header_range}")
+            return True
+
+        except Exception as e:
+            logger.warning(f"⚠️ Header formatting failed (non-critical): {e}")
+            return False
+
     # ==========================================
-    # DATA SYNCHRONIZATION METHODS
+    # DATA SYNCHRONIZATION METHODS - FIXED
     # ==========================================
 
     def sync_current_teams(self, events_data: Dict[str, List]) -> bool:
-        """Sync current team signups to Google Sheets with batching."""
+        """Sync current team signups to Google Sheets with improved batching."""
         if not self.is_connected():
             logger.warning("Cannot sync teams - sheets not connected")
             return False
 
         try:
-            import time
             config = SHEET_CONFIGS["Current Teams"]
             worksheet = self.get_or_create_worksheet("Current Teams", config["rows"], config["cols"])
             if not worksheet:
+                logger.error("Failed to get/create Current Teams worksheet")
                 return False
 
-            # Prepare all data first, then batch update
+            # Prepare batch data
             timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
             all_rows = [config["headers"]]  # Start with headers
 
@@ -47,33 +132,24 @@ class SheetsOperations(SheetsClient):
                 row = [timestamp, team_name, len(players), player_list, status]
                 all_rows.append(row)
 
-            # Single batch update instead of multiple append_row calls
-            time.sleep(1)
-            clear_result = self.safe_worksheet_operation(worksheet, worksheet.clear)
-            if clear_result is None:
+            # Clear and update in separate operations
+            if not self._safe_batch_operation(worksheet, "clear Current Teams", worksheet.clear):
                 return False
 
-            time.sleep(1)
-            # Use update() for batch operation instead of multiple append_row()
-            range_name = f"A1:{chr(ord('A') + len(config['headers']) - 1)}{len(all_rows)}"
-            batch_result = self.safe_worksheet_operation(worksheet, worksheet.update, range_name, all_rows)
+            # Calculate range and update
+            num_cols = len(config["headers"])
+            num_rows = len(all_rows)
+            range_name = f"A1:{chr(ord('A') + num_cols - 1)}{num_rows}"
 
-            if batch_result is None:
-                logger.error("Failed to batch update Current Teams")
+            if not self._safe_batch_operation(worksheet, f"batch update Current Teams ({range_name})", 
+                                            worksheet.update, range_name, all_rows):
                 return False
 
-            # Apply formatting in one operation
+            # Apply formatting with freezing
             time.sleep(1)
-            try:
-                worksheet.format("A1:E1", {
-                    "backgroundColor": {"red": 0.2, "green": 0.6, "blue": 1.0},
-                    "textFormat": {"foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0}, "bold": True},
-                    "horizontalAlignment": "CENTER"
-                })
-            except Exception as format_error:
-                logger.warning(f"Current Teams formatting failed (non-critical): {format_error}")
+            self._apply_header_formatting(worksheet, num_cols, "blue")
 
-            logger.info(f"✅ Batch synced current teams ({len(all_rows)-1} teams) to Google Sheets")
+            logger.info(f"✅ Successfully synced {len(all_rows)-1} teams to Current Teams")
             return True
 
         except Exception as e:
@@ -81,26 +157,35 @@ class SheetsOperations(SheetsClient):
             return False
 
     def sync_player_stats(self, player_stats: Dict[str, Dict]) -> bool:
-        """Sync player statistics to Google Sheets with efficient batching."""
+        """Sync player statistics with chunked processing and improved error handling."""
         if not self.is_connected():
             return False
 
         try:
-            import time
             config = SHEET_CONFIGS["Player Stats"]
             worksheet = self.get_or_create_worksheet("Player Stats", config["rows"], config["cols"])
             if not worksheet:
                 return False
 
-            # Prepare all data for batch update
-            all_rows = [config["headers"]]  # Start with headers
-
-            # Process players in chunks to avoid huge batches
+            # Process in smaller chunks to avoid API limits
+            chunk_size = 25  # Reduced chunk size
             player_items = list(player_stats.items())
-            chunk_size = 50  # Process 50 players at a time
 
+            logger.info(f"Processing {len(player_items)} players in chunks of {chunk_size}")
+
+            # Clear worksheet first
+            if not self._safe_batch_operation(worksheet, "clear Player Stats", worksheet.clear):
+                return False
+
+            # Add headers first
+            if not self._safe_batch_operation(worksheet, "add Player Stats headers", 
+                                            worksheet.append_row, config["headers"]):
+                return False
+
+            # Process players in chunks
             for chunk_start in range(0, len(player_items), chunk_size):
                 chunk = player_items[chunk_start:chunk_start + chunk_size]
+                chunk_rows = []
 
                 for user_id, stats in chunk:
                     team_results = stats.get("team_results", {})
@@ -111,55 +196,39 @@ class SheetsOperations(SheetsClient):
                     team3_wins = team_results.get("team_3", {}).get("wins", 0)
                     team3_losses = team_results.get("team_3", {}).get("losses", 0)
 
-                    total_events = stats.get("total_events", 0)
-                    last_active = stats.get("last_active", "Never")
-
                     row = [
                         user_id,
                         stats.get("name", "Unknown"),
-                        stats.get("power_rating", "ENTER_POWER_RATING_HERE"),
+                        stats.get("power_rating", "ENTER_POWER_HERE"),
                         main_wins, main_losses,
                         team2_wins, team2_losses,
                         team3_wins, team3_losses,
-                        total_events,
-                        last_active,
+                        stats.get("total_events", 0),
+                        stats.get("last_active", "Never"),
                         ""  # Notes column
                     ]
-                    all_rows.append(row)
+                    chunk_rows.append(row)
 
-            # Single batch update for all data
-            logger.info(f"Batch updating {len(all_rows)} rows to Player Stats...")
+                # Add chunk to worksheet
+                if chunk_rows:
+                    try:
+                        time.sleep(3)  # Longer delay between chunks
+                        for row in chunk_rows:
+                            result = self.safe_worksheet_operation(worksheet, worksheet.append_row, row)
+                            if result is None:
+                                logger.warning(f"Failed to add player row: {row[1]}")
+                            time.sleep(0.5)  # Small delay between rows
 
-            time.sleep(1)
-            clear_result = self.safe_worksheet_operation(worksheet, worksheet.clear)
-            if clear_result is None:
-                return False
+                        logger.info(f"✅ Added chunk {chunk_start//chunk_size + 1}: {len(chunk_rows)} players")
+                    except Exception as e:
+                        logger.error(f"❌ Failed to add player chunk: {e}")
+                        return False
 
-            # Calculate range for batch update
-            if len(all_rows) > 0:
-                time.sleep(2)  # Longer delay for large updates
-                num_cols = len(config["headers"])
-                num_rows = len(all_rows)
-                range_name = f"A1:{chr(ord('A') + num_cols - 1)}{num_rows}"
+            # Apply formatting with freezing
+            time.sleep(2)
+            self._apply_header_formatting(worksheet, len(config["headers"]), "blue")
 
-                batch_result = self.safe_worksheet_operation(worksheet, worksheet.update, range_name, all_rows)
-                if batch_result is None:
-                    logger.error("Failed to batch update Player Stats")
-                    return False
-
-                # Apply header formatting
-                time.sleep(1)
-                try:
-                    header_range = f"A1:{chr(ord('A') + num_cols - 1)}1"
-                    worksheet.format(header_range, {
-                        "backgroundColor": {"red": 0.2, "green": 0.6, "blue": 1.0},
-                        "textFormat": {"foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0}, "bold": True},
-                        "horizontalAlignment": "CENTER"
-                    })
-                except Exception as format_error:
-                    logger.warning(f"Player Stats formatting failed (non-critical): {format_error}")
-
-            logger.info(f"✅ Batch synced {len(all_rows)-1} players to Google Sheets")
+            logger.info(f"✅ Successfully synced {len(player_items)} players to Player Stats")
             return True
 
         except Exception as e:
@@ -167,29 +236,26 @@ class SheetsOperations(SheetsClient):
             return False
 
     def sync_match_results(self, results_data: Dict) -> bool:
-        """Sync match results to Google Sheets with batching."""
+        """Sync match results with improved batching."""
         if not self.is_connected():
             return False
 
         try:
-            import time
             config = SHEET_CONFIGS["Match Results"]
             worksheet = self.get_or_create_worksheet("Match Results", config["rows"], config["cols"])
             if not worksheet:
                 return False
 
-            # Prepare batch data
-            all_rows = [config["headers"]]  # Start with headers
-
-            # Add recent results from history (limit to last 100 to avoid huge batches)
+            # Prepare data - limit to recent results
+            all_rows = [config["headers"]]
             history = results_data.get("history", [])
-            recent_history = history[-100:] if len(history) > 100 else history
+            recent_history = history[-50:] if len(history) > 50 else history  # Reduced limit
 
             for result in recent_history:
-                date = result.get("date", "Unknown")
+                date = result.get("date", result.get("timestamp", "Unknown"))
                 team = result.get("team", "Unknown")
                 outcome = result.get("result", "Unknown")
-                recorded_by = result.get("recorded_by", "Bot")
+                recorded_by = result.get("recorded_by", result.get("by", "Bot"))
 
                 row = [
                     date, team, outcome,
@@ -200,36 +266,24 @@ class SheetsOperations(SheetsClient):
                 ]
                 all_rows.append(row)
 
-            # Batch update instead of individual append operations
-            time.sleep(1)
-            clear_result = self.safe_worksheet_operation(worksheet, worksheet.clear)
-            if clear_result is None:
+            # Clear and batch update
+            if not self._safe_batch_operation(worksheet, "clear Match Results", worksheet.clear):
                 return False
 
-            if len(all_rows) > 1:  # Only update if we have data beyond headers
-                time.sleep(1)
+            if len(all_rows) > 1:
                 num_cols = len(config["headers"])
                 num_rows = len(all_rows)
                 range_name = f"A1:{chr(ord('A') + num_cols - 1)}{num_rows}"
 
-                batch_result = self.safe_worksheet_operation(worksheet, worksheet.update, range_name, all_rows)
-                if batch_result is None:
-                    logger.error("Failed to batch update Match Results")
+                if not self._safe_batch_operation(worksheet, f"update Match Results ({range_name})",
+                                                worksheet.update, range_name, all_rows):
                     return False
 
-                # Apply header formatting
-                time.sleep(1)
-                try:
-                    header_range = f"A1:{chr(ord('A') + num_cols - 1)}1"
-                    worksheet.format(header_range, {
-                        "backgroundColor": {"red": 0.8, "green": 0.4, "blue": 0.2},
-                        "textFormat": {"foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0}, "bold": True},
-                        "horizontalAlignment": "CENTER"
-                    })
-                except Exception as format_error:
-                    logger.warning(f"Match Results formatting failed (non-critical): {format_error}")
+            # Apply formatting
+            time.sleep(1)
+            self._apply_header_formatting(worksheet, len(config["headers"]), "orange")
 
-            logger.info(f"✅ Batch synced {len(all_rows)-1} match results to Google Sheets")
+            logger.info(f"✅ Successfully synced {len(all_rows)-1} match results")
             return True
 
         except Exception as e:
@@ -237,83 +291,63 @@ class SheetsOperations(SheetsClient):
             return False
 
     # ==========================================
-    # TEMPLATE CREATION METHODS
+    # TEMPLATE CREATION METHODS - FIXED
     # ==========================================
 
     def create_player_stats_template(self, player_stats: Dict) -> bool:
-        """Create player stats template with current players for manual data entry using batch updates."""
+        """Create player stats template with better error handling and freezing."""
         if not self.is_connected():
             return False
 
         try:
-            import time
             config = SHEET_CONFIGS["Player Stats"]
             worksheet = self.get_or_create_worksheet("Player Stats", config["rows"], config["cols"])
             if not worksheet:
                 logger.error("Failed to create/get Player Stats worksheet")
                 return False
 
-            # Prepare all data for batch update
-            all_rows = [config["headers"]]  # Start with headers
+            logger.info("Creating Player Stats template...")
 
-            # Limit to first 100 players to avoid huge batches during template creation
-            player_items = list(player_stats.items())[:100]
+            # Clear worksheet first
+            if not self._safe_batch_operation(worksheet, "clear Player Stats template", worksheet.clear):
+                return False
 
-            logger.info(f"Creating Player Stats template with {len(player_items)} players...")
+            # Add headers
+            if not self._safe_batch_operation(worksheet, "add Player Stats template headers",
+                                            worksheet.append_row, config["headers"]):
+                return False
 
-            # Add current players with placeholder data
-            for user_id, stats in player_items:
+            # Add limited number of players to avoid quota issues
+            player_items = list(player_stats.items())[:50]  # Limit to 50 players for template
+
+            logger.info(f"Adding {len(player_items)} players to template...")
+
+            # Add players one by one with delays
+            for i, (user_id, stats) in enumerate(player_items):
                 row = [
                     user_id,
                     stats.get("name", "Unknown Player"),
-                    "ENTER_POWER_RATING_HERE",  # Manual entry placeholder
+                    "ENTER_POWER_HERE",  # Manual entry placeholder
                     0, 0, 0, 0, 0, 0,  # Team stats start at 0
                     0,  # Total events
                     datetime.utcnow().strftime("%Y-%m-%d"),
                     "ENTER_NOTES_HERE"
                 ]
-                all_rows.append(row)
 
-            # Single batch operation instead of multiple append_row calls
-            time.sleep(1)
-            clear_result = self.safe_worksheet_operation(worksheet, worksheet.clear)
-            if clear_result is None:
-                logger.error("Failed to clear Player Stats worksheet")
-                return False
+                time.sleep(0.8)  # Delay between rows
+                result = self.safe_worksheet_operation(worksheet, worksheet.append_row, row)
+                if result is None:
+                    logger.warning(f"Failed to add player {stats.get('name', 'Unknown')}")
 
-            # Batch update all data at once
-            if len(all_rows) > 0:
-                time.sleep(2)  # Longer delay for batch operations
-                num_cols = len(config["headers"])
-                num_rows = len(all_rows)
-                range_name = f"A1:{chr(ord('A') + num_cols - 1)}{num_rows}"
+                # Progress update every 10 players
+                if (i + 1) % 10 == 0:
+                    logger.info(f"Added {i + 1}/{len(player_items)} players...")
 
-                logger.info(f"Batch updating Player Stats range {range_name} with {num_rows} rows...")
-                batch_result = self.safe_worksheet_operation(worksheet, worksheet.update, range_name, all_rows)
-                if batch_result is None:
-                    logger.error("Failed to batch update Player Stats")
-                    return False
+            # Apply formatting with freezing
+            time.sleep(2)
+            self._apply_header_formatting(worksheet, len(config["headers"]), "blue")
 
-                logger.info(f"✅ Batch updated Player Stats with {len(all_rows)} rows")
-
-            # Apply formatting in single operation
-            time.sleep(1)
-            try:
-                header_range = f"A1:{chr(ord('A') + num_cols - 1)}1"
-                worksheet.format(header_range, {
-                    "backgroundColor": {"red": 0.2, "green": 0.6, "blue": 1.0},
-                    "textFormat": {
-                        "foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0},
-                        "fontSize": 12,
-                        "bold": True
-                    },
-                    "horizontalAlignment": "CENTER"
-                })
-                logger.info("✅ Applied Player Stats header formatting")
-            except Exception as format_error:
-                logger.warning(f"Header formatting failed (non-critical): {format_error}")
-
-            logger.info(f"✅ Created player stats template with {len(player_items)} players using batch operations")
+            logger.info(f"✅ Created player stats template with {len(player_items)} players")
             return True
 
         except Exception as e:
@@ -321,64 +355,47 @@ class SheetsOperations(SheetsClient):
             return False
 
     def create_alliance_tracking_template(self) -> bool:
-        """Create alliance tracking template for enemy alliance performance."""
+        """Create alliance tracking template with freezing."""
         if not self.is_connected():
             return False
 
         try:
-            import time
             config = SHEET_CONFIGS["Alliance Tracking"]
             worksheet = self.get_or_create_worksheet("Alliance Tracking", config["rows"], config["cols"])
             if not worksheet:
-                logger.error("Failed to create/get Alliance Tracking worksheet")
                 return False
 
-            # Check if template already exists (but only check row count to avoid API calls)
             logger.info("Creating Alliance Tracking template...")
 
-            # Always recreate for consistency
-            time.sleep(1)
-            clear_result = self.safe_worksheet_operation(worksheet, worksheet.clear)
-            if clear_result is None:
-                logger.error("Failed to clear Alliance Tracking worksheet")
+            # Clear and add headers
+            if not self._safe_batch_operation(worksheet, "clear Alliance Tracking", worksheet.clear):
                 return False
 
-            time.sleep(1)
-            header_result = self.safe_worksheet_operation(worksheet, worksheet.append_row, config["headers"])
-            if header_result is None:
-                logger.error("Failed to add Alliance Tracking headers")
+            if not self._safe_batch_operation(worksheet, "add Alliance headers",
+                                            worksheet.append_row, config["headers"]):
                 return False
 
-            logger.info(f"✅ Added Alliance Tracking headers: {config['headers']}")
-
-            # Format headers
-            time.sleep(1)
-            try:
-                worksheet.format("A1:N1", {
-                    "backgroundColor": {"red": 0.8, "green": 0.3, "blue": 0.3},
-                    "textFormat": {
-                        "foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0},
-                        "fontSize": 12,
-                        "bold": True
-                    },
-                    "horizontalAlignment": "CENTER"
-                })
-                logger.info("✅ Applied Alliance Tracking header formatting")
-            except Exception as format_error:
-                logger.warning(f"Alliance tracking formatting failed (non-critical): {format_error}")
-
-            # Add example row
-            time.sleep(1)
-            example_row = [
-                "Example Alliance", "EX", 0, 0, 0, "0%", 0,
-                "MEDIUM", "Enter strategy notes here", "Never", "K000",
-                "ACTIVE", "MEDIUM", "Enter additional notes here"
+            # Add example rows
+            example_rows = [
+                ["Example Alliance", "EX", 0, 0, 0, "0%", 0,
+                 "MEDIUM", "Enter strategy notes here", "Never", "K000",
+                 "ACTIVE", "MEDIUM", "Enter additional notes here"],
+                ["", "", "", "", "", "", "",
+                 "", "", "", "",
+                 "", "", ""],  # Empty row for user entry
             ]
-            example_result = self.safe_worksheet_operation(worksheet, worksheet.append_row, example_row)
-            if example_result is None:
-                logger.warning("Failed to add example row (non-critical)")
 
-            logger.info("✅ Created alliance tracking template")
+            for i, row in enumerate(example_rows):
+                time.sleep(1)
+                result = self.safe_worksheet_operation(worksheet, worksheet.append_row, row)
+                if result is None:
+                    logger.warning(f"Failed to add example row {i}")
+
+            # Apply formatting with freezing
+            time.sleep(1)
+            self._apply_header_formatting(worksheet, len(config["headers"]), "red")
+
+            logger.info("✅ Created alliance tracking template with header freezing")
             return True
 
         except Exception as e:
@@ -386,45 +403,51 @@ class SheetsOperations(SheetsClient):
             return False
 
     def create_dashboard_template(self) -> bool:
-        """Create dashboard template for overview data."""
+        """Create dashboard template with proper structure and freezing."""
         if not self.is_connected():
             return False
 
         try:
-            import time
             config = SHEET_CONFIGS["Dashboard"]
             worksheet = self.get_or_create_worksheet("Dashboard", config["rows"], config["cols"])
             if not worksheet:
-                logger.error("Failed to create/get Dashboard worksheet")
                 return False
 
             logger.info("Creating Dashboard template...")
 
-            # Create dashboard layout
-            time.sleep(1)
-            clear_result = self.safe_worksheet_operation(worksheet, worksheet.clear)
-            if clear_result is None:
-                logger.error("Failed to clear Dashboard worksheet")
+            # Clear worksheet
+            if not self._safe_batch_operation(worksheet, "clear Dashboard", worksheet.clear):
                 return False
 
-            # Title and basic structure
-            title_data = [
+            # Create dashboard structure
+            dashboard_data = [
                 ["RoW Bot Dashboard", "", "", ""],
                 ["Last Updated:", datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"), "", ""],
                 ["", "", "", ""],
                 ["Team Performance Summary", "", "", ""],
-                ["Team", "Active Players", "Recent Wins", "Recent Losses"]
+                ["Team", "Active Players", "Recent Wins", "Recent Losses"],
+                ["Main Team", 0, 0, 0],
+                ["Team 2", 0, 0, 0],
+                ["Team 3", 0, 0, 0],
+                ["", "", "", ""],
+                ["Overall Statistics", "", "", ""],
+                ["Metric", "Value", "Trend", "Notes"],
+                ["Total Events", 0, "→", "Manual count"],
+                ["Total Players", 0, "→", "Manual count"],
+                ["Win Rate", "0%", "→", "Manual calculation"]
             ]
 
-            for i, row in enumerate(title_data):
-                time.sleep(0.3)  # Small delay between rows
-                row_result = self.safe_worksheet_operation(worksheet, worksheet.append_row, row)
-                if row_result is None:
+            # Add all rows
+            for i, row in enumerate(dashboard_data):
+                time.sleep(0.5)
+                result = self.safe_worksheet_operation(worksheet, worksheet.append_row, row)
+                if result is None:
                     logger.warning(f"Failed to add dashboard row {i}")
 
-            # Format the title
-            time.sleep(1)
+            # Apply multiple formatting sections
+            time.sleep(2)
             try:
+                # Title formatting
                 worksheet.format("A1:D1", {
                     "backgroundColor": {"red": 0.1, "green": 0.5, "blue": 0.2},
                     "textFormat": {
@@ -435,30 +458,28 @@ class SheetsOperations(SheetsClient):
                     "horizontalAlignment": "CENTER"
                 })
 
-                # Format the team performance header
+                # Team performance header
                 worksheet.format("A5:D5", {
                     "backgroundColor": {"red": 0.8, "green": 0.8, "blue": 0.8},
                     "textFormat": {"bold": True},
                     "horizontalAlignment": "CENTER"
                 })
-                logger.info("✅ Applied Dashboard formatting")
+
+                # Statistics header
+                worksheet.format("A11:D11", {
+                    "backgroundColor": {"red": 0.6, "green": 0.6, "blue": 0.6},
+                    "textFormat": {"bold": True},
+                    "horizontalAlignment": "CENTER"
+                })
+
+                # Freeze title rows
+                self._freeze_header_row(worksheet, 2)
+
+                logger.info("✅ Applied Dashboard formatting with frozen rows")
             except Exception as format_error:
-                logger.warning(f"Dashboard formatting failed (non-critical): {format_error}")
+                logger.warning(f"Dashboard formatting failed: {format_error}")
 
-            # Add team performance placeholders
-            team_data = [
-                ["Main Team", 0, 0, 0],
-                ["Team 2", 0, 0, 0],
-                ["Team 3", 0, 0, 0]
-            ]
-
-            for row in team_data:
-                time.sleep(0.3)
-                row_result = self.safe_worksheet_operation(worksheet, worksheet.append_row, row)
-                if row_result is None:
-                    logger.warning("Failed to add team performance row")
-
-            logger.info("✅ Created dashboard template")
+            logger.info("✅ Created dashboard template with frozen header rows")
             return True
 
         except Exception as e:
@@ -466,142 +487,69 @@ class SheetsOperations(SheetsClient):
             return False
 
     # ==========================================
-    # DATA LOADING METHODS
+    # ENHANCED UTILITY METHODS
     # ==========================================
 
-    def load_data_from_sheets(self) -> Optional[Dict[str, Any]]:
-        """Load all bot data from Google Sheets as primary source."""
+    def create_all_templates(self, bot_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create all templates with enhanced error handling and progress tracking."""
         if not self.is_connected():
-            logger.info("Sheets not connected, falling back to JSON files")
-            return None
+            return {"connected": False, "error": "Sheets not connected"}
 
-        try:
-            data = {
-                "events": {"main_team": [], "team_2": [], "team_3": []},
-                "blocked": {},
-                "results": {"total_wins": 0, "total_losses": 0, "history": []},
-                "player_stats": {},
-                "ign_map": {},
-                "absent": {}
-            }
+        logger.info("🔄 Starting comprehensive template creation...")
+        results = {"connected": True, "start_time": datetime.utcnow().isoformat()}
 
-            # Load Current Teams if available
-            try:
-                worksheet = self.spreadsheet.worksheet("Current Teams")
-                rows = self.safe_worksheet_operation(worksheet, worksheet.get_all_records)
-                if rows:
-                    for row in rows:
-                        team = row.get("Team", "").lower().replace(" ", "_")
-                        players = row.get("Players", "")
-                        if team in data["events"] and players:
-                            player_list = [p.strip() for p in players.split(",") if p.strip()]
-                            data["events"][team] = player_list
-            except gspread.WorksheetNotFound:
-                logger.info("Current Teams sheet not found, using defaults")
-
-            # Load Player Stats if available
-            try:
-                worksheet = self.spreadsheet.worksheet("Player Stats")
-                rows = self.safe_worksheet_operation(worksheet, worksheet.get_all_records)
-                if rows:
-                    for row in rows:
-                        user_id = str(row.get("User ID", ""))
-                        if user_id and user_id != "ENTER_POWER_RATING_HERE":
-                            data["player_stats"][user_id] = {
-                                "name": row.get("Name", ""),
-                                "power_rating": row.get("Power Rating", 0),
-                                "team_results": {
-                                    "main_team": {
-                                        "wins": int(row.get("Main Team Wins", 0)),
-                                        "losses": int(row.get("Main Team Losses", 0))
-                                    },
-                                    "team_2": {
-                                        "wins": int(row.get("Team 2 Wins", 0)),
-                                        "losses": int(row.get("Team 2 Losses", 0))
-                                    },
-                                    "team_3": {
-                                        "wins": int(row.get("Team 3 Wins", 0)),
-                                        "losses": int(row.get("Team 3 Losses", 0))
-                                    }
-                                },
-                                "total_events": int(row.get("Total Events", 0)),
-                                "last_active": row.get("Last Active", "Never")
-                            }
-            except gspread.WorksheetNotFound:
-                logger.info("Player Stats sheet not found, using defaults")
-
-            logger.info("✅ Successfully loaded data from Google Sheets")
-            return data
-
-        except Exception as e:
-            logger.error(f"❌ Error loading data from Sheets: {e}")
-            return None
-
-    # ==========================================
-    # UTILITY METHODS
-    # ==========================================
-
-    def create_all_templates(self, bot_data: Dict[str, Any]) -> Dict[str, bool]:
-        """Create all sheet templates for manual data entry with detailed results."""
-        if not self.is_connected():
-            logger.error("Cannot create templates - sheets not connected")
-            return {"connected": False}
-
-        logger.info("🔄 Starting template creation process...")
-        results = {"connected": True}
-
-        import time
-
-        # Create each template with delays between operations
         templates = [
-            ("player_stats", lambda: self.create_player_stats_template(bot_data.get("player_stats", {}))),
-            ("alliance_tracking", lambda: self.create_alliance_tracking_template()),
-            ("dashboard", lambda: self.create_dashboard_template()),
-            ("current_teams", lambda: self.sync_current_teams(bot_data.get("events", {})))
+            ("current_teams", "Current Teams", 
+             lambda: self.sync_current_teams(bot_data.get("events", {}))),
+            ("player_stats", "Player Stats Template", 
+             lambda: self.create_player_stats_template(bot_data.get("player_stats", {}))),
+            ("alliance_tracking", "Alliance Tracking Template", 
+             lambda: self.create_alliance_tracking_template()),
+            ("dashboard", "Dashboard Template", 
+             lambda: self.create_dashboard_template())
         ]
 
-        for template_name, create_func in templates:
+        for template_key, template_name, create_func in templates:
             try:
-                logger.info(f"Creating {template_name} template...")
-                time.sleep(2)  # 2 second delay between major operations
+                logger.info(f"📋 Creating {template_name}...")
+                start_time = time.time()
+
+                # Longer delay between major template operations
+                time.sleep(5)
 
                 success = create_func()
-                results[template_name] = success
+                duration = time.time() - start_time
+
+                results[template_key] = {
+                    "success": success,
+                    "duration_seconds": round(duration, 2),
+                    "name": template_name
+                }
 
                 if success:
-                    logger.info(f"✅ {template_name} template created successfully")
+                    logger.info(f"✅ {template_name} created in {duration:.1f}s")
                 else:
-                    logger.error(f"❌ {template_name} template creation failed")
+                    logger.error(f"❌ {template_name} creation failed")
 
             except Exception as e:
-                logger.error(f"❌ Error creating {template_name} template: {e}")
-                results[template_name] = False
+                logger.error(f"❌ Error creating {template_name}: {e}")
+                results[template_key] = {
+                    "success": False,
+                    "error": str(e),
+                    "name": template_name
+                }
 
-        # Count successes
-        success_count = sum(1 for k, v in results.items() if k != "connected" and v)
-        # Add summary data
+        # Calculate summary
+        successes = sum(1 for k, v in results.items() 
+                       if isinstance(v, dict) and v.get("success"))
+        total = len(templates)
+
         results["summary"] = {
-            "success_count": success_count,
-            "total_count": len(templates)
+            "successful": successes,
+            "total": total,
+            "success_rate": f"{(successes/total)*100:.1f}%",
+            "spreadsheet_url": self.get_spreadsheet_url()
         }
 
-        logger.info(f"Template creation completed: {success_count}/{len(templates)} successful")
+        logger.info(f"Template creation completed: {successes}/{total} successful")
         return results
-
-    def get_spreadsheet_url(self) -> Optional[str]:
-        """Get the URL of the connected spreadsheet."""
-        if self.is_connected() and self.spreadsheet:
-            return self.spreadsheet.url
-        return None
-
-    def get_worksheet_list(self) -> List[str]:
-        """Get list of available worksheet names."""
-        if not self.is_connected():
-            return []
-
-        try:
-            worksheets = self.spreadsheet.worksheets()
-            return [ws.title for ws in worksheets]
-        except Exception as e:
-            logger.error(f"Error getting worksheet list: {e}")
-            return []
