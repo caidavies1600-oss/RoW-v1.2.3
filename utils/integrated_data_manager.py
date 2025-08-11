@@ -28,7 +28,7 @@ class IntegratedDataManager:
         """Save data with atomic file operations and optional sheets sync."""
         try:
             # Atomic file save
-            success = await self.file_ops.atomic_save(filepath, data)
+            success = await self.file_ops.save_json(filepath, data)
             if not success:
                 return False
 

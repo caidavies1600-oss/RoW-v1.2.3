@@ -101,7 +101,8 @@ class Results(commands.Cog):
                 )
 
             # Save updated player stats
-            await self.data_manager.save_data(FILES["PLAYER_STATS"], self.data_manager.player_stats)
+            player_stats = await self.data_manager.load_data(FILES["PLAYER_STATS"], {})
+            await self.data_manager.save_data(FILES["PLAYER_STATS"], player_stats)
             logger.info(
                 f"Updated player stats for {len(players)} players: {team_key} {result}"
             )

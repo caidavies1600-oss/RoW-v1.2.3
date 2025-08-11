@@ -23,7 +23,7 @@ import json
 import os
 import shutil
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Any, Optional
 
 from utils.logger import setup_logger
 
@@ -209,27 +209,27 @@ class DataManager:
         try:
             filename = os.path.basename(filepath)
 
-            if filename == "events.json":
+            if filename == "events.json" and self.sheets_manager:
                 self.sheets_manager.sync_current_teams(data)
                 logger.info("🔄 Synced events to Google Sheets")
-            elif filename == "event_results.json":
+            elif filename == "event_results.json" and self.sheets_manager:
                 self.sheets_manager.sync_results_history(data)
                 logger.info("🔄 Synced results to Google Sheets")
-            elif filename == "events_history.json":
+            elif filename == "events_history.json" and self.sheets_manager:
                 self.sheets_manager.sync_events_history(data)
                 logger.info("🔄 Synced events history to Google Sheets")
-            elif filename == "blocked_users.json":
+            elif filename == "blocked_users.json" and self.sheets_manager:
                 self.sheets_manager.sync_blocked_users(data)
                 logger.info("🔄 Synced blocked users to Google Sheets")
             elif filename == "player_stats.json":
                 # Use member sync for player stats to keep consistency
-                if hasattr(self.sheets_manager, "sync_player_stats"):
+                if self.sheets_manager and hasattr(self.sheets_manager, "sync_player_stats"):
                     self.sheets_manager.sync_player_stats(data)
-                logger.info("🔄 Synced player stats to Google Sheets")
-            elif filename == "notification_preferences.json":
+                    logger.info("🔄 Synced player stats to Google Sheets")
+            elif filename == "notification_preferences.json" and self.sheets_manager:
                 self.sheets_manager.sync_notification_preferences(data)
                 logger.info("🔄 Synced notification preferences to Google Sheets")
-            elif filename == "ign_map.json":
+            elif filename == "ign_map.json" and self.sheets_manager:
                 self.sheets_manager.sync_ign_map(data)
                 logger.info("🔄 Synced IGN mappings to Google Sheets")
             elif filename == "absent_users.json":
@@ -248,7 +248,7 @@ class DataManager:
         return self.sheets_manager.create_all_templates(all_data)
 
     def update_player_power(
-        self, user_id: str, power_rating: int, specializations: dict = None
+        self, user_id: str, power_rating: int, specializations: Optional[dict] = None
     ):
         """
         Update player power rating and specializations.

@@ -161,7 +161,7 @@ class Validators:
         """Validate the number of members in a team."""
         if len(team) > MAX_TEAM_SIZE:
             return False, f"Team cannot exceed {MAX_TEAM_SIZE} members"
-        return True, None
+        return True, ""
 
     @staticmethod
     def validate_user_id(user_id: str) -> tuple[bool, str]:
@@ -172,4 +172,4 @@ class Validators:
             return False, "User ID must contain only numbers"
         if len(user_id) < 17 or len(user_id) > 20:
             return False, "Invalid user ID length"
-        return True, None
+        return True, ""

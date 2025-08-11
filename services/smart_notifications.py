@@ -1027,10 +1027,11 @@ class NotificationsCog(commands.Cog):
 
         # Send to all teams
         if team.lower() == "all":
-            (
-                total_sent,
-                summary,
-            ) = await self.smart_notifications.send_all_teams_reminders(message)
+            result = await self.smart_notifications.send_all_teams_reminders(message)
+            if result is None:
+                total_sent, summary = 0, []
+            else:
+                total_sent, summary = result
 
             embed = discord.Embed(
                 title="📢 Team Reminders Sent",
@@ -1084,7 +1085,7 @@ class NotificationsCog(commands.Cog):
         embed = discord.Embed(
             title="📢 Team Reminder Sent",
             description=f"Sent reminder to {team_display}",
-            color=COLORS["SUCCESS"] if sent_count > 0 else COLORS["WARNING"],
+            color=COLORS["SUCCESS"] if sent_count and sent_count > 0 else COLORS["WARNING"],
         )
         embed.add_field(
             name="Notifications Sent",
@@ -1108,86 +1109,6 @@ class NotificationsCog(commands.Cog):
         await ctx.send(embed=embed)
 
 
-async def setup(bot):
-    await bot.add_cog(NotificationsCog(bot))
-                total_sent,
-                summary,
-            ) = await self.smart_notifications.send_all_teams_reminders(message)
-
-            embed = discord.Embed(
-                title="📢 Team Reminders Sent",
-                description="Sent reminders to all teams with members.",
-                color=COLORS["SUCCESS"],
-            )
-            embed.add_field(
-                name="Summary",
-                value="\n".join(summary) or "No teams have members currently.",
-                inline=False,
-            )
-            embed.add_field(
-                name="Total Notifications",
-                value=f"{total_sent} notifications sent",
-                inline=True,
-            )
-            if message:
-                embed.add_field(
-                    name="Custom Message", value=f"```{message}```", inline=False
-                )
-            await ctx.send(embed=embed)
-            return
-
-        # Validate team name
-        valid_teams = ["main_team", "team_2", "team_3"]
-        if team not in valid_teams:
-            embed = discord.Embed(
-                title="❌ Invalid Team",
-                description=f"Team `{team}` not found.",
-                color=COLORS["DANGER"],
-            )
-            embed.add_field(
-                name="Valid Teams",
-                value="\n".join([f"• `{t}`" for t in valid_teams]),
-                inline=False,
-            )
-            await ctx.send(embed=embed)
-            return
-
-        # Send to specific team
-        sent_count = await self.smart_notifications.send_team_specific_reminders(
-            team, message, include_team_roster=True
-        )
-
-        team_display = TEAM_DISPLAY.get(team, team.replace("_", " ").title())
-
-        # Get team member count
-        event_manager = self.bot.get_cog("EventManager")
-        team_members = event_manager.events.get(team, []) if event_manager else []
-
-        embed = discord.Embed(
-            title="📢 Team Reminder Sent",
-            description=f"Sent reminder to {team_display}",
-            color=COLORS["SUCCESS"] if sent_count > 0 else COLORS["WARNING"],
-        )
-        embed.add_field(
-            name="Notifications Sent",
-            value=f"{sent_count}/{len(team_members)} members notified",
-            inline=True,
-        )
-        if message:
-            embed.add_field(
-                name="Custom Message", value=f"```{message}```", inline=False
-            )
-        if sent_count == 0 and len(team_members) > 0:
-            embed.add_field(
-                name="Note",
-                value="Some members may have team notifications disabled.",
-                inline=False,
-            )
-        elif len(team_members) == 0:
-            embed.description = f"No members currently signed up for {team_display}"
-            embed.color = COLORS["WARNING"]
-
-        await ctx.send(embed=embed)
 
 
 async def setup(bot):
