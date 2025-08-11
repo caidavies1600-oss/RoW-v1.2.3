@@ -168,6 +168,7 @@ class UserCommands(commands.Cog):
                 "`!notifications test` — Test notification delivery",
             ]
 
+            # Create main embed for user and admin commands
             embed = discord.Embed(
                 title="📜 Available Bot Commands", color=discord.Color.blurple()
             )
@@ -180,13 +181,6 @@ class UserCommands(commands.Cog):
                 embed.add_field(
                     name="🛡️ Admin Commands",
                     value="\n".join(admin_commands),
-                    inline=False,
-                )
-
-            if is_owner:
-                embed.add_field(
-                    name="👑 Bot Owner Commands",
-                    value="\n".join(owner_commands),
                     inline=False,
                 )
 
@@ -203,6 +197,44 @@ class UserCommands(commands.Cog):
                 )
 
             await ctx.send(embed=embed)
+
+            # Send separate embed for owner commands if user is owner
+            if is_owner:
+                # Split owner commands into chunks to avoid 1024 character limit
+                owner_embed = discord.Embed(
+                    title="👑 Owner Commands", 
+                    color=discord.Color.gold(),
+                    description="Commands exclusive to the bot owner:"
+                )
+
+                # Split commands into two groups for better organization
+                data_commands = [cmd for cmd in owner_commands if any(keyword in cmd for keyword in ['json', 'backup', 'restore', 'data', 'migrate'])]
+                sheets_commands = [cmd for cmd in owner_commands if any(keyword in cmd for keyword in ['sync', 'sheets', 'template', 'export', 'import'])]
+                system_commands = [cmd for cmd in owner_commands if cmd not in data_commands and cmd not in sheets_commands]
+
+                if data_commands:
+                    owner_embed.add_field(
+                        name="📁 Data Management",
+                        value="\n".join(data_commands),
+                        inline=False
+                    )
+
+                if sheets_commands:
+                    owner_embed.add_field(
+                        name="📊 Google Sheets",
+                        value="\n".join(sheets_commands),
+                        inline=False
+                    )
+
+                if system_commands:
+                    owner_embed.add_field(
+                        name="⚙️ System Control",
+                        value="\n".join(system_commands),
+                        inline=False
+                    )
+
+                owner_embed.set_footer(text="⚠️ Use owner commands with caution - they can affect the entire bot.")
+                await ctx.send(embed=owner_embed)
 
         except Exception as e:
             await ctx.send(f"❌ Error in commands: {str(e)}")
