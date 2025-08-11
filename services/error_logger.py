@@ -24,7 +24,7 @@ class ErrorLogger:
         """Set the sheets manager instance for error logging."""
         self._sheets_manager = sheets_manager
 
-    def log_error(self, 
+    async def log_error(self, 
                  error_type: str, 
                  command: str, 
                  user_id: Optional[int], 
@@ -51,7 +51,7 @@ class ErrorLogger:
 
             # Log to sheets if available
             if self._sheets_manager and self._sheets_manager.is_connected():
-                self._log_to_sheets(error_entry)
+                await self._log_to_sheets(error_entry)
 
         except Exception as e:
             logger.error(f"Failed to log error: {e}")
@@ -79,6 +79,16 @@ class ErrorLogger:
         except (FileNotFoundError, json.JSONDecodeError):
             return []
 
+    async def _log_to_sheets(self, error_entry: Dict[str, Any]) -> None:
+        """Log error to Google Sheets."""
+        try:
+            if self._sheets_manager and hasattr(self._sheets_manager, 'append_error'):
+                await self._sheets_manager.append_error(error_entry)
+            else:
+                logger.error("SheetsManager does not have append_error method")
+        except Exception as e:
+            logger.error(f"Failed to log error to sheets: {e}")
+
 # Global error logger instance
 error_logger: Optional[ErrorLogger] = None
 
@@ -88,10 +98,10 @@ def setup_error_logger(bot: 'commands.Bot') -> None:
     error_logger = ErrorLogger(bot)
     logger.info("✅ Error logger initialized")
 
-def log_error(error_type: str, error: Exception, context: str = "") -> None:
+async def log_error(error_type: str, error: Exception, context: str = "") -> None:
     """Convenience function to log errors."""
     if error_logger:
-        error_logger.log_error(
+        await error_logger.log_error(
             error_type=error_type,
             command="System",
             user_id=None,

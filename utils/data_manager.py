@@ -23,25 +23,61 @@ import json
 import os
 import shutil
 from contextlib import asynccontextmanager
-from typing import Any, Optional
+from typing import Any, Optional, TYPE_CHECKING
 
 from utils.logger import setup_logger
+
+if TYPE_CHECKING:
+    from services.sheets_manager import SheetsManager as ExternalSheetsManager
 
 logger = setup_logger("data_manager")
 
 
+class SheetsManager:
+    """Base class for sheets functionality."""
+
+    def __init__(self):
+        self.spreadsheet = None
+
+    def is_connected(self):
+        return False
+
+    def load_data_from_sheets(self):
+        return None
+
+    def sync_current_teams(self, data):
+        pass
+
+    def sync_results_history(self, data):
+        pass
+
+    def sync_events_history(self, data):
+        pass
+
+    def sync_blocked_users(self, data):
+        pass
+
+    def sync_player_stats(self, data):
+        pass
+
+    def sync_notification_preferences(self, data):
+        pass
+
+    def sync_ign_map(self, data):
+        pass
+
+    def create_all_templates(self, data):
+        return False
+
+
+# Update the import section
 try:
-    from services.sheets_manager import SheetsManager
+    from services.sheets_manager import SheetsManager as ExternalSheetsManager
+
+    SHEETS_AVAILABLE = True
 except ImportError:
-    class SheetsManager:
-        def __init__(self):
-            self.spreadsheet = None
-
-        def is_connected(self):
-            return False
-
-        def load_data_from_sheets(self):
-            return None
+    SHEETS_AVAILABLE = False
+    ExternalSheetsManager = SheetsManager  # Use local fallback
 
 
 class DataManager:
@@ -62,7 +98,7 @@ class DataManager:
     """
 
     def __init__(self):
-        self.sheets_manager = None
+        self.sheets_manager: Optional['ExternalSheetsManager'] = None
         self.player_stats = {}
         self.file_locks = {}
         self._initialize_sheets()
@@ -70,18 +106,15 @@ class DataManager:
     def _initialize_sheets(self):
         """Initialize Google Sheets manager if credentials are available."""
         try:
-            if os.getenv("GOOGLE_SHEETS_CREDENTIALS"):
-                from services.sheets_manager import SheetsManager
-
-                self.sheets_manager = SheetsManager()
+            if os.getenv("GOOGLE_SHEETS_CREDENTIALS") and SHEETS_AVAILABLE:
+                self.sheets_manager = ExternalSheetsManager()
                 logger.info("✅ Google Sheets integration enabled")
             else:
-                logger.info(
-                    "ℹ️ Google Sheets credentials not found, running without sync"
-                )
+                logger.info("ℹ️ Running without Google Sheets integration")
+                self.sheets_manager = SheetsManager()  # Use local fallback
         except Exception as e:
-            logger.warning(f"Failed to initialize Google Sheets: {e}")
-            self.sheets_manager = None
+            logger.warning(f"Failed to initialize sheets: {e}")
+            self.sheets_manager = SheetsManager()  # Use local fallback
 
     def load_all_data_from_sheets(self):
         """Load all bot data from Google Sheets as primary source."""
@@ -394,5 +427,4 @@ class DataManager:
             logger.info(f"Reset {filepath} to empty state")
 
         except Exception as e:
-            logger.error(f"Failed to create backup or reset {filepath}: {e}")
             logger.error(f"Failed to create backup or reset {filepath}: {e}")

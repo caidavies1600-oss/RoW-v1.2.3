@@ -173,3 +173,4 @@ class Validators:
         if len(user_id) < 17 or len(user_id) > 20:
             return False, "Invalid user ID length"
         return True, ""
+validate_days = Validators.validate_days

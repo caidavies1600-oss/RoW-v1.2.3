@@ -96,7 +96,7 @@ class Results(commands.Cog):
 
             for player_id in players:
                 player_name = ign_map.get(str(player_id), f"User_{player_id}")
-                self.data_manager.update_player_stats(
+                await self.data_manager.update_player_stats(
                     player_id, team_key, result, player_name
                 )
 

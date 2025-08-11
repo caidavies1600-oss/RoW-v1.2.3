@@ -68,9 +68,15 @@ class SheetsManager:
     async def load_data(self) -> dict | None:
         """Load data from Google Sheets."""
         if not self.is_connected():
-            return None
+            self.connect()
+            if not self.is_connected():
+                return None
 
         try:
+            if not self.service:
+                logger.error("❌ Google Sheets service is not initialized")
+                return None
+                
             data = {
                 "events": {"main_team": [], "team_2": [], "team_3": []},
                 "blocked": {},
@@ -82,8 +88,11 @@ class SheetsManager:
 
             # Load Current Teams
             try:
-                worksheet = self.spreadsheet.worksheet("Current Teams")
-                rows = worksheet.get_all_records()
+                result = self.service.spreadsheets().values().get(
+                    spreadsheetId=self.spreadsheet_id,
+                    range="Current Teams"
+                ).execute()
+                rows = [dict(zip(result['values'][0], row)) for row in result['values'][1:]]
                 for row in rows:
                     team = row.get("Team", "").lower().replace(" ", "_")
                     players = row.get("Players", "")
