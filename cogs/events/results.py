@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+from typing import Optional
 
 import discord
 from discord.ext import commands
@@ -34,6 +35,11 @@ class Results(commands.Cog):
         self.data_manager = data_manager
         self.results = {"wins": 0, "losses": 0, "history": []}
 
+    def calculate_win_rate(self, wins: int, losses: int) -> float:
+        """Calculate win rate percentage from wins and losses."""
+        total = wins + losses
+        return (wins / total * 100) if total > 0 else 0
+
     async def load_results(self):
         """Load results with integrated manager."""
         self.results = await self.data_manager.load_data(
@@ -47,7 +53,7 @@ class Results(commands.Cog):
             FILES["RESULTS"], self.results, sync_to_sheets=True
         )
 
-    def get_current_team_players(self, team_key: str):
+    async def get_current_team_players(self, team_key: str):
         """
         Get current players signed up for a team.
 
@@ -64,13 +70,13 @@ class Results(commands.Cog):
                 return event_manager.events.get(team_key, [])
             else:
                 # Fallback to loading from file
-                events = self.data_manager.load_json(FILES["EVENTS"], {})
+                events = await self.data_manager.load_data(FILES["EVENTS"], {})
                 return events.get(team_key, [])
         except Exception as e:
             logger.error(f"Failed to get current team players: {e}")
             return []
 
-    def update_player_stats_for_result(self, team_key: str, result: str, players: list):
+    async def update_player_stats_for_result(self, team_key: str, result: str, players: list):
         """
         Update individual player statistics after a match.
 
@@ -86,7 +92,7 @@ class Results(commands.Cog):
         """
         try:
             # Get IGN map for player names
-            ign_map = self.data_manager.load_json(FILES["IGN_MAP"], {})
+            ign_map = await self.data_manager.load_data(FILES["IGN_MAP"], {})
 
             for player_id in players:
                 player_name = ign_map.get(str(player_id), f"User_{player_id}")
@@ -95,7 +101,7 @@ class Results(commands.Cog):
                 )
 
             # Save updated player stats
-            self.data_manager.save_player_stats()
+            await self.data_manager.save_data(FILES["PLAYER_STATS"], self.data_manager.player_stats)
             logger.info(
                 f"Updated player stats for {len(players)} players: {team_key} {result}"
             )
@@ -125,8 +131,9 @@ class Results(commands.Cog):
             return
 
         # Get current players for this team
-        current_players = self.get_current_team_players(team_key)
+        current_players = await self.get_current_team_players(team_key)
 
+        await self.load_results()
         self.results["total_wins"] = self.results.get("total_wins", 0) + 1
         self.results["history"] = self.results.get("history", [])
 
@@ -143,7 +150,7 @@ class Results(commands.Cog):
         self.results["history"].append(result_entry)
 
         # Update individual player stats
-        self.update_player_stats_for_result(team_key, "win", current_players)
+        await self.update_player_stats_for_result(team_key, "win", current_players)
 
         if await self.save_results():
             # Send smart notifications to players
@@ -196,7 +203,7 @@ class Results(commands.Cog):
             return
 
         # Get current players for this team
-        current_players = self.get_current_team_players(team_key)
+        current_players = await self.get_current_team_players(team_key)
 
         self.results["total_losses"] = self.results.get("total_losses", 0) + 1
         self.results["history"] = self.results.get("history", [])
@@ -214,7 +221,7 @@ class Results(commands.Cog):
         self.results["history"].append(result_entry)
 
         # Update individual player stats
-        self.update_player_stats_for_result(team_key, "loss", current_players)
+        await self.update_player_stats_for_result(team_key, "loss", current_players)
 
         if await self.save_results():
             # Send smart notifications to players
@@ -256,13 +263,12 @@ class Results(commands.Cog):
             - Last 10 match results
             - Results by team
         """
-        self.results = self.load_results()
-
+        await self.load_results()
         embed = discord.Embed(title="🏆 RoW Results Summary", color=COLORS["PRIMARY"])
 
         total_wins = self.results.get("total_wins", 0)
         total_losses = self.results.get("total_losses", 0)
-        win_rate = Helpers.calculate_win_rate(total_wins, total_losses)
+        win_rate = self.calculate_win_rate(total_wins, total_losses)
 
         embed.description = (
             f"**Total Wins:** {total_wins}\n"
@@ -297,8 +303,7 @@ class Results(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @commands.command(name="playerstats")
-    async def show_player_stats(self, ctx, user: discord.User = None):
+    async def show_player_stats(self, ctx, user: Optional[discord.User] = None):
         """
         Show detailed player statistics.
 
@@ -312,17 +317,22 @@ class Results(commands.Cog):
             - Attendance record
             - Block status
         """
-        if not user:
+        if user is None:
             user = ctx.author
+        
+        if user is None:
+            await ctx.send("❌ Could not resolve user")
+            return
 
         user_id = str(user.id)
 
         # Get player stats
-        if user_id not in self.data_manager.player_stats:
+        player_stats = await self.data_manager.load_data(FILES["PLAYER_STATS"], {})
+        if user_id not in player_stats:
             await ctx.send(f"❌ No statistics found for {user.display_name}")
             return
 
-        stats = self.data_manager.player_stats[user_id]
+        stats = player_stats[user_id]
         team_results = stats.get("team_results", {})
 
         embed = discord.Embed(
@@ -377,22 +387,22 @@ class Results(commands.Cog):
 
             # Gather current player data for template creation
             all_data = {
-                "events": self.data_manager.load_json(FILES["EVENTS"], {}),
-                "blocked": self.data_manager.load_json(FILES["BLOCKED"], {}),
+                "events": await self.data_manager.load_data(FILES["EVENTS"], {}),
+                "blocked": await self.data_manager.load_data(FILES["BLOCKED"], {}),
                 "results": self.results,
-                "player_stats": self.data_manager.player_stats,
-                "ign_map": self.data_manager.load_json(FILES["IGN_MAP"], {}),
-                "absent": self.data_manager.load_json(FILES["ABSENT"], {}),
-                "notification_preferences": self.data_manager.load_json(
+                "player_stats": await self.data_manager.load_data(FILES["PLAYER_STATS"], {}),
+                "ign_map": await self.data_manager.load_data(FILES["IGN_MAP"], {}),
+                "absent": await self.data_manager.load_data(FILES["ABSENT"], {}),
+                "notification_preferences": await self.data_manager.load_data(
                     "data/notification_preferences.json", {}
                 ),
             }
 
             # Create templates
-            if self.data_manager.create_all_templates(all_data):
+            if self.data_manager.sheets_manager and self.data_manager.sheets_manager.create_all_templates(all_data):
                 sheets_url = (
-                    self.data_manager.sheets_manager.spreadsheet.url
-                    if self.data_manager.sheets_manager.spreadsheet
+                    self.data_manager.sheets_manager.get_spreadsheet_url()
+                    if self.data_manager.sheets_manager
                     else "Check console for URL"
                 )
                 embed = discord.Embed(
@@ -424,7 +434,5 @@ async def setup(bot):
 
     Args:
         bot: The Discord bot instance
-    """
-    await bot.add_cog(Results(bot))
     """
     await bot.add_cog(Results(bot))

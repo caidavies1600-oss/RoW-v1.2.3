@@ -40,6 +40,8 @@ class AdminActions(commands.Cog):
         self.history_file = FILES["HISTORY"]
         self.results_file = FILES["RESULTS"]
         self.data_manager = data_manager  # Use global integrated instance
+        self.file_ops = file_ops  # Use global instance
+        self.sheets_manager = SheetsManager()  # Initialize sheets manager
 
     async def load_results(self):
         """
@@ -305,7 +307,8 @@ class AdminActions(commands.Cog):
 
             # Blocked users
             blocked_info = []
-            for uid, info in self.load_blocked_users().items():
+            blocked_users = await self.load_blocked_users()
+            for uid, info in blocked_users.items():
                 user = ctx.guild.get_member(int(uid)) or self.bot.get_user(int(uid))
                 name = (
                     user.display_name

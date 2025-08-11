@@ -65,8 +65,8 @@ async def post_test_event():
         try:
             # Get the alert channel
             alert_channel = bot.get_channel(ALERT_CHANNEL_ID)
-            if not alert_channel:
-                logger.error(f"Could not find alert channel with ID {ALERT_CHANNEL_ID}")
+            if not alert_channel or not isinstance(alert_channel, discord.TextChannel):
+                logger.error(f"Could not find text channel with ID {ALERT_CHANNEL_ID}")
                 await bot.close()
                 return
 
@@ -121,8 +121,7 @@ async def post_test_event():
             await asyncio.sleep(300)  # 5 minutes
 
             # Clear test signups before closing
-            event_manager.events = {"main_team": [], "team_2": [], "team_3": []}
-            event_manager.save_events()
+            await event_manager.clear_all_signups()
             logger.info("✅ Test signups cleared")
 
             await bot.close()
@@ -132,6 +131,8 @@ async def post_test_event():
             await bot.close()
 
     # Start the bot
+    if not BOT_TOKEN:
+        raise ValueError("BOT_TOKEN is not set in config/settings.py")
     await bot.start(BOT_TOKEN)
 
 

@@ -66,7 +66,7 @@ class EventButtons(discord.ui.View):
         """
         # FIXED: Changed from "Events" to "EventManager"
         event_cog = self.bot.get_cog("EventManager")
-        if not event_cog:
+        if not event_cog or not hasattr(event_cog, 'events'):
             await interaction.response.send_message(
                 "❌ Event system not available.", ephemeral=True
             )
@@ -123,12 +123,27 @@ class EventButtons(discord.ui.View):
                 return
 
             # Check Main Team role permission
-            user_role_ids = [role.id for role in interaction.user.roles]
+            if not interaction.guild:
+                await interaction.response.send_message(
+                    "❌ Could not verify guild membership.",
+                    ephemeral=True,
+                )
+                return
+                
+            member = interaction.guild.get_member(interaction.user.id)
+            if not member:
+                await interaction.response.send_message(
+                    "❌ Could not verify your server membership.",
+                    ephemeral=True,
+                )
+                return
+                
+            user_role_ids = [role.id for role in member.roles]
             logger.debug(
                 f"User {interaction.user} role check: {user_role_ids} vs required {MAIN_TEAM_ROLE_ID}"
             )
 
-            if not any(role.id == MAIN_TEAM_ROLE_ID for role in interaction.user.roles):
+            if not any(role.id == MAIN_TEAM_ROLE_ID for role in member.roles):
                 await interaction.response.send_message(
                     "❌ You don't have permission to join the Main Team.\n"
                     "🏆 The Main Team role is required for this team.",
@@ -137,6 +152,12 @@ class EventButtons(discord.ui.View):
                 return
 
             # Check if already in main team
+            if not event_cog or not hasattr(event_cog, 'events'):
+                await interaction.response.send_message(
+                    "❌ Event system not available.", ephemeral=True
+                )
+                return
+
             if user_ign in event_cog.events["main_team"]:
                 await interaction.response.send_message(
                     "✅ You're already in the Main Team!", ephemeral=True
@@ -215,6 +236,12 @@ class EventButtons(discord.ui.View):
                 return
 
             # Check if already in team 2
+            if not event_cog or not hasattr(event_cog, 'events'):
+                await interaction.response.send_message(
+                    "❌ Event system not available.", ephemeral=True
+                )
+                return
+
             if user_ign in event_cog.events["team_2"]:
                 await interaction.response.send_message(
                     "✅ You're already in Team 2!", ephemeral=True
@@ -291,6 +318,12 @@ class EventButtons(discord.ui.View):
                 return
 
             # Check if already in team 3
+            if not event_cog or not hasattr(event_cog, 'events'):
+                await interaction.response.send_message(
+                    "❌ Event system not available.", ephemeral=True
+                )
+                return
+
             if user_ign in event_cog.events["team_3"]:
                 await interaction.response.send_message(
                     "✅ You're already in Team 3!", ephemeral=True
@@ -560,8 +593,12 @@ class ButtonHandler(commands.Cog):
 
     @commands.Cog.listener()
     async def on_button_click(self, interaction: discord.Interaction):
-        if interaction.custom_id.startswith("join_"):
-            team = interaction.custom_id.split("_")[1]
+        if (interaction.data and 
+            interaction.data.get("component_type", 0) == 2 and  # 2 is Button
+            "custom_id" in interaction.data and 
+            interaction.data["custom_id"].startswith("join_")):
+            
+            team = interaction.data["custom_id"].split("_")[1]
             event_manager = self.bot.get_cog("EventManager")
 
             # Add member

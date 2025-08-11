@@ -11,7 +11,7 @@ This module provides:
 """
 
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import discord
 from discord.ext import commands, tasks
@@ -23,7 +23,7 @@ from utils.logger import setup_logger
 logger = setup_logger("smart_notifications")
 
 
-async def setup(bot):
+async def setup_smart_notifications(bot):
     """Setup function required for Discord.py cogs."""
     await bot.add_cog(SmartNotifications(bot))
 
@@ -33,6 +33,7 @@ class SmartNotifications:
         self.bot = bot
         self.data_manager = data_manager
         self.notification_prefs = {"users": {}, "default_settings": {}}
+        self.notification_queue = []  # Initialize the notification queue
 
     async def load_preferences(self):
         """Load preferences with integrated manager."""
@@ -60,7 +61,7 @@ class SmartNotifications:
         merged_prefs.update(user_prefs)
         return merged_prefs
 
-    def update_user_preferences(
+    async def update_user_preferences(
         self, user_id: str, preferences: Dict[str, Any]
     ) -> bool:
         """Update notification preferences for a user."""
@@ -98,7 +99,7 @@ class SmartNotifications:
             self.notification_prefs["users"][user_id].update(preferences)
 
             logger.info(f"Updated preferences for {display_name} ({user_id})")
-            return self.save_preferences()
+            return await self.save_preferences()
         except Exception as e:
             logger.error(f"Failed to update preferences for {user_id}: {e}")
             return False
@@ -162,7 +163,7 @@ class SmartNotifications:
             self.notification_prefs["users"][user_id].update(preferences)
 
             logger.info(f"Updated preferences for {display_name} ({user_id})")
-            return self.save_preferences()
+            return await self.save_preferences()
         except Exception as e:
             logger.error(f"Failed to update preferences for {user_id}: {e}")
             return False
@@ -377,7 +378,7 @@ class SmartNotifications:
     async def send_team_specific_reminders(
         self,
         team_key: str,
-        custom_message: str = None,
+        custom_message: Optional[str] = None,
         include_team_roster: bool = True,
     ):
         """Send targeted reminders to a specific team with team-specific information."""
@@ -469,7 +470,7 @@ class SmartNotifications:
             return 0
 
     async def send_all_teams_reminders(
-        self, custom_message: str = None, hours_before_event: int = 24
+        self, custom_message: Optional[str] = None, hours_before_event: int = 24
     ):
         """Send reminders to all teams with members."""
         try:
@@ -490,7 +491,7 @@ class SmartNotifications:
                     sent_count = await self.send_team_specific_reminders(
                         team_key, team_message, include_team_roster=True
                     )
-                    total_sent += sent_count
+                    total_sent += sent_count if sent_count is not None else 0
 
                     team_display = TEAM_DISPLAY.get(
                         team_key, team_key.replace("_", " ").title()
@@ -985,13 +986,14 @@ class NotificationsCog(commands.Cog):
         await ctx.send(embed=pref_embed)
 
     @notifications.command(name="remind", aliases=["teamreminder"])
+    @commands.guild_only()
     @commands.check(
-        lambda ctx: any(
+        lambda ctx: isinstance(ctx.author, discord.Member) and any(
             role.id in [1395129965405540452, 1258214711124688967]
             for role in ctx.author.roles
         )
     )
-    async def send_team_reminder(self, ctx, team: str = None, *, message: str = None):
+    async def send_team_reminder(self, ctx, team: Optional[str] = None, *, message: Optional[str] = None):
         """Send a targeted reminder to a specific team or all teams.
 
         Usage:

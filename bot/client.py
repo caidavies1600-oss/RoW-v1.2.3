@@ -540,7 +540,7 @@ class RowBot(commands.Bot):
                     missing_critical.append(cog_name)
 
             if missing_critical and MONITORING_AVAILABLE:
-                health_status["missing_critical_cogs"] = missing_critical
+                health_status["missing_critical_cogs"] = len(missing_critical)
                 await notify_error(
                     "Missing Critical Cogs",
                     Exception(

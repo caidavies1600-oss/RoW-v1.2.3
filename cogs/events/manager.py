@@ -33,6 +33,8 @@ class EventManager(commands.Cog, name="EventManager"):
         self.bot = bot
         self.events = {"main_team": [], "team_2": [], "team_3": []}
         self.data_manager = data_manager
+        self.blocked_users = {}
+        self.event_times = DEFAULT_TIMES
 
     async def load_events(self):
         """Load events with new integrated manager."""
@@ -63,7 +65,7 @@ class EventManager(commands.Cog, name="EventManager"):
 
     def save_blocked_users(self):
         """Save blocked users data to file and sync to Google Sheets."""
-        if not self.data_manager.save_json(
+        if not self.data_manager.save_data(
             FILES["BLOCKED"], self.blocked_users, sync_to_sheets=True
         ):
             logger.error("❌ Failed to save blocked_users.json")
@@ -72,12 +74,12 @@ class EventManager(commands.Cog, name="EventManager"):
 
     def save_times(self):
         """Save event times configuration to file."""
-        if not self.data_manager.save_json(FILES["TIMES"], self.event_times):
+        if not self.data_manager.save_data(FILES["TIMES"], self.event_times):
             logger.error("❌ Failed to save row_times.json")
 
     def save_signup_lock(self):
         """Save signup lock state to file."""
-        if not self.data_manager.save_json(FILES["SIGNUP_LOCK"], self.signup_locked):
+        if not self.data_manager.save_data(FILES["SIGNUP_LOCK"], self.signup_locked):
             logger.error("❌ Failed to save signup_lock.json")
 
     def lock_signups(self):
@@ -96,14 +98,14 @@ class EventManager(commands.Cog, name="EventManager"):
         """Check if signups are currently locked."""
         return self.signup_locked
 
-    def save_history(self):
+    async def save_history(self):
         """
         Save current event state to history.
 
         Maintains a rolling history of the last 50 events.
         Each entry contains timestamp and team compositions.
         """
-        history = self.data_manager.load_json(FILES["HISTORY"], [])
+        history = await self.data_manager.load_data(FILES["HISTORY"], default=[])
         if not isinstance(history, list):
             logger.warning("⚠️ Event history file was not a list. Resetting.")
             history = []
@@ -117,7 +119,7 @@ class EventManager(commands.Cog, name="EventManager"):
         if len(history) > 50:
             history = history[-50:]
 
-        if self.data_manager.save_json(FILES["HISTORY"], history):
+        if self.data_manager.save_data(FILES["HISTORY"], history):
             logger.info("✅ Event history updated")
         else:
             logger.error("❌ Failed to save events_history.json")
@@ -182,7 +184,7 @@ class EventManager(commands.Cog, name="EventManager"):
         return profile_cog.get_ign(user) if profile_cog else user.display_name
 
     @commands.command(name="startevent")
-    @commands.check(lambda ctx: Validators.is_admin(ctx.author))
+    @commands.check(lambda ctx: isinstance(ctx.author, discord.Member) and Validators.is_admin(ctx.author))
     async def start_event(self, ctx):
         """
         Start a new event, resetting signups and notifying users.
@@ -194,7 +196,7 @@ class EventManager(commands.Cog, name="EventManager"):
             self.save_history()
             self.events = self._default_events()
             self.unlock_signups()  # Reset signup lock when starting new event
-            self.save_events()
+            await self.save_events()
 
             logger.info(f"{ctx.author} started new event")
 
@@ -288,7 +290,7 @@ class EventManager(commands.Cog, name="EventManager"):
         await ctx.send(embed=embed)
 
     @commands.command(name="locksignups")
-    @commands.check(lambda ctx: Validators.is_admin(ctx.author))
+    @commands.check(lambda ctx: isinstance(ctx.author, discord.Member) and Validators.is_admin(ctx.author))
     async def lock_signups_command(self, ctx):
         """
         Manually lock signups.
@@ -317,7 +319,7 @@ class EventManager(commands.Cog, name="EventManager"):
         await ctx.send("✅ Signups have been locked.")
 
     @commands.command(name="unlocksignups")
-    @commands.check(lambda ctx: Validators.is_admin(ctx.author))
+    @commands.check(lambda ctx: isinstance(ctx.author, discord.Member) and Validators.is_admin(ctx.author))
     async def unlock_signups_command(self, ctx):
         """
         Manually unlock signups.
@@ -432,12 +434,38 @@ class EventManager(commands.Cog, name="EventManager"):
         self.bot.attendance = {}
         self.bot.checked_in = set()
 
+    async def clear_all_signups(self) -> bool:
+        """
+        Clear all event signups and persist changes.
 
-async def setup(bot):
-    await bot.add_cog(EventManager(bot))
-        self.bot.event_team = None
-        self.bot.attendance = {}
-        self.bot.checked_in = set()
+        Returns:
+            bool: Success status of clearing operation
+        """
+        try:
+            # Reset all team signups
+            self.events = {
+                "main_team": [],
+                "team_2": [],
+                "team_3": []
+            }
+            
+            # Persist cleared state
+            success = await self.data_manager.save_data(
+                FILES["EVENTS"],
+                self.events,
+                sync_to_sheets=True
+            )
+            
+            if success:
+                logger.info("✅ All event signups cleared successfully")
+            else:
+                logger.error("Failed to save cleared event state")
+            
+            return success
+
+        except Exception as e:
+            logger.error(f"Failed to clear all signups: {e}")
+            return False
 
 
 async def setup(bot):

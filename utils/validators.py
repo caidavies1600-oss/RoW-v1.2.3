@@ -137,16 +137,24 @@ class Validators:
 
     @staticmethod
     def validate_days(days: int) -> tuple[bool, str]:
-        """Validate number of days for blocking users."""
+        """
+        Validate the number of days for blocking a user.
+        
+        Args:
+            days: Number of days to validate
+            
+        Returns:
+            tuple[bool, str]: (is_valid, error_message)
+        """
         try:
             days = int(days)
             if days < 1:
-                return False, "Days must be at least 1"
+                return False, "Duration must be at least 1 day."
             if days > MAX_BAN_DAYS:
-                return False, f"Days cannot exceed {MAX_BAN_DAYS}"
-            return True, ""  # Return empty string instead of None
+                return False, f"Duration cannot exceed {MAX_BAN_DAYS} days."
+            return True, ""
         except ValueError:
-            return False, "Days must be a valid number"
+            return False, "Duration must be a whole number."
 
     @staticmethod
     def validate_team_size(team: list) -> tuple[bool, str]:
