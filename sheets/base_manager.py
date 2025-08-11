@@ -34,6 +34,7 @@ from concurrent.futures import ThreadPoolExecutor
 import gspread
 from google.oauth2.service_account import Credentials
 from google.auth.exceptions import RefreshError
+from google.auth.transport.requests import Request
 import gspread.exceptions
 
 from utils.logger import setup_logger
@@ -220,9 +221,40 @@ class BaseGoogleSheetsManager:
                 self.spreadsheet = None
                 return
 
+            # Validate credentials before attempting authorization
+            try:
+                # Check if credentials have required attributes
+                if hasattr(creds, 'service_account_email'):
+                    logger.debug(f"🔐 Service account email: {creds.service_account_email}")
+                else:
+                    logger.warning("⚠️ Credentials missing service account email")
+                
+                # Check if credentials are expired
+                if hasattr(creds, 'expired') and creds.expired:
+                    logger.warning("⚠️ Credentials appear to be expired")
+                    try:
+                        creds.refresh(Request())
+                        logger.info("✅ Credentials refreshed successfully")
+                    except Exception as refresh_error:
+                        logger.error(f"❌ Failed to refresh credentials: {refresh_error}")
+                        self.gc = None
+                        self.spreadsheet = None
+                        return
+            except Exception as validation_error:
+                logger.warning(f"⚠️ Could not validate credentials: {validation_error}")
+                # Continue anyway as some credential types may not have these attributes
+
             # Authorize the client with the loaded credentials
-            self.gc = gspread.authorize(creds)
-            logger.info(f"✅ Google Sheets client authorized using {credential_source}")
+            try:
+                self.gc = gspread.authorize(creds)
+                logger.info(f"✅ Google Sheets client authorized using {credential_source}")
+            except Exception as auth_error:
+                logger.error(f"❌ Failed to authorize Google Sheets client: {auth_error}")
+                logger.error(f"🔐 Credential source: {credential_source}")
+                logger.exception("Full authorization error:")
+                self.gc = None
+                self.spreadsheet = None
+                return
 
             # Connect to or create the spreadsheet
             spreadsheet_id = self.spreadsheet_id or os.getenv("GOOGLE_SHEETS_ID")

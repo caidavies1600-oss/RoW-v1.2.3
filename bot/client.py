@@ -265,6 +265,30 @@ class RowBot(commands.Bot):
                             error_details = "Unknown connection issue"
                             if hasattr(self.sheets, 'gc') and not self.sheets.gc:
                                 error_details = "Failed to authorize Google Sheets client"
+                                
+                                # Additional debugging for credential issues
+                                creds_env = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
+                                if creds_env:
+                                    try:
+                                        import json
+                                        creds_data = json.loads(creds_env)
+                                        required_fields = ["type", "project_id", "private_key_id", "private_key", "client_email", "client_id", "auth_uri", "token_uri"]
+                                        missing_fields = [field for field in required_fields if field not in creds_data]
+                                        
+                                        if missing_fields:
+                                            error_details += f" - Missing credential fields: {', '.join(missing_fields)}"
+                                        elif creds_data.get("type") != "service_account":
+                                            error_details += f" - Invalid credential type: {creds_data.get('type')} (expected 'service_account')"
+                                        else:
+                                            error_details += " - Credentials appear valid but authorization failed"
+                                            
+                                    except json.JSONDecodeError:
+                                        error_details += " - Invalid JSON format in GOOGLE_SHEETS_CREDENTIALS"
+                                    except Exception as e:
+                                        error_details += f" - Error analyzing credentials: {str(e)}"
+                                else:
+                                    error_details += " - GOOGLE_SHEETS_CREDENTIALS not found"
+                                    
                             elif hasattr(self.sheets, 'spreadsheet') and not self.sheets.spreadsheet:
                                 error_details = "Failed to open spreadsheet - check GOOGLE_SHEETS_ID"
                             
