@@ -289,7 +289,7 @@ FEATURES = {
 
 # System limits
 MAX_TEAM_SIZE = 40
-MAX_BAN_DAYS = 365
+MAX_BAN_DAYS = 365  # Maximum days for user blocks
 DEFAULT_SLEEP_TIME = 300
 
 # Google Sheets Settings
