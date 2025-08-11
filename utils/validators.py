@@ -21,7 +21,7 @@ from typing import Optional
 
 import discord
 
-from config.constants import MAX_BAN_DAYS
+from config.constants import MAX_BAN_DAYS, MAX_TEAM_SIZE
 from config.settings import ADMIN_ROLE_IDS, MAIN_TEAM_ROLE_ID
 
 
@@ -147,6 +147,13 @@ class Validators:
             return True, None
         except ValueError:
             return False, "Days must be a valid number"
+
+    @staticmethod
+    def validate_team_size(team: list) -> tuple[bool, str]:
+        """Validate the number of members in a team."""
+        if len(team) > MAX_TEAM_SIZE:
+            return False, f"Team cannot exceed {MAX_TEAM_SIZE} members"
+        return True, None
 
     @staticmethod
     def validate_user_id(user_id: str) -> tuple[bool, str]:

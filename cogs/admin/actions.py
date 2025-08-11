@@ -12,8 +12,10 @@ from config.constants import (  # Fixed import
     FILES,
     TEAM_DISPLAY,
 )
+from utils.file_ops import file_ops  # Use global instance
 from utils.helpers import Helpers
 from utils.logger import setup_logger
+from utils.sheets_manager import SheetsManager
 from utils.validators import validate_days
 
 logger = setup_logger("admin_actions")
@@ -36,52 +38,60 @@ class AdminActions(commands.Cog):
         self.blocked_file = FILES["BLOCKED"]
         self.history_file = FILES["HISTORY"]
         self.results_file = FILES["RESULTS"]
+        self.file_ops = file_ops  # Use global instance
+        self.sheets_manager = SheetsManager()
 
-    def load_results(self):
+    async def load_results(self):
         """
         Load event results from the results file.
 
         Returns:
             dict: Dictionary containing wins, losses, and history data
         """
-        if os.path.exists(self.results_file):
-            with open(self.results_file, "r") as f:
-                try:
-                    return json.load(f)
-                except json.JSONDecodeError:
-                    logger.warning("Results file corrupted, resetting.")
-        return {"wins": 0, "losses": 0, "history": []}
+        try:
+            if self.sheets_manager.is_connected():
+                sheet_data = await self.sheets_manager.load_results()
+                if sheet_data:
+                    return sheet_data
+        except Exception as e:
+            logger.warning(f"Failed to load from sheets: {e}")
 
-    def load_blocked_users(self):
+        return await self.file_ops.load_json(
+            self.results_file, {"wins": 0, "losses": 0, "history": []}
+        )
+
+    async def load_blocked_users(self):
         """
         Load the list of currently blocked users from file.
 
         Returns:
             dict: Dictionary of blocked users and their block information
         """
-        if os.path.exists(self.blocked_file):
-            try:
-                with open(self.blocked_file, "r") as f:
-                    data = json.load(f)
-                    if isinstance(data, dict):
-                        return data
-            except Exception as e:
-                logger.warning(f"❌ Failed to load blocked users: {e}")
-        return {}
+        return await self.file_ops.load_json(self.blocked_file, {})
 
-    def save_blocked_users(self, data):
-        """
-        Save blocked users data to file.
-
-        Args:
-            data (dict): Dictionary containing blocked users information
-        """
+    async def sync_to_sheets(self, data_type: str, data: dict) -> bool:
+        """Safely sync data to Google Sheets with fallback."""
         try:
-            os.makedirs(os.path.dirname(self.blocked_file), exist_ok=True)
-            with open(self.blocked_file, "w") as f:
-                json.dump(data, f, indent=4)
+            if not self.sheets_manager.is_connected():
+                logger.warning("Sheets not available, using JSON only")
+                return False
+
+            if data_type == "blocked":
+                await self.sheets_manager.sync_blocked_users(data)
+            elif data_type == "results":
+                await self.sheets_manager.sync_results(data)
+
+            return True
+
         except Exception as e:
-            logger.error(f"❌ Failed to save blocked users: {e}")
+            logger.error(f"Failed to sync {data_type} to sheets: {e}")
+            return False
+
+    async def save_blocked_users(self, data):
+        """Save blocked users to both JSON and sheets."""
+        success = await self.file_ops.save_json(self.blocked_file, data)
+        await self.sync_to_sheets("blocked", data)
+        return success
 
     @commands.command()
     @commands.has_any_role(*ADMIN_ROLE_IDS)
@@ -108,7 +118,7 @@ class AdminActions(commands.Cog):
         # Validate inputs
         valid_days, error = validate_days(days)
         if not valid_days:
-            await ctx.send(MESSAGES["INVALID_INPUT"].format(detail=error))
+            await ctx.send(f"⚠️ {error}")
             return
 
         user_id = str(member.id)
@@ -116,13 +126,13 @@ class AdminActions(commands.Cog):
         blocked_at = datetime.utcnow().isoformat()
         duration = max(days, 1)
 
-        data = self.load_blocked_users()
+        data = await self.load_blocked_users()
         data[user_id] = {
             "blocked_by": blocked_by,
             "blocked_at": blocked_at,
             "ban_duration_days": duration,
         }
-        self.save_blocked_users(data)
+        await self.save_blocked_users(data)
 
         time_text = Helpers.days_until_expiry(blocked_at, duration)
 
@@ -173,14 +183,14 @@ class AdminActions(commands.Cog):
             - DMs bot admin
         """
         user_id = str(member.id)
-        data = self.load_blocked_users()
+        data = await self.load_blocked_users()
 
         if user_id not in data:
             await ctx.send("⚠️ That user is not currently blocked.")
             return
 
         del data[user_id]
-        self.save_blocked_users(data)
+        await self.save_blocked_users(data)
 
         await ctx.send(f"✅ {member.mention} has been unblocked.")
         logger.info(f"{ctx.author} manually unblocked {member}")
@@ -209,7 +219,8 @@ class AdminActions(commands.Cog):
         except Exception as e:
             logger.warning(f"Failed to send unblock alert: {e}")
 
-    @commands.command(name="blocklist")
+    @commands.command()
+    @commands.cooldown(2, 60, commands.BucketType.user)
     async def blocklist(self, ctx):
         """
         Display all currently blocked users and their remaining ban time.
@@ -222,7 +233,7 @@ class AdminActions(commands.Cog):
             - Remaining days for each block
             - User nicknames/mentions
         """
-        data = self.load_blocked_users()
+        data = await self.load_blocked_users()
         if not data:
             await ctx.send("✅ No users are currently blocked.")
             return
@@ -253,6 +264,7 @@ class AdminActions(commands.Cog):
 
     @commands.command()
     @commands.has_any_role(*ADMIN_ROLE_IDS)
+    @commands.cooldown(1, 60, commands.BucketType.user)
     async def rowstats(self, ctx):
         """
         Display comprehensive RoW event statistics.
@@ -278,7 +290,7 @@ class AdminActions(commands.Cog):
                 await ctx.send("❌ Event or profile system not available.")
                 return
 
-            results = self.load_results()
+            results = await self.load_results()
             wins = results.get("wins", 0)
             losses = results.get("losses", 0)
             win_rate = (wins / (wins + losses)) * 100 if (wins + losses) > 0 else 0

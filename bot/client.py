@@ -581,6 +581,11 @@ class RowBot(commands.Bot):
             except:
                 pass  # Don't let notification failure prevent shutdown
 
+        from utils.file_ops import file_ops
+
+        # Perform file operations cleanup
+        await file_ops.shutdown()
+
         await super().close()
         logger.info("Bot shutdown complete")
         print("DEBUG: Bot shutdown complete")

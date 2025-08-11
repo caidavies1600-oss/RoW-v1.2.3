@@ -291,3 +291,18 @@ FEATURES = {
 MAX_TEAM_SIZE = 40
 MAX_BAN_DAYS = 365
 DEFAULT_SLEEP_TIME = 300
+
+# Google Sheets Settings
+SHEETS_CONFIG = {
+    "REQUEST_LIMIT": 60,  # Requests per minute
+    "MAX_RETRIES": 3,
+    "BACKOFF_BASE": 2,
+    "MIN_INTERVAL": 1.1,  # Seconds between requests
+    "TIMEOUT": 30,  # Request timeout in seconds
+}
+
+WORKSHEET_NAMES = {
+    "BLOCKED": "Blocked Users",
+    "RESULTS": "Match Results",
+    "STATS": "Player Stats",
+}
