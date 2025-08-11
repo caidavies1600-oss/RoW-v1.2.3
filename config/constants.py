@@ -9,6 +9,7 @@ Note: Sensitive configuration should be stored in environment variables,
 not in this file.
 """
 
+
 import os
 
 # config/settings.py exists but might need these critical imports in constants.py:
@@ -306,3 +307,6 @@ WORKSHEET_NAMES = {
     "RESULTS": "Match Results",
     "STATS": "Player Stats",
 }
+
+# Bot command prefix
+BOT_PREFIX = "!"
