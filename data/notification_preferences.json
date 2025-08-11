@@ -1,25 +1,4 @@
 {
-    "users": {
-        "1096858315826397354": {
-            "method": "dm",
-            "display_name": "Cai",
-            "team_updates": true,
-            "result_notifications": true,
-            "event_reminders": true,
-            "quiet_hours": {
-                "start": 0,
-                "end": 8
-            }
-        },
-        "1236396477853728865": {
-            "method": "both",
-            "display_name": "Darkness 㞧",
-            "quiet_hours": {
-                "start": 4,
-                "end": 10
-            },
-            "event_reminders": true
-        }
-    },
-    "default_settings": {}
+  "users": {},
+  "default_settings": {}
 }

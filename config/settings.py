@@ -51,7 +51,7 @@ ROW_NOTIFICATION_ROLE_ID: int = (
 )
 
 # Channel IDs (these will be different per server)
-ALERT_CHANNEL_ID: int = 1311377465087885314
+ALERT_CHANNEL_ID: int = 1257468695400153110
 
 # User IDs
 BOT_ADMIN_USER_ID: int = 1096858315826397354  # Discord User: ME
@@ -69,8 +69,8 @@ TEAMS = ["main_team", "team_2", "team_3"]
 
 # Event Scheduling (UTC times)
 DEFAULT_TIMES = {
-    "main_team": "20:00 UTC Sunday",
-    "team_2": "14:00 UTC Sunday",
+    "main_team": "14:00 UTC Sunday",
+    "team_2": "14:00 UTC Saturday",
     "team_3": "20:00 UTC Saturday",
 }
 
