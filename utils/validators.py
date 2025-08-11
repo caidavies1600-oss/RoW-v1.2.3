@@ -144,7 +144,7 @@ class Validators:
                 return False, "Days must be at least 1"
             if days > MAX_BAN_DAYS:
                 return False, f"Days cannot exceed {MAX_BAN_DAYS}"
-            return True, None
+            return True, ""  # Return empty string instead of None
         except ValueError:
             return False, "Days must be a valid number"
 

@@ -1,10 +1,16 @@
 import asyncio
 import time
+import random
 from typing import Any, Optional
-import gspread
 from utils.logger import setup_logger
 
 logger = setup_logger("sheets_manager")
+
+try:
+    import gspread
+    GSPREAD_AVAILABLE = True
+except ImportError:
+    GSPREAD_AVAILABLE = False
 
 class SheetsManager:
     def __init__(self):

@@ -392,16 +392,5 @@ class AdminActions(commands.Cog):
 
 # Required setup
 async def setup(bot):
-    """
-    Set up the AdminActions cog.
-
-    Args:
-        bot: The Discord bot instance
-    """
-    await bot.add_cog(AdminActions(bot))
-    Set up the AdminActions cog.
-
-    Args:
-        bot: The Discord bot instance
-    """
+    """Set up the AdminActions cog."""
     await bot.add_cog(AdminActions(bot))
