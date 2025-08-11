@@ -44,8 +44,8 @@ ADMIN_ROLE_IDS: List[int] = [
 ]
 
 # Main team access control
-RESTRICT_MAIN_TEAM: bool = False  # Set to True to enable role restriction
-MAIN_TEAM_ROLE_ID: int = 0  # Set to actual role ID when RESTRICT_MAIN_TEAM is True
+RESTRICT_MAIN_TEAM: bool = True  # Set to True to enable role restriction
+MAIN_TEAM_ROLE_ID: int = 1235729244605120572  # Set to actual role ID when RESTRICT_MAIN_TEAM is True
 ROW_NOTIFICATION_ROLE_ID: int = (
     1235729244605120572  # Role: RoW Notification for @MFD Members
 )
