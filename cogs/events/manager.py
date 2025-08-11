@@ -86,9 +86,9 @@ class EventManager(commands.Cog, name="EventManager"):
         else:
             logger.info("✅ Blocked users saved and synced to Sheets")
 
-    def save_times(self):
+    async def save_times(self):
         """Save event times configuration to file."""
-        if not self.data_manager.save_data(FILES["TIMES"], self.event_times):
+        if not await self.data_manager.save_data(FILES["TIMES"], self.event_times):
             logger.error("❌ Failed to save row_times.json")
 
     async def save_signup_lock(self):

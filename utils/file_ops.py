@@ -32,43 +32,59 @@ class FileOps:
         return self._locks[filepath]
 
     async def load_json(self, filepath: str, default: Any = None) -> Any:
-        """Thread-safe JSON loading."""
+        """Load JSON data from file with atomic operations and validation."""
         async with self.get_lock(filepath):
             try:
                 if not os.path.exists(filepath):
+                    logger.debug(f"File {filepath} does not exist, returning default")
                     return default
 
-                with open(filepath, "r", encoding="utf-8") as f:
-                    return json.load(f)
+                # Use asyncio to read file to avoid blocking
+                loop = asyncio.get_event_loop()
+
+                def _read_file():
+                    with open(filepath, "r", encoding="utf-8") as f:
+                        return json.load(f)
+
+                data = await loop.run_in_executor(None, _read_file)
+
+                logger.debug(f"✅ Loaded {filepath}")
+                return data
 
             except json.JSONDecodeError as e:
-                logger.error(f"Corrupt JSON in {filepath}: {e}")
+                logger.error(f"❌ Invalid JSON in {filepath}: {e}")
                 await self._create_backup(filepath)
                 return default
             except Exception as e:
-                logger.error(f"Failed to load {filepath}: {e}")
+                logger.error(f"❌ Failed to load {filepath}: {e}")
                 return default
 
     async def save_json(self, filepath: str, data: Any) -> bool:
-        """Thread-safe atomic JSON saving."""
+        """Save JSON data with atomic operations and proper locking."""
         async with self.get_lock(filepath):
             temp_file = f"{filepath}.tmp"
             backup_file = f"{filepath}.bak"
 
             try:
-                # Create directory if needed
-                os.makedirs(os.path.dirname(filepath), exist_ok=True)
+                # Use asyncio executor for file operations to avoid blocking
+                loop = asyncio.get_event_loop()
 
-                # Write to temp file
-                with open(temp_file, "w", encoding="utf-8") as f:
-                    json.dump(data, f, indent=2)
+                def _write_file():
+                    # Create directory if needed
+                    os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
-                # Backup existing file
-                if os.path.exists(filepath):
-                    shutil.copy2(filepath, backup_file)
+                    # Write to temp file
+                    with open(temp_file, "w", encoding="utf-8") as f:
+                        json.dump(data, f, indent=2)
 
-                # Atomic replace
-                shutil.move(temp_file, filepath)
+                    # Backup existing file
+                    if os.path.exists(filepath):
+                        shutil.copy2(filepath, backup_file)
+
+                    # Atomic replace
+                    shutil.move(temp_file, filepath)
+
+                await loop.run_in_executor(None, _write_file)
                 return True
 
             except Exception as e:

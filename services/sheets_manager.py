@@ -17,6 +17,9 @@ Requirements:
 
 import random
 from datetime import datetime
+import os
+import asyncio
+from typing import Any
 
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -76,7 +79,7 @@ class SheetsManager:
             if not self.service:
                 logger.error("❌ Google Sheets service is not initialized")
                 return None
-                
+
             data = {
                 "events": {"main_team": [], "team_2": [], "team_3": []},
                 "blocked": {},
@@ -108,4 +111,102 @@ class SheetsManager:
             logger.error(f"❌ Failed to load data from sheets: {e}")
             return None
 
-    # ...existing methods...
+    async def sync_data(self, filepath: str, data: Any):
+        """Sync data to appropriate sheet based on filepath."""
+        if not self.is_connected():
+            return
+
+        filename = os.path.basename(filepath)
+
+        try:
+            if filename == "events.json":
+                await self._run_sync_in_executor(lambda: self.sync_current_teams(data))
+            elif filename == "events_history.json":
+                await self._run_sync_in_executor(lambda: self.sync_events_history(data))
+            elif filename == "blocked_users.json":
+                await self._run_sync_in_executor(lambda: self.sync_blocked_users(data))
+            elif filename == "event_results.json":
+                await self._run_sync_in_executor(lambda: self.sync_results_history(data))
+        except Exception as e:
+            logger.error(f"Failed to sync {filename}: {e}")
+
+    async def _run_sync_in_executor(self, sync_func):
+        """Run sync operation in thread pool to avoid blocking."""
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, sync_func)
+
+    def sync_current_teams(self, data):
+        """Sync current teams to the 'Current Teams' sheet."""
+        try:
+            values = [["Team", "Players"]]
+            for team, players in data.get("events", {}).items():
+                values.append([team.replace("_", " ").title(), ", ".join(players)])
+            
+            body = {"values": values}
+            self.service.spreadsheets().values().update(
+                spreadsheetId=self.spreadsheet_id,
+                range="Current Teams",
+                valueInputOption="USER_ENTERED",
+                body=body
+            ).execute()
+            logger.info("✅ Synced current teams")
+        except Exception as e:
+            logger.error(f"❌ Failed to sync current teams: {e}")
+
+    def sync_events_history(self, data):
+        """Sync event history to the 'Event History' sheet."""
+        try:
+            values = [["Event Name", "Winner", "Date"]] # Example columns, adjust as needed
+            for event in data.get("event_history", []): # Assuming data structure
+                values.append([event.get("name"), event.get("winner"), event.get("date")])
+
+            body = {"values": values}
+            self.service.spreadsheets().values().update(
+                spreadsheetId=self.spreadsheet_id,
+                range="Event History",
+                valueInputOption="USER_ENTERED",
+                body=body
+            ).execute()
+            logger.info("✅ Synced event history")
+        except Exception as e:
+            logger.error(f"❌ Failed to sync event history: {e}")
+
+    def sync_blocked_users(self, data):
+        """Sync blocked users to the 'Blocked Users' sheet."""
+        try:
+            values = [["User ID", "Reason", "Timestamp"]] # Example columns
+            for user_id, info in data.get("blocked", {}).items():
+                values.append([user_id, info.get("reason"), info.get("timestamp")])
+
+            body = {"values": values}
+            self.service.spreadsheets().values().update(
+                spreadsheetId=self.spreadsheet_id,
+                range="Blocked Users",
+                valueInputOption="USER_ENTERED",
+                body=body
+            ).execute()
+            logger.info("✅ Synced blocked users")
+        except Exception as e:
+            logger.error(f"❌ Failed to sync blocked users: {e}")
+
+    def sync_results_history(self, data):
+        """Sync results history to the 'Results History' sheet."""
+        try:
+            values = [["Total Wins", "Total Losses", "Match History"]] # Example columns
+            results = data.get("results", {})
+            values.append([
+                results.get("total_wins", 0),
+                results.get("total_losses", 0),
+                "\n".join([f"{h['team1']} vs {h['team2']}: {h['result']}" for h in results.get("history", [])])
+            ])
+
+            body = {"values": values}
+            self.service.spreadsheets().values().update(
+                spreadsheetId=self.spreadsheet_id,
+                range="Results History",
+                valueInputOption="USER_ENTERED",
+                body=body
+            ).execute()
+            logger.info("✅ Synced results history")
+        except Exception as e:
+            logger.error(f"❌ Failed to sync results history: {e}")

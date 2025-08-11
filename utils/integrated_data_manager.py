@@ -31,14 +31,14 @@ class IntegratedDataManager:
         """Save data with atomic file operations and optional sheets sync."""
         try:
             # Atomic file save
-            success = await self.file_ops.save_json(filepath, data)
+            success = await self.atomic_save_json(filepath, data)
             if not success:
                 return False
 
-            # Sync to sheets if enabled
-            if sync_to_sheets and self.sheets_manager.is_connected():
+            # Live sync to sheets if enabled
+            if sync_to_sheets and self.sheets_manager:
                 try:
-                    await self.sheets_manager.sync_data(filepath, data)
+                    await self._live_sync_file(filepath, data)
                 except Exception as e:
                     logger.error(f"Failed to sync to sheets: {e}")
                     # Don't fail if sheets sync fails
