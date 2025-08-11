@@ -1,4 +1,21 @@
-"""Rate limiting system to prevent spam and abuse."""
+"""
+Rate limiting system to prevent spam and abuse.
+
+Features:
+- Command rate limiting
+- Button click limiting
+- Command-specific cooldowns
+- User activity tracking
+- Spam detection
+- Global statistics
+
+Components:
+- Per-user command limits
+- Per-minute and per-hour limits
+- Button spam prevention
+- Cooldown management
+- Activity monitoring
+"""
 
 import time
 from collections import defaultdict, deque
@@ -9,8 +26,24 @@ from utils.logger import setup_logger
 logger = setup_logger("rate_limiter")
 
 class RateLimiter:
-    """Rate limiter with configurable limits per user/command."""
-
+    """
+    Rate limiter with configurable limits per user/command.
+    
+    Features:
+    - Per-user command tracking
+    - Command cooldown system
+    - Button click limiting
+    - Spam detection
+    - Activity monitoring
+    - Limit configuration
+    
+    Attributes:
+        user_activity: User command timestamps
+        command_cooldowns: Command-specific cooldowns
+        button_activity: Button click timestamps
+        limits: Rate limiting configuration
+    """
+    
     def __init__(self):
         # Store user activity: user_id -> deque of timestamps
         self.user_activity = defaultdict(lambda: deque())
@@ -36,7 +69,22 @@ class RateLimiter:
         }
 
     def check_command_rate_limit(self, user_id: int, command_name: str) -> Tuple[bool, Optional[str]]:
-        """Check if user can execute a command."""
+        """
+        Check if user can execute a command.
+        
+        Args:
+            user_id: User's Discord ID
+            command_name: Command being executed
+            
+        Returns:
+            tuple: (allowed: bool, message: Optional[str])
+            
+        Checks:
+        - Per-minute command limit
+        - Per-hour command limit
+        - Command-specific cooldowns
+        - Global rate limits
+        """
         current_time = time.time()
 
         # Check global command rate limits
@@ -74,7 +122,21 @@ class RateLimiter:
         return True, None
 
     def check_button_rate_limit(self, user_id: int) -> Tuple[bool, Optional[str]]:
-        """Check if user can click buttons."""
+        """
+        Check if user can click buttons.
+        
+        Args:
+            user_id: User's Discord ID
+            
+        Returns:
+            tuple: (allowed: bool, message: Optional[str])
+            
+        Features:
+        - Per-minute click limiting
+        - Spam detection window
+        - Click tracking
+        - Activity cleanup
+        """
         current_time = time.time()
 
         user_buttons = self.button_activity[user_id]
@@ -152,7 +214,16 @@ class RateLimiter:
         logger.info(f"🔄 Reset rate limits for user {user_id}")
 
     def get_global_stats(self) -> Dict:
-        """Get global rate limiting statistics."""
+        """
+        Get global rate limiting statistics.
+        
+        Returns:
+            dict containing:
+            - active_users_last_hour: Number of active users
+            - rate_limited_users: Number of currently limited users
+            - total_commands_last_hour: Total command count
+            - active_cooldowns: Number of active cooldowns
+        """
         current_time = time.time()
 
         active_users = len([uid for uid, activity in self.user_activity.items() 
@@ -178,7 +249,18 @@ class RateLimiter:
 rate_limiter = RateLimiter()
 
 def create_rate_limit_check():
-    """Create a command check for rate limiting."""
+    """
+    Create a command check for rate limiting.
+    
+    Returns:
+        commands.check: Discord.py check function
+        
+    Features:
+    - Command execution validation
+    - Rate limit messaging
+    - Activity logging
+    - User feedback
+    """
     async def rate_limit_check(ctx):
         allowed, message = rate_limiter.check_command_rate_limit(ctx.author.id, ctx.command.name)
         if not allowed:

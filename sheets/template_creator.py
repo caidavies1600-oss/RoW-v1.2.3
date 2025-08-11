@@ -1,3 +1,17 @@
+"""
+Template creation module for Google Sheets integration.
+
+This module handles:
+- Creation of standardized sheet templates
+- Player statistics worksheet formatting
+- Match statistics tracking setup
+- Alliance tracking configuration
+- Template synchronization and validation
+
+Each template includes proper formatting, example data,
+and necessary formulas for data analysis.
+"""
+
 from datetime import datetime
 from .worksheet_handlers import WorksheetHandlers
 from .config import SHEET_CONFIGS
@@ -6,10 +20,35 @@ from utils.logger import setup_logger
 logger = setup_logger("template_creator")
 
 class TemplateCreator(WorksheetHandlers):
-    """Creates templates for manual data entry."""
+    """
+    Creates and manages Google Sheets templates for manual data entry.
+
+    Features:
+    - Standardized template creation
+    - Auto-formatting and styling
+    - Formula setup
+    - Example data population
+    - Header freezing and formatting
+    - Data validation rules
+    """
 
     def create_player_stats_template(self, player_stats):
-        """Create player stats template with current players for manual data entry."""
+        """
+        Create player stats template with current players for manual data entry.
+        
+        Args:
+            player_stats: Dictionary of player statistics
+
+        Creates:
+            - User identification columns
+            - Win/loss tracking fields
+            - Auto-calculated statistics
+            - Specialization indicators
+            - Formatting and formulas
+
+        Returns:
+            bool: Success status of template creation
+        """
         if not self.is_connected():
             return False
 
@@ -109,7 +148,19 @@ class TemplateCreator(WorksheetHandlers):
             return False
 
     def create_match_statistics_template(self):
-        """Create match statistics template for manual data entry."""
+        """
+        Create match statistics template for manual data entry.
+
+        Features:
+        - Match identification
+        - Team performance metrics
+        - Enemy alliance tracking
+        - Resource and combat statistics
+        - Player participation records
+        
+        Returns:
+            bool: Success status of template creation
+        """
         if not self.is_connected():
             return False
 
@@ -157,7 +208,20 @@ class TemplateCreator(WorksheetHandlers):
             return False
 
     def create_alliance_tracking_sheet(self):
-        """Create alliance tracking sheet for enemy alliance performance."""
+        """
+        Create alliance tracking sheet for enemy alliance performance.
+
+        Features:
+        - Alliance identification
+        - Win/loss history
+        - Power level tracking
+        - Activity monitoring
+        - Strategy notes
+        - Threat assessment
+
+        Returns:
+            bool: Success status of template creation
+        """
         if not self.is_connected():
             return False
 
@@ -201,7 +265,22 @@ class TemplateCreator(WorksheetHandlers):
             return False
 
     def create_all_templates(self, all_data):
-        """Create all sheet templates for manual data entry."""
+        """
+        Create all sheet templates for manual data entry.
+
+        Args:
+            all_data: Dictionary containing all template data
+
+        Creates:
+        - Player statistics template
+        - Match statistics tracking
+        - Alliance monitoring
+        - Current teams overview
+        - Results history
+
+        Returns:
+            bool: True if majority of templates created successfully
+        """
         if not self.is_connected():
             logger.warning("Google Sheets not initialized, skipping template creation")
             return False

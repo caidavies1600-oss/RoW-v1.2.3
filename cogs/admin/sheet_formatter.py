@@ -9,16 +9,48 @@ import time
 logger = setup_logger("sheet_formatter")
 
 class SheetFormatter(commands.Cog):
-    """Advanced Google Sheets formatting commands."""
+    """
+    Advanced Google Sheets formatting commands.
+    
+    Features:
+    - Professional formatting for all worksheets
+    - Conditional formatting and color schemes
+    - Template creation for statistics and tracking
+    - Formatting reset capabilities
+    - Debug logging for formatting operations
+    """
 
     def __init__(self, bot):
+        """
+        Initialize the SheetFormatter cog.
+
+        Args:
+            bot: The Discord bot instance with sheets manager
+        """
         self.bot = bot
         self.data_manager = DataManager()
 
     @commands.command(name="formatsheets")
     @commands.has_any_role(*ADMIN_ROLE_IDS)
     async def format_all_sheets(self, ctx):
-        """Apply comprehensive formatting to all Google Sheets."""
+        """
+        Apply comprehensive formatting to all Google Sheets.
+
+        Args:
+            ctx: Command context
+
+        Requires:
+            Admin role permissions
+
+        Formats:
+            - Player Stats: Formulas, colors, conditional formatting
+            - Current Teams: Status indicators and team colors
+            - Results History: Win/loss color coding
+            - Match Statistics: Advanced statistics template
+            - Alliance Tracking: Alliance management sheet
+            - Error Summary: Error tracking template
+            - Dashboard: Overview and metrics display
+        """
         await ctx.send("🔍 **Debug:** Starting formatsheets command...")
 
         try:
@@ -302,7 +334,22 @@ class SheetFormatter(commands.Cog):
     @commands.command(name="resetformatting")
     @commands.has_any_role(*ADMIN_ROLE_IDS)
     async def reset_sheet_formatting(self, ctx):
-        """Reset all sheet formatting to basic style."""
+        """
+        Reset all sheet formatting to basic style.
+
+        Args:
+            ctx: Command context
+
+        Requires:
+            Admin role permissions
+
+        Effects:
+            - Clears all custom formatting
+            - Resets colors and font styles
+            - Removes conditional formatting
+            - Maintains existing data
+            - Prepares sheets for reformatting
+        """
         try:
             if not hasattr(self.bot, 'sheets') or not self.bot.sheets:
                 await ctx.send("❌ **Error:** Google Sheets not initialized.")
@@ -362,4 +409,10 @@ class SheetFormatter(commands.Cog):
             await ctx.send(f"❌ **Reset Error:** {str(e)}")
 
 async def setup(bot):
+    """
+    Set up the SheetFormatter cog.
+
+    Args:
+        bot: The Discord bot instance
+    """
     await bot.add_cog(SheetFormatter(bot))

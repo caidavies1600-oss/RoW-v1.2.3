@@ -8,13 +8,34 @@ from config.settings import ADMIN_ROLE_IDS, BOT_ADMIN_USER_ID
 
 
 class UserCommands(commands.Cog):
+    """
+    Handles basic user commands and IGN management.
+    
+    Features:
+    - IGN (in-game name) storage and retrieval
+    - Command listing with permission levels
+    - Basic user utilities
+    - IGN validation and warnings
+    """
+
     def __init__(self, bot):
+        """
+        Initialize the UserCommands cog.
+        
+        Args:
+            bot: The Discord bot instance
+        """
         self.bot = bot
         self.ign_map = {}
         self.ign_file = "data/ign_map.json"
         self.load_ign_map()
 
     def load_ign_map(self):
+        """
+        Load IGN mapping from JSON file.
+        
+        Creates empty mapping if file doesn't exist.
+        """
         if os.path.exists(self.ign_file):
             with open(self.ign_file, "r") as f:
                 self.ign_map = json.load(f)
@@ -22,16 +43,41 @@ class UserCommands(commands.Cog):
             self.ign_map = {}
 
     def save_ign_map(self):
+        """Save current IGN mapping to JSON file."""
         with open(self.ign_file, "w") as f:
             json.dump(self.ign_map, f, indent=4)
 
     def get_ign(self, user):
+        """
+        Get user's IGN if it exists.
+        
+        Args:
+            user: Discord user object
+            
+        Returns:
+            str: User's IGN or None if not set
+        """
         return self.ign_map.get(str(user.id))
 
     def has_ign(self, user):
+        """
+        Check if user has set their IGN.
+        
+        Args:
+            user: Discord user object
+            
+        Returns:
+            bool: True if user has IGN set
+        """
         return str(user.id) in self.ign_map
 
     async def warn_if_no_ign(self, interaction: discord.Interaction):
+        """
+        Send warning message if user hasn't set IGN.
+        
+        Args:
+            interaction: Discord interaction to respond to
+        """
         if not self.has_ign(interaction.user):
             await interaction.response.send_message(
                 "⚠️ You haven't set your IGN yet. Use `!setign YourName`.",
@@ -40,7 +86,14 @@ class UserCommands(commands.Cog):
 
     @commands.command(name="commands", help="Show available commands.")
     async def list_commands(self, ctx):
-        """List all available commands dynamically, split by user/admin/owner."""
+        """
+        Show available commands based on user permissions.
+        
+        Lists:
+        - Basic user commands for everyone
+        - Admin commands for users with admin roles
+        - Owner commands for bot owner
+        """
         try:
             is_admin = any(role.id in ADMIN_ROLE_IDS for role in ctx.author.roles)
             is_owner = ctx.author.id == BOT_ADMIN_USER_ID
@@ -122,8 +175,14 @@ class UserCommands(commands.Cog):
 
     @commands.command(name="test123")
     async def test_command(self, ctx):
-        """Test command to verify cog is working"""
+        """Test command to verify the cog is loaded and responding."""
         await ctx.send("✅ User commands cog is working!")
 
 async def setup(bot):
+    """
+    Set up the UserCommands cog.
+
+    Args:
+        bot: The Discord bot instance
+    """
     await bot.add_cog(UserCommands(bot))

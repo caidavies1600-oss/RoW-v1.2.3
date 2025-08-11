@@ -1,4 +1,18 @@
-# utils/admin_notifier.py
+"""
+Admin notification system for real-time bot monitoring.
+
+Features:
+- Real-time startup progress tracking
+- Error alerts and tracebacks
+- Activity monitoring
+- Health status updates
+- Rich embed formatting
+- Queue system for delayed notifications
+- Activity type classification
+
+This module provides direct communication with the bot owner
+for critical events and monitoring.
+"""
 
 import discord
 import traceback
@@ -10,7 +24,25 @@ from utils.logger import setup_logger
 logger = setup_logger("admin_notifier")
 
 class AdminNotifier:
-    """Real-time notification system for bot owner."""
+    """
+    Real-time notification system for bot owner.
+    
+    Features:
+    - Startup progress tracking
+    - Error monitoring
+    - Activity notifications
+    - Health alerts
+    - Message queueing
+    - Rich embed formatting
+    
+    Attributes:
+        bot: Discord bot instance
+        admin_user_id: ID of bot owner
+        admin_user: Discord user object of owner
+        startup_embed: Tracking embed for startup
+        notification_queue: Queue for delayed notifications
+        is_ready: Initialization status
+    """
 
     def __init__(self, bot, admin_user_id: int):
         self.bot = bot
@@ -360,7 +392,17 @@ class AdminNotifier:
             logger.error(f"Failed to send health alert: {e}")
 
     async def _ensure_ready(self) -> bool:
-        """Ensure notifier is ready to send messages."""
+        """
+        Ensure notifier is ready to send messages.
+        
+        Returns:
+            bool: True if ready to send notifications
+            
+        Performs:
+        - Bot readiness check
+        - Admin user validation
+        - Initialization if needed
+        """
         if self.is_ready and self.admin_user:
             return True
 
@@ -377,18 +419,42 @@ class AdminNotifier:
 admin_notifier: Optional[AdminNotifier] = None
 
 def setup_admin_notifier(bot, admin_user_id: int):
-    """Setup the global admin notifier."""
+    """
+    Setup the global admin notifier.
+    
+    Args:
+        bot: Discord bot instance
+        admin_user_id: User ID of bot owner
+        
+    Creates global notifier instance for bot-wide use.
+    """
     global admin_notifier
     admin_notifier = AdminNotifier(bot, admin_user_id)
     logger.info(f"🔔 Admin notifier configured for user {admin_user_id}")
 
 async def notify_startup_begin():
-    """Notify admin that startup is beginning."""
+    """
+    Notify admin that startup is beginning.
+    
+    Sends initial startup message with:
+    - Timestamp
+    - Progress tracking
+    - Status indicators
+    """
     if admin_notifier:
         await admin_notifier.send_startup_notification()
 
 async def notify_startup_milestone(milestone: str, status: str = "✅", details: str = None):
-    """Notify admin of startup milestone."""
+    """
+    Notify admin of startup milestone.
+    
+    Args:
+        milestone: Description of milestone reached
+        status: Emoji indicator of status
+        details: Optional additional information
+        
+    Updates startup tracking embed in real-time.
+    """
     if admin_notifier:
         await admin_notifier.update_startup_progress(milestone, status, details)
 
@@ -398,17 +464,55 @@ async def notify_startup_complete(success: bool, total_time: float, stats: Dict[
         await admin_notifier.send_startup_complete(success, total_time, stats)
 
 async def notify_error(error_type: str, error: Exception, context: str = None):
-    """Notify admin of an error."""
+    """
+    Notify admin of an error.
+    
+    Args:
+        error_type: Classification of error
+        error: Exception object
+        context: Additional context about error
+        
+    Features:
+    - Error formatting
+    - Traceback inclusion
+    - Context preservation
+    - Embed formatting
+    """
     if admin_notifier:
         tb_str = traceback.format_exc() if hasattr(traceback, 'format_exc') else None
         await admin_notifier.send_error_alert(error_type, error, context, tb_str)
 
 async def notify_activity(activity_type: str, **details):
-    """Notify admin of bot activity."""
+    """
+    Notify admin of bot activity.
+    
+    Args:
+        activity_type: Type of activity (command_executed, user_blocked, etc)
+        **details: Activity-specific details
+        
+    Activities:
+    - Command executions
+    - User management
+    - Event operations
+    - System tasks
+    - Data operations
+    """
     if admin_notifier:
         await admin_notifier.send_activity_notification(activity_type, details)
 
 async def notify_health_status(health_status: Dict[str, Any]):
-    """Notify admin of health status."""
+    """
+    Notify admin of health status.
+    
+    Args:
+        health_status: Dictionary containing health metrics
+        
+    Monitors:
+    - Overall bot health
+    - Critical cog status
+    - Command statistics
+    - System uptime
+    - Performance metrics
+    """
     if admin_notifier and health_status.get("status") in ["warning", "critical"]:
         await admin_notifier.send_health_alert(health_status)

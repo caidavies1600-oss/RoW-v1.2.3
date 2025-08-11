@@ -1,4 +1,20 @@
-# utils/startup_data_fixer.py
+"""
+Startup data validation and repair system.
+
+Features:
+- Automatic data structure validation
+- File existence verification
+- Data type standardization
+- Corrupted file recovery
+- User ID normalization
+- IGN mapping fixes
+
+Components:
+- File structure validation
+- Data consistency checks
+- Recovery mechanisms
+- Logging system
+"""
 
 import json
 import os
@@ -9,7 +25,21 @@ from utils.logger import setup_logger
 logger = setup_logger("startup_fixer")
 
 class StartupDataFixer:
-    """Automatically fixes data inconsistencies on bot startup."""
+    """
+    Automatically fixes data inconsistencies on bot startup.
+    
+    Features:
+    - Missing file creation
+    - Data structure repair
+    - User ID standardization
+    - Corruption recovery
+    - IGN mapping fixes
+    - Logging of applied fixes
+    
+    Attributes:
+        bot: Discord bot instance
+        fixes_applied: List of fixes performed
+    """
 
     def __init__(self, bot=None):
         self.bot = bot
@@ -217,7 +247,22 @@ class StartupDataFixer:
                 logger.warning(f"Failed to clean {file_path}: {e}")
 
     def _validate_file_structure(self, file_path: str, data) -> bool:
-        """Validate basic file structure."""
+        """
+        Validate basic file structure.
+        
+        Args:
+            file_path: Path to JSON file
+            data: Loaded JSON data
+            
+        Returns:
+            bool: True if structure is valid
+            
+        Validates:
+        - Data type correctness
+        - Required keys presence
+        - List/dict structure
+        - Team data format
+        """
         from config.constants import FILES
 
         try:
@@ -241,7 +286,21 @@ class StartupDataFixer:
             return False
 
     def _load_json(self, file_path: str, default=None):
-        """Load JSON with fallback."""
+        """
+        Load JSON with fallback.
+        
+        Args:
+            file_path: Path to JSON file
+            default: Default value if load fails
+            
+        Returns:
+            Any: Loaded JSON data or default
+            
+        Features:
+        - UTF-8 encoding
+        - Error recovery
+        - Default fallback
+        """
         try:
             if os.path.exists(file_path):
                 with open(file_path, 'r', encoding='utf-8') as f:
@@ -251,7 +310,22 @@ class StartupDataFixer:
         return default
 
     def _save_json(self, file_path: str, data) -> bool:
-        """Save JSON safely."""
+        """
+        Save JSON safely.
+        
+        Args:
+            file_path: Path to JSON file
+            data: Data to save
+            
+        Returns:
+            bool: Success status
+            
+        Features:
+        - Directory creation
+        - UTF-8 encoding
+        - Error handling
+        - Pretty printing
+        """
         try:
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
             with open(file_path, 'w', encoding='utf-8') as f:

@@ -1,4 +1,21 @@
-"""Data backup and recovery system for the Discord bot."""
+"""
+Data backup and recovery system for the Discord bot.
+
+Features:
+- Automatic and manual backup creation
+- Backup rotation and cleanup
+- Metadata tracking and validation
+- Pre-restore safety backups
+- Activity-based backup scheduling
+- Backup statistics and monitoring
+
+Components:
+- Backup creation and management
+- File rotation and cleanup
+- Restore functionality
+- Scheduling system
+- Statistics tracking
+"""
 
 import os
 import json
@@ -12,7 +29,22 @@ from utils.data_manager import DataManager
 logger = setup_logger("backup_manager")
 
 class BackupManager:
-    """Manages data backups and recovery."""
+    """
+    Manages data backups and recovery.
+    
+    Features:
+    - Automatic scheduled backups
+    - Manual backup creation
+    - Backup rotation system
+    - Metadata tracking
+    - Recovery functionality
+    - Statistics monitoring
+    
+    Attributes:
+        data_manager: Data management interface
+        backup_dir: Directory for backup storage
+        max_backups: Maximum number of backups to keep
+    """
 
     def __init__(self):
         self.data_manager = DataManager()
@@ -217,7 +249,18 @@ class BackupManager:
             logger.error(f"❌ Failed to cleanup old backups: {e}")
 
     def schedule_automatic_backups(self):
-        """Setup automatic backup scheduling."""
+        """
+        Setup automatic backup scheduling.
+        
+        Features:
+        - 6-hour interval checks
+        - Activity-based triggering
+        - Error handling and logging
+        - Automatic cleanup
+        
+        Returns:
+            Task: Discord task loop for scheduling
+        """
         from discord.ext import tasks
 
         @tasks.loop(hours=6)  # Every 6 hours
@@ -234,7 +277,17 @@ class BackupManager:
         return auto_backup_task
 
     def _has_recent_activity(self) -> bool:
-        """Check if there has been recent activity worth backing up."""
+        """
+        Check if there has been recent activity worth backing up.
+        
+        Returns:
+            bool: True if files were modified in last 6 hours
+            
+        Checks:
+        - File modification times
+        - Critical file changes
+        - Data file updates
+        """
         try:
             from config.constants import FILES
 
@@ -254,7 +307,18 @@ class BackupManager:
             return True  # Assume activity if we can't check
 
     def get_backup_stats(self) -> Dict:
-        """Get backup system statistics."""
+        """
+        Get backup system statistics.
+        
+        Returns:
+            dict containing:
+            - total_backups: Number of backups
+            - total_size: Size in bytes
+            - total_size_mb: Size in megabytes
+            - oldest_backup: Timestamp of oldest
+            - newest_backup: Timestamp of newest
+            - backup_types: Count by type
+        """
         try:
             backups = self.list_backups()
 
@@ -293,13 +357,52 @@ backup_manager = BackupManager()
 
 # Convenience functions
 def create_backup(backup_type: str = "manual") -> Optional[str]:
-    """Create a backup of all data files."""
+    """
+    Create a backup of all data files.
+    
+    Args:
+        backup_type: Type of backup (manual, automatic, pre_restore)
+        
+    Returns:
+        str: Path to created backup file or None on failure
+        
+    Features:
+        - Metadata generation
+        - File compression
+        - Error handling
+        - Automatic cleanup
+    """
     return backup_manager.create_backup(backup_type)
 
 def list_backups() -> List[Dict]:
-    """List all available backups."""
+    """
+    List all available backups.
+    
+    Returns:
+        list: List of backup information dictionaries containing:
+            - filename: Backup file name
+            - path: Full file path
+            - size: Backup size in bytes
+            - created: Creation timestamp
+            - metadata: Backup metadata if available
+    """
     return backup_manager.list_backups()
 
 def restore_backup(backup_filename: str, confirm: bool = False) -> bool:
-    """Restore data from a backup."""
+    """
+    Restore data from a backup.
+    
+    Args:
+        backup_filename: Name of backup file to restore
+        confirm: Safety confirmation flag
+        
+    Returns:
+        bool: True if restore successful
+        
+    Features:
+        - Pre-restore backup creation
+        - Safety confirmation
+        - File validation
+        - Error handling
+    """
     return backup_manager.restore_backup(backup_filename, confirm)

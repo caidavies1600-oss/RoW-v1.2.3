@@ -1,24 +1,55 @@
 """
 One-off test script to post a test event message for the Discord RoW bot.
-Run this file directly to test the event system.
+
+This script:
+- Creates a temporary bot instance
+- Posts a test event message with signup buttons
+- Keeps the bot running for 5 minutes to allow testing
+- Cleans up test data before shutting down
+
+Usage:
+    Run this file directly to test the event system:
+    python test_event_post.py
+
+Requirements:
+    - Bot token must be configured in config/settings.py
+    - Alert channel and role IDs must be set in config/constants.py
+    - Event manager and profile cogs must be available
 """
 
 import asyncio
-import discord
-from discord.ext import commands
 from datetime import datetime
+
+import discord
+
+from bot.client import RowBot
+from cogs.events.signup_view import EventSignupView
+from config.constants import ALERT_CHANNEL_ID, COLORS, EMOJIS, ROW_NOTIFICATION_ROLE_ID
 
 # Import your bot's configuration
 from config.settings import BOT_TOKEN
-from config.constants import ALERT_CHANNEL_ID, ROW_NOTIFICATION_ROLE_ID, EMOJIS, COLORS, TEAM_DISPLAY
-from cogs.events.signup_view import EventSignupView
-from bot.client import RowBot
 from utils.logger import setup_logger
 
 logger = setup_logger("test_event")
 
+
 async def post_test_event():
-    """Post a one-off test event message."""
+    """
+    Post a one-off test event message to verify event system functionality.
+
+    Features tested:
+    - Event message formatting and embedding
+    - Role mentions and notifications
+    - Signup button functionality
+    - Team role restrictions
+    - Event data persistence
+
+    The test runs for 5 minutes before automatically cleaning up and shutting down.
+    All test signups are cleared when the test completes.
+
+    Raises:
+        Exception: If channel access fails or required cogs cannot be loaded
+    """
     # Create a minimal bot instance
     intents = discord.Intents.default()
     intents.members = True
@@ -41,7 +72,9 @@ async def post_test_event():
 
             # Load the EventManager cog to access its functionality
             await bot.load_extension("cogs.events.manager")
-            await bot.load_extension("cogs.user.profile")  # Needed for IGN functionality
+            await bot.load_extension(
+                "cogs.user.profile"
+            )  # Needed for IGN functionality
 
             event_manager = bot.get_cog("EventManager")
             if not event_manager:
@@ -63,10 +96,12 @@ async def post_test_event():
                     f"Other teams are open to everyone!\n\n"
                     f"{EMOJIS['SUCCESS']} Use the buttons below to test joining!"
                 ),
-                color=COLORS["WARNING"]  # Different color to indicate test
+                color=COLORS["WARNING"],  # Different color to indicate test
             )
 
-            embed.set_footer(text="⚠️ This is a TEST - Signups will be cleared after testing")
+            embed.set_footer(
+                text="⚠️ This is a TEST - Signups will be cleared after testing"
+            )
             embed.timestamp = datetime.utcnow()
 
             # Create the signup view
@@ -76,7 +111,7 @@ async def post_test_event():
             message = await alert_channel.send(
                 content=f"<@&{ROW_NOTIFICATION_ROLE_ID}> **[TEST MESSAGE]**",
                 embed=embed,
-                view=view
+                view=view,
             )
 
             logger.info(f"✅ Test event posted successfully in {alert_channel.name}")
@@ -99,8 +134,21 @@ async def post_test_event():
     # Start the bot
     await bot.start(BOT_TOKEN)
 
+
 def main():
-    """Run the test event post."""
+    """
+    Run the test event post script.
+
+    Handles:
+    - Script initialization
+    - Asyncio event loop setup
+    - Error handling and graceful shutdown
+    - User feedback and logging
+    - Cleanup of test data
+
+    The script will run for exactly 5 minutes unless interrupted.
+    Use Ctrl+C to cancel the test early.
+    """
     print("🚀 Starting test event post...")
     print(f"📅 Current time: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}")
     print("⏰ Bot will stay online for 5 minutes to allow testing")
@@ -114,6 +162,7 @@ def main():
         print(f"\n❌ Error: {e}")
 
     print("\n✅ Test completed!")
+
 
 if __name__ == "__main__":
     main()

@@ -1,3 +1,15 @@
+"""
+Automated task scheduler for RoW events.
+
+This module manages recurring tasks:
+- Tuesday signup posts (10:00 UTC, bi-weekly)
+- Thursday team lock (23:59 UTC, bi-weekly)
+- Sunday summaries (23:30 UTC, bi-weekly)
+- Smart event reminders (continuous)
+
+All tasks run on even weeks only to match bi-weekly event schedule.
+"""
+
 import asyncio
 import logging
 from datetime import datetime, timedelta
@@ -11,6 +23,18 @@ from config.settings import ROW_NOTIFICATION_ROLE_ID
 logger = logging.getLogger("scheduler")
 
 def start_scheduler(bot):
+    """
+    Initialize and start all scheduled tasks.
+    
+    Args:
+        bot: Discord bot instance
+        
+    Tasks started:
+    - Event signup posting
+    - Weekly summary
+    - Thursday teams lock
+    - Smart event reminders
+    """
     @bot.event
     async def on_ready():
         logger.info("✅ Scheduler is active")
@@ -22,6 +46,12 @@ def start_scheduler(bot):
 # Tuesday at 10:00 UTC - Auto-post weekly signups (bi-weekly)
 @tasks.loop(hours=24)
 async def post_event_signup(bot):
+    """
+    Auto-post weekly signup message every other Tuesday.
+    
+    Posts at 10:00 UTC on even weeks only.
+    Creates new event and resets team rosters.
+    """
     now = datetime.utcnow()
     # Only run on Tuesdays at 10:00 UTC
     if now.weekday() == 1 and now.hour == 10 and now.minute < 5:
@@ -47,6 +77,12 @@ async def post_event_signup(bot):
 # Thursday at 23:59 UTC - Show final teams and lock signups (bi-weekly)
 @tasks.loop(minutes=1)
 async def thursday_teams_and_lock(bot):
+    """
+    Show final teams and lock signups on Thursday nights.
+    
+    Runs at 23:59 UTC on even weeks only.
+    Posts final roster and prevents further changes.
+    """
     now = datetime.utcnow()
     # Only run on Thursdays at 23:59 UTC (within 1-minute window)
     if now.weekday() == 3 and now.hour == 23 and now.minute == 59:
@@ -70,6 +106,17 @@ async def thursday_teams_and_lock(bot):
 # Every other Sunday at 23:30 UTC - Weekly summary
 @tasks.loop(hours=24)
 async def post_weekly_summary(bot):
+    """
+    Post bi-weekly RoW event summary.
+    
+    Posts Sunday at 23:30 UTC on even weeks.
+    Includes:
+    - Win/loss statistics
+    - Team-specific results
+    - Blocked user status
+    - Signup summary
+    - Absence records
+    """
     now = datetime.utcnow()
     # Only run on Sundays at 23:30 UTC, every other week
     if now.weekday() == 6 and now.hour == 23 and 30 <= now.minute <= 35:
@@ -179,23 +226,34 @@ async def post_weekly_summary(bot):
 
 @post_event_signup.before_loop
 async def before_post_event_signup():
+    """Ensure bot is ready before starting signup task."""
     # Wait for bot to be ready and align to the hour
     await asyncio.sleep(60)  # Small delay to ensure bot is fully ready
 
 @post_weekly_summary.before_loop
 async def before_post_weekly_summary():
+    """Ensure bot is ready before starting summary task."""
     # Wait for bot to be ready and align to the hour
     await asyncio.sleep(60)  # Small delay to ensure bot is fully ready
 
 @thursday_teams_and_lock.before_loop
 async def before_thursday_teams_and_lock():
+    """Ensure bot is ready before starting lock task."""
     # Wait for bot to be ready
     await asyncio.sleep(30)  # Small delay to ensure bot is fully ready
 
 # Every minute - Check for smart event reminders
 @tasks.loop(minutes=1)
 async def smart_event_reminders(bot):
-    """Check for upcoming events and send smart notifications based on user preferences."""
+    """
+    Send smart notifications for upcoming events.
+    
+    Features:
+    - Configurable reminder intervals (60, 15, 5 minutes)
+    - Team-specific timing
+    - User preference based delivery
+    - Fallback time handling
+    """
     try:
         now = datetime.utcnow()
         
@@ -295,5 +353,6 @@ async def smart_event_reminders(bot):
 
 @smart_event_reminders.before_loop
 async def before_smart_event_reminders():
+    """Ensure bot is ready before starting reminders."""
     # Wait for bot to be ready
     await asyncio.sleep(45)  # Small delay to ensure bot is fully ready

@@ -13,9 +13,29 @@ from utils.data_manager import DataManager
 logger = setup_logger("mention_handler")
 
 class MentionHandler(commands.Cog):
-    """Handles @ mentions to the bot with smart responses."""
+    """
+    Handles @ mentions to the bot with smart responses.
+    
+    Features:
+    - Intent analysis of mentions
+    - Contextual responses based on user role
+    - Time query handling for events
+    - Sassy responses with admin/user differentiation
+    - Custom responses for different message types
+    """
 
     def __init__(self, bot):
+        """
+        Initialize the mention handler.
+        
+        Args:
+            bot: The Discord bot instance
+            
+        Sets up:
+        - Response dictionaries for different user types
+        - Different categories of responses
+        - DataManager for event data
+        """
         self.bot = bot
         self.data_manager = DataManager()
 
@@ -131,7 +151,24 @@ class MentionHandler(commands.Cog):
         ]
 
     def _analyze_message_intent(self, content):
-        """Advanced message analysis to determine intent and context."""
+        """
+        Analyze message content to determine user intent.
+        
+        Args:
+            content: Message content to analyze
+            
+        Returns:
+            str: Detected intent category (time_query, complaint, command, etc.)
+            
+        Analyzes:
+        - Time-related queries
+        - Complaints/frustration
+        - Commands/orders
+        - Compliments
+        - Questions
+        - Greetings
+        - Code/tech talk
+        """
         content_lower = content.lower()
 
         # Time-related queries (highest priority)
@@ -263,7 +300,19 @@ class MentionHandler(commands.Cog):
             await message.reply("I broke trying to read your message. Thanks. 💀")
 
     async def _handle_time_query(self, message, content):
-        """Handle time-related queries about events."""
+        """
+        Handle time-related queries about events.
+        
+        Args:
+            message: Discord message object
+            content: Cleaned message content
+            
+        Provides:
+        - Event schedule information
+        - Time until next event
+        - Team-specific timings
+        - Current signup counts
+        """
         try:
             # Get event manager to check current times
             event_manager = self.bot.get_cog("EventManager")
@@ -332,7 +381,19 @@ class MentionHandler(commands.Cog):
             await message.reply("I broke trying to calculate time. Math is hard! 🤯")
 
     def _calculate_time_until_event(self, time_str):
-        """Calculate time until event from string like '14:00 UTC Saturday'."""
+        """
+        Calculate time until event from string.
+        
+        Args:
+            time_str: Time string in format '14:00 UTC Saturday'
+            
+        Returns:
+            str: Formatted time difference or None if invalid
+            
+        Examples:
+            "5 days, 3 hours from now"
+            "2 hours, 30 minutes from now"
+        """
         try:
             # Parse time string
             parts = time_str.split()
@@ -387,7 +448,22 @@ class MentionHandler(commands.Cog):
             return None
 
     def _get_intent_based_response(self, intent, content, user_id):
-        """Get response based on analyzed intent and user authority."""
+        """
+        Get appropriate response based on intent and user authority.
+        
+        Args:
+            intent: Detected message intent
+            content: Message content
+            user_id: Discord user ID
+            
+        Returns:
+            str: Selected response based on intent and user type
+            
+        Features:
+        - Different responses for admins vs regular users
+        - Intent-specific response selection
+        - Random emoji additions
+        """
         from config.settings import BOT_ADMIN_USER_ID
 
         is_admin = user_id == BOT_ADMIN_USER_ID
@@ -520,4 +596,10 @@ class MentionHandler(commands.Cog):
         await ctx.send(random.choice(responses))
 
 async def setup(bot):
+    """
+    Set up the MentionHandler cog.
+
+    Args:
+        bot: The Discord bot instance
+    """
     await bot.add_cog(MentionHandler(bot))

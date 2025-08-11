@@ -1,23 +1,48 @@
-import discord
-from discord.ext import commands
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 
-from utils.logger import setup_logger
-from config.constants import ADMIN_ROLE_IDS, FILES, TEAM_DISPLAY, BOT_ADMIN_USER_ID, ALERT_CHANNEL_ID  # Fixed import
+import discord
+from discord.ext import commands
+
+from config.constants import (  # Fixed import
+    ADMIN_ROLE_IDS,
+    ALERT_CHANNEL_ID,
+    BOT_ADMIN_USER_ID,
+    FILES,
+    TEAM_DISPLAY,
+)
 from utils.helpers import Helpers
+from utils.logger import setup_logger
 
 logger = setup_logger("admin_actions")
 
+
 class AdminActions(commands.Cog):
+    """
+    Administrative actions for managing user blocks and RoW event statistics.
+    Provides commands for blocking/unblocking users and viewing event stats.
+    """
+
     def __init__(self, bot):
+        """
+        Initialize the AdminActions cog.
+
+        Args:
+            bot: The Discord bot instance
+        """
         self.bot = bot
         self.blocked_file = FILES["BLOCKED"]
         self.history_file = FILES["HISTORY"]
         self.results_file = FILES["RESULTS"]
 
     def load_results(self):
+        """
+        Load event results from the results file.
+
+        Returns:
+            dict: Dictionary containing wins, losses, and history data
+        """
         if os.path.exists(self.results_file):
             with open(self.results_file, "r") as f:
                 try:
@@ -27,6 +52,12 @@ class AdminActions(commands.Cog):
         return {"wins": 0, "losses": 0, "history": []}
 
     def load_blocked_users(self):
+        """
+        Load the list of currently blocked users from file.
+
+        Returns:
+            dict: Dictionary of blocked users and their block information
+        """
         if os.path.exists(self.blocked_file):
             try:
                 with open(self.blocked_file, "r") as f:
@@ -38,6 +69,12 @@ class AdminActions(commands.Cog):
         return {}
 
     def save_blocked_users(self, data):
+        """
+        Save blocked users data to file.
+
+        Args:
+            data (dict): Dictionary containing blocked users information
+        """
         try:
             os.makedirs(os.path.dirname(self.blocked_file), exist_ok=True)
             with open(self.blocked_file, "w") as f:
@@ -48,7 +85,23 @@ class AdminActions(commands.Cog):
     @commands.command()
     @commands.has_any_role(*ADMIN_ROLE_IDS)
     async def block(self, ctx, member: discord.Member, days: int):
-        """Block a user from signing up for a number of days."""
+        """
+        Block a user from signing up for RoW events.
+
+        Args:
+            ctx: The command context
+            member: The Discord member to block
+            days: Number of days to block the user (minimum 1)
+
+        Requires:
+            Admin role permissions
+
+        Effects:
+            - Blocks user from RoW signups
+            - Notifies the blocked user
+            - Sends confirmation to admin channel
+            - DMs bot admin
+        """
         user_id = str(member.id)
         blocked_by = ctx.author.name
         blocked_at = datetime.utcnow().isoformat()
@@ -58,7 +111,7 @@ class AdminActions(commands.Cog):
         data[user_id] = {
             "blocked_by": blocked_by,
             "blocked_at": blocked_at,
-            "ban_duration_days": duration
+            "ban_duration_days": duration,
         }
         self.save_blocked_users(data)
 
@@ -74,12 +127,16 @@ class AdminActions(commands.Cog):
                 embed = discord.Embed(
                     title="🚫 User Blocked",
                     description=f"**{member}** has been blocked from RoW signups.",
-                    color=discord.Color.red()
+                    color=discord.Color.red(),
                 )
                 embed.add_field(name="Nickname", value=member.display_name, inline=True)
                 embed.add_field(name="Duration", value=f"{duration} days", inline=True)
-                embed.add_field(name="Blocked By", value=ctx.author.mention, inline=True)
-                embed.add_field(name="Days Remaining", value=f"{time_text} days", inline=False)
+                embed.add_field(
+                    name="Blocked By", value=ctx.author.mention, inline=True
+                )
+                embed.add_field(
+                    name="Days Remaining", value=f"{time_text} days", inline=False
+                )
                 await admin.send(embed=embed)
         except Exception as e:
             logger.warning(f"Failed to DM bot admin: {e}")
@@ -89,7 +146,22 @@ class AdminActions(commands.Cog):
     @commands.command()
     @commands.has_any_role(*ADMIN_ROLE_IDS)
     async def unblock(self, ctx, member: discord.Member):
-        """Unblock a user manually."""
+        """
+        Manually unblock a user from RoW events.
+
+        Args:
+            ctx: The command context
+            member: The Discord member to unblock
+
+        Requires:
+            Admin role permissions
+
+        Effects:
+            - Removes user from block list
+            - Notifies the unblocked user
+            - Sends confirmation to admin channel
+            - DMs bot admin
+        """
         user_id = str(member.id)
         data = self.load_blocked_users()
 
@@ -110,9 +182,11 @@ class AdminActions(commands.Cog):
                 embed = discord.Embed(
                     title="✅ User Unblocked (Manual)",
                     description=f"**{member}** has been manually unblocked.",
-                    color=discord.Color.green()
+                    color=discord.Color.green(),
                 )
-                embed.add_field(name="Unblocked By", value=ctx.author.mention, inline=True)
+                embed.add_field(
+                    name="Unblocked By", value=ctx.author.mention, inline=True
+                )
                 await admin.send(embed=embed)
         except Exception as e:
             logger.warning(f"Failed to DM bot admin: {e}")
@@ -127,7 +201,17 @@ class AdminActions(commands.Cog):
 
     @commands.command(name="blocklist")
     async def blocklist(self, ctx):
-        """List all currently blocked users and remaining ban time."""
+        """
+        Display all currently blocked users and their remaining ban time.
+
+        Args:
+            ctx: The command context
+
+        Shows:
+            - List of blocked users
+            - Remaining days for each block
+            - User nicknames/mentions
+        """
         data = self.load_blocked_users()
         if not data:
             await ctx.send("✅ No users are currently blocked.")
@@ -135,8 +219,16 @@ class AdminActions(commands.Cog):
 
         lines = []
         for user_id, info in data.items():
-            user = ctx.guild.get_member(int(user_id)) or await self.bot.fetch_user(int(user_id))
-            name = user.display_name if isinstance(user, discord.Member) else user.name if user else f"<@{user_id}>"
+            user = ctx.guild.get_member(int(user_id)) or await self.bot.fetch_user(
+                int(user_id)
+            )
+            name = (
+                user.display_name
+                if isinstance(user, discord.Member)
+                else user.name
+                if user
+                else f"<@{user_id}>"
+            )
             blocked_at = info.get("blocked_at", "")
             duration = info.get("ban_duration_days", 0)
             time_left = Helpers.days_until_expiry(blocked_at, duration)
@@ -145,14 +237,29 @@ class AdminActions(commands.Cog):
         embed = discord.Embed(
             title=f"🚫 Blocked Users ({len(lines)})",
             description="\n".join(lines),
-            color=discord.Color.orange()
+            color=discord.Color.orange(),
         )
         await ctx.send(embed=embed)
 
     @commands.command()
     @commands.has_any_role(*ADMIN_ROLE_IDS)
     async def rowstats(self, ctx):
-        """Show RoW stats with team signups, results, and blocks."""
+        """
+        Display comprehensive RoW event statistics.
+
+        Args:
+            ctx: The command context
+
+        Requires:
+            Admin role permissions
+
+        Shows:
+            - Current team signups and IGNs
+            - List of blocked users
+            - Event participation trends
+            - Recent event results
+            - Overall win/loss record
+        """
         try:
             event_cog = self.bot.get_cog("EventManager")
             profile_cog = self.bot.get_cog("Profile")
@@ -176,13 +283,21 @@ class AdminActions(commands.Cog):
 
                 team_display = TEAM_DISPLAY.get(team, team.replace("_", " ").title())
                 value = "\n".join(igns) if igns else "No members"
-                team_fields.append((team_display, f"**{len(igns)} signed up**\n{value}"))
+                team_fields.append(
+                    (team_display, f"**{len(igns)} signed up**\n{value}")
+                )
 
             # Blocked users
             blocked_info = []
             for uid, info in self.load_blocked_users().items():
                 user = ctx.guild.get_member(int(uid)) or self.bot.get_user(int(uid))
-                name = user.display_name if isinstance(user, discord.Member) else user.name if user else f"<@{uid}>"
+                name = (
+                    user.display_name
+                    if isinstance(user, discord.Member)
+                    else user.name
+                    if user
+                    else f"<@{uid}>"
+                )
                 blocked_at = info.get("blocked_at", "")
                 duration = info.get("ban_duration_days", 0)
                 time_left = Helpers.days_until_expiry(blocked_at, duration)
@@ -190,7 +305,7 @@ class AdminActions(commands.Cog):
 
             # Event trends and results
             if os.path.exists(self.history_file):
-                with open(self.history_file, 'r') as f:
+                with open(self.history_file, "r") as f:
                     try:
                         history = json.load(f)
                         if not isinstance(history, list):
@@ -220,31 +335,51 @@ class AdminActions(commands.Cog):
                 display = TEAM_DISPLAY.get(team_key, team_key.title())
                 result_lines.append(f"`{date}`: {emoji} {display}")
 
-            embed = discord.Embed(title="📊 RoW Stats Report", color=discord.Color.blurple())
+            embed = discord.Embed(
+                title="📊 RoW Stats Report", color=discord.Color.blurple()
+            )
 
             for name, value in team_fields:
                 embed.add_field(name=name, value=value, inline=False)
 
-            embed.add_field(name=f"🚫 Blocked Users ({len(blocked_info)})",
-                            value="\n".join(blocked_info) or "None", inline=False)
+            embed.add_field(
+                name=f"🚫 Blocked Users ({len(blocked_info)})",
+                value="\n".join(blocked_info) or "None",
+                inline=False,
+            )
 
-            embed.add_field(name="📈 Event Trends (Last 5)",
-                            value="\n".join(trend_lines) or "No history available.", inline=False)
+            embed.add_field(
+                name="📈 Event Trends (Last 5)",
+                value="\n".join(trend_lines) or "No history available.",
+                inline=False,
+            )
 
-            embed.add_field(name="📉 Recent Results",
-                            value="\n".join(result_lines) or "No recent results.", inline=False)
+            embed.add_field(
+                name="📉 Recent Results",
+                value="\n".join(result_lines) or "No recent results.",
+                inline=False,
+            )
 
-            embed.add_field(name="📊 Overall Record",
-                            value=f"🏆 {wins} Wins | 💔 {losses} Losses\n📈 Win Rate: `{win_rate:.1f}%`",
-                            inline=False)
+            embed.add_field(
+                name="📊 Overall Record",
+                value=f"🏆 {wins} Wins | 💔 {losses} Losses\n📈 Win Rate: `{win_rate:.1f}%`",
+                inline=False,
+            )
 
             await ctx.send(embed=embed)
             logger.info(f"{ctx.author} requested !rowstats")
 
-        except Exception as e:
+        except Exception:
             logger.exception("Error in !rowstats command:")
             await ctx.send("❌ Failed to generate stats report.")
 
+
 # Required setup
 async def setup(bot):
+    """
+    Set up the AdminActions cog.
+
+    Args:
+        bot: The Discord bot instance
+    """
     await bot.add_cog(AdminActions(bot))

@@ -1,6 +1,22 @@
-"""Configuration for Google Sheets integration."""
+"""
+Configuration for Google Sheets integration.
+
+This module contains:
+- Team name mappings and display names
+- Sheet configurations and layouts
+- Default data structures
+- Column mappings for data access
+- Data validation rules
+
+Each sheet's configuration defines:
+- Header structure
+- Initial dimensions
+- Data types and formats
+- Validation rules
+"""
 
 # Team mapping for display names
+"""Team name mappings for consistent display and lookup."""
 TEAM_MAPPING = {
     "main_team": "Main Team", 
     "team_2": "Team 2", 
@@ -8,6 +24,7 @@ TEAM_MAPPING = {
 }
 
 # Reverse mapping for loading data
+"""Reverse mappings for converting display names back to internal names."""
 TEAM_REVERSE_MAPPING = {
     "Main Team": "main_team",
     "Team 2": "team_2", 
@@ -15,6 +32,14 @@ TEAM_REVERSE_MAPPING = {
 }
 
 # Sheet configurations
+"""
+Configuration for each worksheet including headers and dimensions.
+Each sheet has:
+- Header columns defined
+- Initial row count
+- Initial column count
+- Expected data structure
+"""
 SHEET_CONFIGS = {
     "Current Teams": {
         "headers": ["Timestamp", "Team", "Player Count", "Players", "Status"],
@@ -76,6 +101,11 @@ SHEET_CONFIGS = {
 }
 
 # Default data structures for fallback
+"""
+Default data structures used when initializing new sheets
+or when data cannot be loaded. Provides safe fallback values
+and maintains data structure consistency.
+"""
 DEFAULT_DATA = {
     "events": {"main_team": [], "team_2": [], "team_3": []},
     "blocked": {},
@@ -98,6 +128,11 @@ DEFAULT_DATA = {
 }
 
 # Column mappings for easier data access
+"""
+Index mappings for player stats columns to provide
+named access to columnar data. Used for consistent
+data access and validation across the application.
+"""
 PLAYER_STATS_COLUMNS = {
     "user_id": 0,
     "display_name": 1,
@@ -123,6 +158,14 @@ PLAYER_STATS_COLUMNS = {
 }
 
 # Validation rules
+"""
+Data validation rules for sheet columns.
+Defines:
+- Data types and ranges
+- Valid value sets
+- Default values
+- Format requirements
+"""
 VALIDATION_RULES = {
     "power_rating": {
         "type": "number",

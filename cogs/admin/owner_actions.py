@@ -13,18 +13,42 @@ logger = setup_logger("owner_actions")
 
 
 class OwnerActions(commands.Cog):
-    """Owner-only commands for bot maintenance and Google Sheets management."""
+    """
+    Owner-only commands for bot maintenance and Google Sheets management.
+    
+    Features:
+    - Google Sheets synchronization and management
+    - JSON data file integrity checks and repairs
+    - Data structure validation and fixes
+    - Data migration tools
+    """
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.data_manager = DataManager()
 
     def _is_owner(self, user_id: int) -> bool:
-        """Check if user is the bot owner."""
+        """
+        Check if user is the bot owner.
+        
+        Args:
+            user_id: Discord user ID to check
+            
+        Returns:
+            bool: True if user is the bot owner
+        """
         return user_id == BOT_ADMIN_USER_ID
 
     def _get_expected_structure(self, file_key: str) -> Any:
-        """Get expected JSON structure for each file."""
+        """
+        Get expected JSON structure for each file type.
+        
+        Args:
+            file_key: Key identifying the file type (EVENTS, BLOCKED, etc.)
+            
+        Returns:
+            Any: Default data structure for the specified file type
+        """
         structures = {
             "EVENTS": {"main_team": [], "team_2": [], "team_3": []},
             "BLOCKED": {},
@@ -41,7 +65,18 @@ class OwnerActions(commands.Cog):
         return structures.get(file_key, {})
 
     def _validate_json_structure(self, file_key: str, data: Any) -> Tuple[bool, List[str]]:
-        """Validate JSON data structure and return issues found."""
+        """
+        Validate JSON data structure against expected format.
+        
+        Args:
+            file_key: Key identifying the file type
+            data: Data structure to validate
+            
+        Returns:
+            Tuple containing:
+                bool: True if structure is valid
+                List[str]: List of validation issues found
+        """
         issues: List[str] = []
 
         if file_key == "EVENTS":
@@ -141,7 +176,18 @@ class OwnerActions(commands.Cog):
     @commands.command(name="syncmembers", help="Sync Discord members to Google Sheets")
     @commands.check(lambda ctx: ctx.author.id == BOT_ADMIN_USER_ID)
     async def sync_discord_members(self, ctx: commands.Context, guild_id: int = None):
-        """Sync Discord members to Google Sheets."""
+        """
+        Sync Discord members to Google Sheets.
+        
+        Args:
+            ctx: Command context
+            guild_id: Optional guild ID to sync (defaults to current guild)
+            
+        Effects:
+            - Updates member list in Google Sheets
+            - Creates new entries for new members
+            - Updates existing member information
+        """
         try:
             await ctx.send("🔄 **Syncing Discord members to Google Sheets...**")
 
@@ -186,7 +232,16 @@ class OwnerActions(commands.Cog):
     @commands.command(name="fullsync")
     @commands.check(lambda ctx: ctx.author.id == BOT_ADMIN_USER_ID)
     async def full_sync_to_sheets(self, ctx: commands.Context):
-        """Perform a complete data sync to Google Sheets."""
+        """
+        Perform a complete data sync to Google Sheets.
+        
+        Effects:
+            - Syncs all Discord members
+            - Creates/updates all template sheets
+            - Syncs current teams and results
+            - Updates player stats and preferences
+            - Generates dashboard and error summary
+        """
         try:
             await ctx.send("🔄 **Starting full sync to Google Sheets...**")
 

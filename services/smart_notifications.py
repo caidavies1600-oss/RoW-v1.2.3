@@ -1,3 +1,14 @@
+"""
+Smart notification system for RoW Discord bot.
+
+This module provides:
+- Customizable notification preferences per user
+- Multiple delivery methods (DM/channel)
+- Quiet hours support with queue system
+- Interactive settings UI
+- Team-specific notifications
+- Event reminders and results notifications
+"""
 
 import json
 import discord
@@ -507,6 +518,16 @@ class SmartNotifications:
             logger.error(f"Error notifying match result: {e}")
 
 class NotificationSettingsView(discord.ui.View):
+    """
+    Interactive settings view for notification preferences.
+    
+    Features:
+    - Delivery method selection
+    - Timezone configuration
+    - Quiet hours setup
+    - Toggle individual notification types
+    - Real-time preference updates
+    """
     def __init__(self, smart_notifications, user_id):
         super().__init__(timeout=300)
         self.smart_notifications = smart_notifications
@@ -640,6 +661,12 @@ class NotificationSettingsView(discord.ui.View):
         await self.update_embed(interaction)
 
 class TimezoneModal(discord.ui.Modal):
+    """
+    Modal for setting user timezone offset.
+    
+    Allows users to set their UTC offset for proper
+    quiet hours calculation and notification timing.
+    """
     def __init__(self, smart_notifications, user_id, settings_view):
         super().__init__(title="🌍 Set Your Timezone")
         self.smart_notifications = smart_notifications
@@ -670,6 +697,13 @@ class TimezoneModal(discord.ui.Modal):
                 await interaction.followup.send("❌ Please enter a valid number for timezone offset", ephemeral=True)
 
 class QuietHoursModal(discord.ui.Modal):
+    """
+    Modal for configuring quiet hours.
+    
+    Allows users to set start and end times for
+    periods when they don't want notifications.
+    Notifications during quiet hours are queued.
+    """
     def __init__(self, smart_notifications, user_id, settings_view):
         super().__init__(title="🌙 Set Quiet Hours")
         self.smart_notifications = smart_notifications
@@ -712,6 +746,15 @@ class QuietHoursModal(discord.ui.Modal):
                 await interaction.followup.send("❌ Hours must be between 0-23", ephemeral=True)
 
 class NotificationsCog(commands.Cog):
+    """
+    Cog handling notification commands and queue processing.
+    
+    Features:
+    - Notification settings management
+    - Test notification sending
+    - Team reminder system
+    - Periodic queue processing
+    """
     def __init__(self, bot):
         self.bot = bot
         self.smart_notifications = SmartNotifications(bot)

@@ -1,3 +1,13 @@
+"""
+Enhanced data synchronization module for Google Sheets integration.
+
+Features:
+- Enhanced data loading with caching
+- Data validation and error recovery
+- Smart rate limiting
+- Batched updates and operations
+- Sheet formatting and template management
+"""
 
 from datetime import datetime
 from .enhanced_sheets_manager import EnhancedSheetsManager
@@ -8,7 +18,16 @@ import time
 logger = setup_logger("enhanced_data_sync")
 
 class EnhancedDataSync(EnhancedSheetsManager):
-    """Enhanced data loading and syncing operations with advanced rate limiting."""
+    """
+    Enhanced data loading and syncing operations with advanced rate limiting.
+
+    Features:
+    - Data caching with configurable expiry
+    - Enhanced error recovery and validation
+    - Smart rate limiting and batch operations
+    - Comprehensive logging
+    - Sheet formatting and template management
+    """
 
     def __init__(self):
         super().__init__()
@@ -74,7 +93,21 @@ class EnhancedDataSync(EnhancedSheetsManager):
             return None
 
     def _load_current_teams_enhanced(self, data: dict) -> bool:
-        """Enhanced current teams loading with better parsing."""
+        """
+        Enhanced current teams loading with better parsing.
+
+        Args:
+            data: Data dictionary to update with team info
+
+        Returns:
+            bool: True if load successful
+
+        Features:
+        - Team name normalization
+        - Player list validation
+        - Error recovery per team
+        - Empty data handling
+        """
         try:
             def _get_teams_data():
                 try:
@@ -555,7 +588,15 @@ class EnhancedDataSync(EnhancedSheetsManager):
             return False
 
     def get_cached_data(self, key: str):
-        """Get cached data if still valid."""
+        """
+        Get cached data if still valid.
+
+        Args:
+            key: Cache key to retrieve
+
+        Returns:
+            Any: Cached data if valid, None otherwise
+        """
         if key in self.sync_cache:
             cached_time, data = self.sync_cache[key]
             if time.time() - cached_time < self.cache_expiry:
@@ -563,7 +604,13 @@ class EnhancedDataSync(EnhancedSheetsManager):
         return None
 
     def set_cached_data(self, key: str, data):
-        """Set data in cache with timestamp."""
+        """
+        Set data in cache with timestamp.
+
+        Args:
+            key: Cache key to set
+            data: Data to cache
+        """
         self.sync_cache[key] = (time.time(), data)
 
     def clear_cache(self):
@@ -572,7 +619,20 @@ class EnhancedDataSync(EnhancedSheetsManager):
         logger.info("🔄 Data sync cache cleared")
 
     def validate_loaded_data(self, data: dict) -> bool:
-        """Validate the structure and content of loaded data."""
+        """
+        Validate the structure and content of loaded data.
+
+        Args:
+            data: Data dictionary to validate
+
+        Returns:
+            bool: True if data structure is valid
+
+        Validates:
+        - Required keys presence
+        - Data structure correctness
+        - Type validation for critical fields
+        """
         try:
             required_keys = ["events", "blocked", "results", "player_stats", "ign_map", "absent"]
 
@@ -632,10 +692,30 @@ from utils.logger import setup_logger
 logger = setup_logger("data_sync")
 
 class DataSync(WorksheetHandlers):
-    """Handles data synchronization operations."""
+    """
+    Handles core data synchronization operations.
+    
+    Features:
+    - Team data synchronization
+    - Results history management
+    - Player statistics tracking
+    - Sheet template creation
+    - Validation and error handling
+    """
 
     def sync_all_data(self, all_data):
-        """Sync all bot data to sheets."""
+        """
+        Sync all bot data to sheets.
+
+        Args:
+            all_data: Dictionary containing all data to sync
+            
+        Features:
+        - Team roster sync
+        - Results history sync
+        - Player stats template creation
+        - Success rate tracking
+        """
         if not self.is_connected():
             return False
 

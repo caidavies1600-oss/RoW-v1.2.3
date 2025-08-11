@@ -1,4 +1,21 @@
-"""Common helper functions."""
+"""
+Common helper functions for the RoW Discord bot.
+
+This module provides:
+- Time and date calculations
+- Text formatting utilities
+- Embed creation helpers
+- User list formatting
+- Context simulation
+- Team name formatting
+
+Features:
+- Standard formatting across bot
+- Date manipulation utilities
+- Discord embed creation
+- List truncation
+- Expiry calculations
+"""
 
 import discord
 from datetime import datetime, timedelta
@@ -20,11 +37,32 @@ def days_until_expiry(expiry_timestamp: str, duration_days: int) -> int:
 
 
 class Helpers:
-    """Collection of helper functions."""
+    """
+    Collection of helper functions for common bot operations.
+    
+    Features:
+    - Team name formatting
+    - Win rate calculations
+    - Embed creation
+    - User list formatting
+    - Time calculations
+    - Expiry management
+    """
 
     @staticmethod
     def format_team_name(team_key: str) -> str:
-        """Format team key into display name."""
+        """
+        Format team key into display name.
+        
+        Args:
+            team_key: Internal team identifier
+            
+        Returns:
+            str: Formatted team name for display
+            
+        Example:
+            'main_team' -> '🏆 Main Team'
+        """
         return TEAM_DISPLAY.get(team_key, team_key.replace('_', ' ').title())
 
     @staticmethod
@@ -42,7 +80,18 @@ class Helpers:
         color: int = discord.Color.blue(),
         fields: list = None
     ) -> discord.Embed:
-        """Create a standardized embed."""
+        """
+        Create a standardized embed.
+        
+        Args:
+            title: Embed title
+            description: Optional embed description
+            color: Embed color (default: blue)
+            fields: List of field dicts with name/value/inline
+            
+        Returns:
+            discord.Embed: Formatted embed object
+        """
         embed = discord.Embed(title=title, description=description, color=color)
 
         if fields:
@@ -53,7 +102,22 @@ class Helpers:
 
     @staticmethod
     def format_user_list(users: list, max_length: int = 1000) -> str:
-        """Format a list of users for display."""
+        """
+        Format a list of users for display.
+        
+        Args:
+            users: List of user objects/strings
+            max_length: Maximum string length before truncating
+            
+        Returns:
+            str: Numbered list of users, truncated if too long
+            
+        Features:
+            - Automatic numbering
+            - Length limiting
+            - Empty list handling
+            - Truncation indicator
+        """
         if not users:
             return "No members yet."
 
@@ -112,7 +176,25 @@ class Helpers:
 
     @staticmethod
     async def create_fake_context(bot):
-        """Creates a fake context object to simulate a command being run by the bot itself."""
+        """
+        Creates a fake context object to simulate a command being run by the bot itself.
+        
+        Args:
+            bot: Discord bot instance
+            
+        Returns:
+            commands.Context: Simulated command context
+            
+        Features:
+            - Channel validation
+            - Message simulation
+            - Send method override
+            - Guild validation
+            - Debug logging
+            
+        Raises:
+            ValueError: If alert channel not found
+        """
         from discord.ext import commands
 
         logging.info("🔍 DEBUG: Starting create_fake_context")

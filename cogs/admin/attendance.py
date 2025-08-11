@@ -7,17 +7,47 @@ from utils.helpers import Helpers
 from utils.data_manager import DataManager
 
 class Attendance(commands.Cog):
+    """
+    Manages RoW event attendance tracking and reporting.
+    
+    Features:
+    - Track player absences with reasons
+    - Remove absence marks
+    - View current absentees
+    - Sync attendance data with Google Sheets
+    - Update player statistics for absences
+    """
+
     def __init__(self, bot):
+        """
+        Initialize the Attendance cog.
+
+        Args:
+            bot: The Discord bot instance
+        """
         self.bot = bot
         self.data_manager = DataManager()
         self.absent_data = self.load_absent_data()
 
     def load_absent_data(self):
-        """Load absent data using DataManager."""
+        """
+        Load absent data using DataManager.
+        
+        Returns:
+            dict: Dictionary containing absence records
+                  Format: {user_id: {reason, timestamp, marked_by}}
+        """
         return self.data_manager.load_json(FILES["ABSENT"], {})
 
     def save_absent_data(self):
-        """Save absent data using DataManager with live sync."""
+        """
+        Save absent data and sync with Google Sheets.
+        
+        Updates player statistics to reflect absences.
+        
+        Returns:
+            bool: True if save was successful, False otherwise
+        """
         success = self.data_manager.save_json(FILES["ABSENT"], self.absent_data, sync_to_sheets=True)
         if success:
             # Update player stats for absents count
@@ -42,9 +72,23 @@ class Attendance(commands.Cog):
         return success
 
     @commands.command(name="absent")
-    @commands.has_any_role(*ADMIN_ROLE_IDS)  # Added admin restriction
+    @commands.has_any_role(*ADMIN_ROLE_IDS)
     async def mark_absent(self, ctx, *, reason: str = "No reason provided"):
-        """Mark player absent from this week's RoW event"""  # Updated description
+        """
+        Mark player absent from this week's RoW event.
+
+        Args:
+            ctx: The command context
+            reason: Reason for absence (optional)
+
+        Requires:
+            Admin role permissions
+
+        Effects:
+            - Records absence with timestamp and reason
+            - Updates player statistics
+            - Syncs with Google Sheets
+        """
         user_id = str(ctx.author.id)
         self.absent_data[user_id] = {
             "reason": reason,
@@ -61,7 +105,21 @@ class Attendance(commands.Cog):
     @commands.command(name="present")
     @commands.has_any_role(*ADMIN_ROLE_IDS)
     async def mark_present(self, ctx, member: discord.Member):
-        """Remove a user's absence mark."""
+        """
+        Remove a user's absence mark.
+
+        Args:
+            ctx: The command context
+            member: The Discord member to mark as present
+
+        Requires:
+            Admin role permissions
+
+        Effects:
+            - Removes absence record
+            - Updates player statistics
+            - Syncs with Google Sheets
+        """
         user_id = str(member.id)
 
         if user_id in self.absent_data:
@@ -77,7 +135,20 @@ class Attendance(commands.Cog):
     @commands.command(name="absentees")
     @commands.has_any_role(*ADMIN_ROLE_IDS)
     async def show_absentees(self, ctx):
-        """Show all users marked absent."""
+        """
+        Show all users marked absent.
+
+        Args:
+            ctx: The command context
+
+        Requires:
+            Admin role permissions
+
+        Displays:
+            - List of absent users with mentions
+            - Absence reasons
+            - Who marked each absence
+        """
         self.absent_data = self.load_absent_data()
         
         if not self.absent_data:
@@ -104,4 +175,10 @@ class Attendance(commands.Cog):
         await ctx.send(embed=embed)
 
 async def setup(bot):
+    """
+    Set up the Attendance cog.
+
+    Args:
+        bot: The Discord bot instance
+    """
     await bot.add_cog(Attendance(bot))

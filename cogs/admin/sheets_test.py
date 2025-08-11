@@ -6,15 +6,40 @@ from utils.logger import setup_logger
 logger = setup_logger("sheets_test")
 
 class SheetsTest(commands.Cog):
-    """Commands to test Google Sheets integration."""
+    """
+    Commands to test Google Sheets integration.
+    
+    Features:
+    - Connection testing and diagnostics
+    - Template creation and verification
+    - Sheet management and cleanup
+    - Player Stats sheet repair
+    """
 
     def __init__(self, bot):
+        """
+        Initialize the SheetsTest cog.
+
+        Args:
+            bot: The Discord bot instance
+        """
         self.bot = bot
 
     @commands.command(name="sheetstest")
     @commands.has_any_role(*ADMIN_ROLE_IDS)
     async def test_sheets_connection(self, ctx):
-        """Test Google Sheets connection and basic functionality."""
+        """
+        Test Google Sheets connection and basic functionality.
+
+        Args:
+            ctx: Command context
+
+        Tests:
+            - Sheets connection status
+            - Template creation
+            - Worksheet listing
+            - Basic data operations
+        """
         try:
             await ctx.send("🔄 Testing Google Sheets connection...")
 
@@ -104,7 +129,15 @@ class SheetsTest(commands.Cog):
     @commands.command(name="sheetsurl")
     @commands.has_any_role(*ADMIN_ROLE_IDS)
     async def get_sheets_url(self, ctx):
-        """Get the URL of the connected Google Sheets."""
+        """
+        Get the URL of the connected Google Sheets.
+
+        Args:
+            ctx: Command context
+            
+        Returns:
+            Embedded message with spreadsheet URL and ID
+        """
         try:
             from sheets.data_sync import DataSync
             sheets_manager = DataSync()
@@ -130,7 +163,19 @@ class SheetsTest(commands.Cog):
     @commands.command(name="fixplayerstats")
     @commands.has_any_role(*ADMIN_ROLE_IDS)
     async def fix_player_stats_sheet(self, ctx):
-        """Fix the broken Player Stats sheet with correct headers and alignment."""
+        """
+        Fix the broken Player Stats sheet with correct headers and alignment.
+
+        Args:
+            ctx: Command context
+
+        Actions:
+            - Clears existing data
+            - Adds correct headers
+            - Sets up formulas
+            - Applies formatting
+            - Adds example data
+        """
         try:
             from sheets.enhanced_sheets_manager import EnhancedSheetsManager
             manager = EnhancedSheetsManager()
@@ -237,7 +282,16 @@ class SheetsTest(commands.Cog):
     @commands.command(name="clearsheet")
     @commands.has_any_role(*ADMIN_ROLE_IDS)
     async def clear_sheet(self, ctx, sheet_name: str):
-        """Clear a specific sheet completely."""
+        """
+        Clear a specific sheet completely.
+
+        Args:
+            ctx: Command context
+            sheet_name: Name of the sheet to clear
+
+        Requires:
+            Confirmation via reaction
+        """
         try:
             from sheets.enhanced_sheets_manager import EnhancedSheetsManager
             manager = EnhancedSheetsManager()
@@ -279,7 +333,19 @@ class SheetsTest(commands.Cog):
     @commands.command(name="sheetsdiag")
     @commands.has_any_role(*ADMIN_ROLE_IDS)
     async def sheets_diagnostics(self, ctx):
-        """Run comprehensive Google Sheets integration diagnostics."""
+        """
+        Run comprehensive Google Sheets integration diagnostics.
+
+        Args:
+            ctx: Command context
+
+        Checks:
+            - Environment variables
+            - Bot sheets manager
+            - Module imports
+            - Connection status
+            - Provides recommendations
+        """
         try:
             embed = discord.Embed(
                 title="🔍 Google Sheets Diagnostics",
@@ -371,4 +437,10 @@ class SheetsTest(commands.Cog):
 
 
 async def setup(bot):
+    """
+    Set up the SheetsTest cog.
+
+    Args:
+        bot: The Discord bot instance
+    """
     await bot.add_cog(SheetsTest(bot))

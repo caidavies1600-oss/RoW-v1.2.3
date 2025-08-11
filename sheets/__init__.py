@@ -1,21 +1,51 @@
-
 """
 Google Sheets Integration Module for Discord RoW Bot.
-Provides both basic and enhanced sheets functionality.
+
+This module provides:
+- Rate-limited Google Sheets access
+- Template creation and formatting
+- Data synchronization between bot and sheets
+- Error handling and connection management
+
+Components:
+- SheetsManager: Main interface for sheets operations
+- Rate limiting with exponential backoff
+- Automatic retry on API errors
+- Template-based sheet creation
 """
 
 from .base_manager import RateLimitedSheetsManager
 
-# Create a comprehensive sheets manager that combines all functionality
 class SheetsManager(RateLimitedSheetsManager):
     """
-    Complete Google Sheets Manager that combines:
-    - Rate limiting and error handling (RateLimitedSheetsManager)
-    - Template creation with formatting
+    Complete Google Sheets Manager combining all functionality.
+
+    Features:
+    - Rate limited API access
+    - Error handling and retries
+    - Template creation and formatting
     - Data synchronization
+    - Sheet formatting
+    - Formula management
+    
+    Configuration:
+    - Uses GOOGLE_SHEETS_CREDENTIALS from environment
+    - Uses GOOGLE_SHEETS_ID for spreadsheet
+    - Automatically creates required worksheets
     """
     
+    # Rate limiting settings
+    MAX_RETRIES = 3
+    BACKOFF_FACTOR = 1.5
+    REQUEST_TIMEOUT = 30
+    
     def __init__(self):
+        """
+        Initialize sheets manager with rate limiting and error handling.
+        
+        Establishes connection to Google Sheets API and
+        verifies credentials and permissions.
+        """
         super().__init__()
         
     async def full_sync_and_create_templates(self, bot, all_data, guild_id=None):
@@ -47,7 +77,9 @@ class SheetsManager(RateLimitedSheetsManager):
 # For backward compatibility, export the main class
 __all__ = ['SheetsManager']
 
-# Version and module info
+# Module metadata with descriptions
 __version__ = "2.0.2"
 __author__ = "RoW Bot Team"
 __description__ = "Google Sheets integration with MRO conflict resolved"
+__requirements__ = ["gspread", "google-auth", "google-auth-oauthlib"]
+__min_python_version__ = "3.8"

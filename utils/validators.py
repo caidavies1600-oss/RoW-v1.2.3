@@ -1,4 +1,20 @@
-"""Input validation utilities."""
+"""
+Input validation utilities for the RoW Discord bot.
+
+This module provides:
+- User permission validation
+- In-game name validation
+- Team name normalization
+- Time period validation
+- Role-based access control
+
+Features:
+- Admin permission checking
+- Main team role validation
+- IGN format verification
+- Team name standardization
+- Duration validation
+"""
 
 import re
 from typing import Optional
@@ -6,21 +22,67 @@ import discord
 from config.settings import ADMIN_ROLE_IDS, MAIN_TEAM_ROLE_ID
 
 class Validators:
-    """Collection of validation functions."""
+    """
+    Collection of validation functions for bot input.
+    
+    Features:
+    - Permission validation
+    - Role checking
+    - Name format validation
+    - Team name normalization
+    - Duration validation
+    """
 
     @staticmethod
     def is_admin(user: discord.Member) -> bool:
-        """Check if user has admin permissions."""
+        """
+        Check if user has admin permissions.
+        
+        Args:
+            user: Discord member to check
+            
+        Returns:
+            bool: True if user has admin role
+            
+        Checks:
+            - Admin role presence
+            - Role ID validation
+        """
         return any(role.id in ADMIN_ROLE_IDS for role in user.roles)
 
     @staticmethod
     def can_join_main_team(user: discord.Member) -> bool:
-        """Check if user can join main team."""
+        """
+        Check if user can join main team.
+        
+        Args:
+            user: Discord member to check
+            
+        Returns:
+            bool: True if user has main team role
+            
+        Validates:
+            - Main team role presence
+            - Role ID match
+        """
         return any(role.id == MAIN_TEAM_ROLE_ID for role in user.roles)
 
     @staticmethod
     def validate_ign(ign: str) -> tuple[bool, Optional[str]]:
-        """Validate an in-game name."""
+        """
+        Validate an in-game name.
+        
+        Args:
+            ign: In-game name to validate
+            
+        Returns:
+            tuple: (valid: bool, error_message: Optional[str])
+            
+        Validates:
+        - Non-empty string
+        - Length (2-20 chars)
+        - Character set (alphanumeric + space + _-)
+        """
         if not ign or not ign.strip():
             return False, "IGN cannot be empty"
 
@@ -40,7 +102,20 @@ class Validators:
 
     @staticmethod
     def validate_team_name(team: str) -> Optional[str]:
-        """Validate and normalize team name."""
+        """
+        Validate and normalize team name.
+        
+        Args:
+            team: Team name/identifier to validate
+            
+        Returns:
+            Optional[str]: Normalized team name or None if invalid
+            
+        Features:
+        - Case insensitive matching
+        - Alias support (team1 -> main_team)
+        - Numeric shortcuts (1 -> main_team)
+        """
         team_mapping = {
             "main": "main_team",
             "main_team": "main_team",
@@ -60,7 +135,20 @@ class Validators:
 
     @staticmethod
     def validate_days(days: int) -> tuple[bool, Optional[str]]:
-        """Validate day count for blocking users."""
+        """
+        Validate day count for blocking users.
+        
+        Args:
+            days: Number of days to validate
+            
+        Returns:
+            tuple: (valid: bool, error_message: Optional[str])
+            
+        Validates:
+        - Positive integer
+        - Maximum 365 days
+        - Non-zero value
+        """
         if days < 1:
             return False, "Days must be at least 1"
         if days > 365:

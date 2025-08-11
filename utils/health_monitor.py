@@ -1,4 +1,23 @@
-"""Health monitoring system for the Discord bot."""
+"""
+Health monitoring system for the Discord bot.
+
+Features:
+- Real-time health monitoring
+- Critical system checks
+- Performance tracking
+- Error rate monitoring
+- Channel access validation
+- Task status tracking
+- Cog status monitoring
+- Admin notifications
+- Health score calculation
+
+Components:
+- HealthMonitor: Core monitoring system
+- HealthCommands: Admin commands
+- Automated health checks
+- Alert system
+"""
 
 import asyncio
 import discord
@@ -11,7 +30,22 @@ from utils.data_manager import DataManager
 logger = setup_logger("health_monitor")
 
 class HealthMonitor:
-    """Monitors bot health and performance."""
+    """
+    Monitors bot health and performance.
+    
+    Features:
+    - Command tracking
+    - Error monitoring
+    - Channel accessibility checks
+    - Cog status validation
+    - Task monitoring
+    - Health scoring
+    
+    Attributes:
+        bot: Discord bot instance
+        data_manager: Data management interface
+        health_data: Current health metrics
+    """
 
     def __init__(self, bot):
         self.bot = bot
@@ -38,7 +72,18 @@ class HealthMonitor:
             }
 
     def test_channel_access(self) -> Dict[str, bool]:
-        """Test access to configured channels."""
+        """
+        Test access to configured channels.
+        
+        Checks:
+        - Channel existence
+        - Bot permissions
+        - Message sending rights
+        - Embed permissions
+        
+        Returns:
+            dict: Channel access status by channel ID
+        """
         from config.constants import ALERT_CHANNEL_IDS
 
         results = {}
@@ -66,7 +111,17 @@ class HealthMonitor:
         return results
 
     def check_cog_status(self) -> Dict[str, bool]:
-        """Check status of critical cogs."""
+        """
+        Check status of critical cogs.
+        
+        Validates:
+        - Critical cog availability
+        - Optional cog status
+        - Cog loading state
+        
+        Returns:
+            dict: Cog status information
+        """
         critical_cogs = ["EventManager", "Profile", "Results"]
         optional_cogs = ["AdminActions", "ButtonCog", "Attendance"]
 
@@ -171,7 +226,16 @@ def record_command_execution(command_name: str, success: bool = True):
         health_monitor.record_command(command_name, success)
 
 class HealthCommands(commands.Cog):
-    """Health monitoring commands."""
+    """
+    Health monitoring commands and tasks.
+    
+    Features:
+    - Health check commands
+    - Automated monitoring
+    - Status reporting
+    - Admin alerts
+    - Visual status display
+    """
 
     def __init__(self, bot):
         self.bot = bot
@@ -182,7 +246,16 @@ class HealthCommands(commands.Cog):
 
     @tasks.loop(minutes=30)
     async def health_check_task(self):
-        """Periodic health check task."""
+        """
+        Periodic health check task.
+        
+        Performs:
+        - Health score calculation
+        - Status validation
+        - Critical issue detection
+        - Admin notifications
+        - Performance monitoring
+        """
         try:
             if health_monitor:
                 report = health_monitor.get_health_report()

@@ -1,4 +1,16 @@
-"""Audit logging system for tracking important bot actions."""
+"""
+Audit logging system for tracking important bot actions.
+
+This module provides comprehensive audit logging functionality:
+- Team signup tracking
+- Admin action logging
+- Event management logging
+- Result recording
+- Action history searching
+
+The audit log is stored as JSON and maintains the last 1000 entries
+to prevent excessive file growth.
+"""
 
 import json
 import os
@@ -10,7 +22,16 @@ from utils.data_manager import DataManager
 logger = setup_logger("audit_logger")
 
 class AuditLogger:
-    """Handles audit logging for important bot actions."""
+    """
+    Handles audit logging for important bot actions.
+    
+    Features:
+    - Automatic log rotation (1000 entries)
+    - JSON-based persistent storage
+    - Action filtering and searching
+    - User history tracking
+    - Guild-specific logging
+    """
 
     def __init__(self):
         self.audit_file = "data/audit_log.json"
@@ -30,7 +51,22 @@ class AuditLogger:
 
     def log_action(self, action_type: str, user_id: int, details: Dict[str, Any], 
                    target_user_id: Optional[int] = None, guild_id: Optional[int] = None):
-        """Log an audit action."""
+        """
+        Log an audit action with full details.
+
+        Args:
+            action_type: Type of action being logged
+            user_id: ID of user performing action
+            details: Additional action details
+            target_user_id: Optional ID of user being acted upon
+            guild_id: Optional Discord server ID
+
+        The log entry includes:
+        - Timestamp in ISO format
+        - Action type and user IDs
+        - Guild context if provided
+        - Additional details dictionary
+        """
         try:
             # Load existing audit log
             audit_log = self.data_manager.load_json(self.audit_file, [])
@@ -101,7 +137,16 @@ class AuditLogger:
         )
 
     def get_user_actions(self, user_id: int, limit: int = 50) -> list:
-        """Get recent actions by a specific user."""
+        """
+        Get recent actions by a specific user.
+
+        Args:
+            user_id: Discord user ID to search for
+            limit: Maximum number of actions to return
+
+        Returns:
+            list: Most recent actions by the user, newest first
+        """
         try:
             audit_log = self.data_manager.load_json(self.audit_file, [])
             user_actions = []
@@ -118,7 +163,15 @@ class AuditLogger:
             return []
 
     def get_recent_actions(self, limit: int = 100) -> list:
-        """Get recent actions across all users."""
+        """
+        Get recent actions across all users.
+
+        Args:
+            limit: Maximum number of actions to return
+
+        Returns:
+            list: Most recent audit log entries, newest first
+        """
         try:
             audit_log = self.data_manager.load_json(self.audit_file, [])
             return audit_log[-limit:]
@@ -128,7 +181,17 @@ class AuditLogger:
 
     def search_actions(self, action_type: Optional[str] = None, user_id: Optional[int] = None,
                       days_back: int = 7) -> list:
-        """Search audit log with filters."""
+        """
+        Search audit log with filters.
+
+        Args:
+            action_type: Optional action type to filter by
+            user_id: Optional user ID to filter by
+            days_back: Number of days to search back
+
+        Returns:
+            list: Matching audit log entries within time period
+        """
         try:
             audit_log = self.data_manager.load_json(self.audit_file, [])
             results = []
@@ -162,12 +225,29 @@ audit_logger = AuditLogger()
 
 # Convenience functions for easy access
 def log_signup(user_id: int, team: str, action: str = "join", guild_id: Optional[int] = None):
-    """Log team signup action."""
+    """
+    Log team signup action.
+
+    Args:
+        user_id: User performing signup
+        team: Team being joined/left
+        action: "join" or "leave"
+        guild_id: Optional Discord server ID
+    """
     audit_logger.log_signup(user_id, team, action, guild_id)
 
 def log_admin_action(admin_id: int, action: str, target_user_id: Optional[int] = None, 
                     details: Optional[Dict] = None, guild_id: Optional[int] = None):
-    """Log admin action."""
+    """
+    Log administrative action.
+
+    Args:
+        admin_id: Admin performing action
+        action: Type of admin action
+        target_user_id: User being acted upon
+        details: Additional action details
+        guild_id: Optional Discord server ID
+    """
     audit_logger.log_admin_action(admin_id, action, target_user_id, details, guild_id)
 
 def log_result(admin_id: int, team: str, result: str, guild_id: Optional[int] = None):

@@ -13,14 +13,44 @@ logger = setup_logger("exporter")
 
 
 class Exporter(commands.Cog):
+    """
+    Handles data export functionality for RoW bot.
+    
+    Provides commands to export:
+    - Current team signups
+    - Event participation history
+    
+    Exports are provided as formatted text files.
+    """
+
     def __init__(self, bot):
+        """
+        Initialize the Exporter cog.
+
+        Args:
+            bot: The Discord bot instance
+        """
         self.bot = bot
         self.data_manager = DataManager()
 
     @commands.command()
     @commands.check(lambda ctx: any(role.id in ADMIN_ROLE_IDS for role in ctx.author.roles))
     async def exportteams(self, ctx):
-        """Export current team signups to a text file."""
+        """
+        Export current team signups to a text file.
+
+        Args:
+            ctx: The command context
+
+        Requires:
+            Admin role permissions
+
+        Exports:
+            - Current timestamp
+            - Team rosters with player counts
+            - Total player count
+            - Formatted as a text file attachment
+        """
         try:
             event_cog = self.bot.get_cog("EventManager")
             if not event_cog:
@@ -73,7 +103,22 @@ class Exporter(commands.Cog):
     @commands.command()
     @commands.check(lambda ctx: any(role.id in ADMIN_ROLE_IDS for role in ctx.author.roles))
     async def exporthistory(self, ctx):
-        """Export event history to a text file."""
+        """
+        Export event history to a text file.
+
+        Args:
+            ctx: The command context
+
+        Requires:
+            Admin role permissions
+
+        Exports:
+            - Event timestamps
+            - Team compositions per event
+            - Player counts per team
+            - Total event count
+            - Formatted as a text file attachment
+        """
         try:
             history = self.data_manager.load_json(FILES["HISTORY"], [])
 
@@ -126,4 +171,10 @@ class Exporter(commands.Cog):
 
 
 async def setup(bot):
+    """
+    Set up the Exporter cog.
+
+    Args:
+        bot: The Discord bot instance
+    """
     await bot.add_cog(Exporter(bot))

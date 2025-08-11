@@ -1,4 +1,3 @@
-
 import discord
 from discord.ext import commands
 from config.constants import MAIN_TEAM_ROLE_ID
@@ -7,12 +6,37 @@ from utils.logger import setup_logger
 logger = setup_logger("buttons")
 
 class EventButtons(discord.ui.View):
+    """
+    Persistent view containing buttons for RoW event interactions.
+    
+    Features:
+    - Team joining buttons with role validation
+    - Team leaving functionality
+    - Team roster display
+    - IGN verification
+    - Signup lock handling
+    """
+
     def __init__(self, bot):
+        """
+        Initialize the event buttons view.
+        
+        Args:
+            bot: The Discord bot instance
+        """
         super().__init__(timeout=None)  # View is now persistent
         self.bot = bot
 
     async def get_user_ign(self, interaction):
-        """Helper to get user's IGN from profile system."""
+        """
+        Helper to get user's IGN from profile system.
+        
+        Args:
+            interaction: Discord interaction event
+            
+        Returns:
+            str: User's IGN if set, display name as fallback, or None if IGN required
+        """
         profile_cog = self.bot.get_cog("Profile")
         if profile_cog:
             ign = profile_cog.get_ign(interaction.user)
@@ -23,7 +47,21 @@ class EventButtons(discord.ui.View):
         return interaction.user.display_name
 
     async def check_signup_permissions(self, interaction, team_key):
-        """Check if user can join specific team and if signups are open."""
+        """
+        Check if user can join specific team and if signups are open.
+        
+        Args:
+            interaction: Discord interaction event
+            team_key: Team identifier to check permissions for
+            
+        Returns:
+            tuple: (bool, EventManager) - Success status and event cog instance
+            
+        Checks:
+            - Event system availability
+            - Signup lock status
+            - User block status
+        """
         # FIXED: Changed from "Events" to "EventManager"
         event_cog = self.bot.get_cog("EventManager")
         if not event_cog:
@@ -406,17 +444,44 @@ class EventButtons(discord.ui.View):
                 await interaction.followup.send("❌ An error occurred while showing teams.", ephemeral=True)
 
 class ButtonCog(commands.Cog):
+    """
+    Cog for managing persistent button interactions.
+    
+    Handles:
+    - Button view registration
+    - View persistence across bot restarts
+    - Cleanup on unload
+    """
+
     def __init__(self, bot):
+        """
+        Initialize the button cog.
+        
+        Args:
+            bot: The Discord bot instance
+        """
         self.bot = bot
 
     async def cog_load(self):
-        """Register persistent view when cog loads."""
+        """
+        Register persistent view when cog loads.
+        
+        Effects:
+            - Adds EventButtons view to bot
+            - Ensures buttons persist across restarts
+        """
         self.bot.add_view(EventButtons(self.bot))
         logger.info("Event buttons view registered as persistent")
 
     def cog_unload(self):
-        """Clean up when cog unloads."""
+        """Clean up resources when cog is unloaded."""
         logger.info("ButtonCog unloaded")
 
 async def setup(bot):
+    """
+    Set up the ButtonCog.
+    
+    Args:
+        bot: The Discord bot instance
+    """
     await bot.add_cog(ButtonCog(bot))

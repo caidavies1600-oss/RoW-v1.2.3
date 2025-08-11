@@ -1,3 +1,22 @@
+"""
+Data management system with Google Sheets integration.
+
+This module provides:
+- Primary data storage and retrieval
+- Google Sheets integration and sync
+- JSON file fallback system
+- Player statistics tracking
+- Match data management
+- Live data synchronization
+- Template creation and management
+
+Components:
+- Sheet-based primary storage
+- JSON-based fallback storage
+- Player statistics system
+- Match statistics tracking
+- Data validation and recovery
+"""
 
 import os
 import json
@@ -7,7 +26,21 @@ from utils.logger import setup_logger
 logger = setup_logger("data_manager")
 
 class DataManager:
-    """Enhanced data manager with Google Sheets as primary data source."""
+    """
+    Enhanced data manager with Google Sheets as primary data source.
+    
+    Features:
+    - Google Sheets primary storage
+    - JSON file fallback system
+    - Live data synchronization
+    - Player statistics tracking
+    - Match data management
+    - Template creation
+    
+    Attributes:
+        sheets_manager: Google Sheets interface
+        player_stats: Cache of player statistics
+    """
 
     def __init__(self):
         self.sheets_manager = None
@@ -62,7 +95,20 @@ class DataManager:
         }
 
     def update_player_stats(self, user_id: str, team: str, result: str, user_name: str = ""):
-        """Update player statistics for wins/losses per team."""
+        """
+        Update player statistics for wins/losses per team.
+        
+        Args:
+            user_id: Discord user ID
+            team: Team identifier (main_team, team_2, team_3)
+            result: Match result (win/loss)
+            user_name: Optional display name
+            
+        Updates:
+            - Win/loss records per team
+            - Player name if provided
+            - Creates new player entry if needed
+        """
         user_id = str(user_id)
 
         if user_id not in self.player_stats:
@@ -99,7 +145,23 @@ class DataManager:
         logger.info(f"Updated stats for {user_id}: {team} {result}")
 
     def save_json(self, filepath: str, data: Any, sync_to_sheets: bool = True) -> bool:
-        """Save data to JSON file with optional Google Sheets sync."""
+        """
+        Save data to JSON file with optional Google Sheets sync.
+        
+        Args:
+            filepath: Path to JSON file
+            data: Data to save
+            sync_to_sheets: Whether to sync to Google Sheets
+            
+        Features:
+            - Directory creation
+            - UTF-8 encoding
+            - Live sheets sync
+            - Error handling
+            
+        Returns:
+            bool: Success status
+        """
         try:
             dirname = os.path.dirname(filepath)
             if dirname:
@@ -164,7 +226,19 @@ class DataManager:
         return self.sheets_manager.create_all_templates(all_data)
 
     def update_player_power(self, user_id: str, power_rating: int, specializations: dict = None):
-        """Update player power rating and specializations."""
+        """
+        Update player power rating and specializations.
+        
+        Args:
+            user_id: Discord user ID
+            power_rating: Player power level
+            specializations: Dict of player specializations
+            
+        Updates:
+            - Power rating
+            - Combat specializations
+            - Creates new player if needed
+        """
         user_id = str(user_id)
 
         if user_id not in self.player_stats:
@@ -178,7 +252,21 @@ class DataManager:
         logger.info(f"Updated power for {user_id}: {power_rating}")
 
     def save_match_statistics(self, match_data: dict):
-        """Save detailed match statistics."""
+        """
+        Save detailed match statistics.
+        
+        Args:
+            match_data: Dictionary containing match details
+            
+        Features:
+            - Match history tracking
+            - Google Sheets sync
+            - JSON backup
+            - Error handling
+            
+        Returns:
+            bool: Success status
+        """
         try:
             stats = self.load_json("data/match_statistics.json", {"matches": []})
             stats["matches"].append(match_data)

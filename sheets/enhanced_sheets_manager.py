@@ -1,9 +1,15 @@
-
 # sheets/enhanced_sheets_manager.py
 
 """
 Enhanced Google Sheets Manager - Advanced features for Discord RoW Bot.
-This module contains the complete enhanced sheets integration functionality.
+
+This module provides:
+- Advanced rate limiting and error handling
+- Enhanced data synchronization
+- Professional sheet formatting
+- Interactive dashboard creation
+- Real-time analytics and metrics
+- Comprehensive error recovery
 """
 
 import asyncio
@@ -19,8 +25,15 @@ logger = setup_logger("enhanced_sheets_manager")
 
 class EnhancedSheetsManager:
     """
-    Enhanced Google Sheets Manager with rate limiting, advanced features,
-    and comprehensive bot integration capabilities.
+    Enhanced Google Sheets Manager with comprehensive features.
+    
+    Features:
+    - Rate limited API access
+    - Professional sheet formatting
+    - Batch operations support
+    - Interactive dashboard creation
+    - Enhanced analytics
+    - Error recovery and logging
     """
 
     def __init__(self):
@@ -88,7 +101,21 @@ class EnhancedSheetsManager:
             raise
 
     def enhanced_batch_operation(self, worksheet, operation_type, data, batch_size=10):
-        """Perform batch operations with enhanced error handling."""
+        """
+        Perform batch operations with enhanced error handling.
+        
+        Args:
+            worksheet: Google worksheet object
+            operation_type: Type of operation ('append_rows', etc)
+            data: Data to process in batches
+            batch_size: Number of items per batch
+            
+        Features:
+        - Automatic rate limiting
+        - Error recovery per batch
+        - Individual row fallback
+        - Progress logging
+        """
         import time
         
         if operation_type == "append_rows":
@@ -131,7 +158,20 @@ class EnhancedSheetsManager:
                 return None
 
     def format_worksheet_professional(self, worksheet, headers, max_rows=100):
-        """Apply professional formatting to a worksheet."""
+        """
+        Apply professional formatting to a worksheet.
+        
+        Args:
+            worksheet: Google worksheet object
+            headers: List of column headers
+            max_rows: Maximum rows to format
+            
+        Applies:
+        - Header styling and colors
+        - Cell borders and alignment
+        - Font sizes and styles
+        - Row freezing
+        """
         try:
             # Header formatting
             header_range = f"A1:{chr(65 + len(headers) - 1)}1"
@@ -176,7 +216,20 @@ class EnhancedSheetsManager:
             logger.warning(f"Failed to apply formatting: {e}")
 
     def add_conditional_formatting(self, worksheet, range_name, format_type, format_options):
-        """Add conditional formatting with error handling."""
+        """
+        Add conditional formatting with error handling.
+        
+        Args:
+            worksheet: Google worksheet object
+            range_name: Cell range to format
+            format_type: Type of formatting ('color_scale', 'custom_formula')
+            format_options: Formatting rules and settings
+            
+        Features:
+        - Color scale formatting
+        - Custom formula rules
+        - Error recovery
+        """
         try:
             if format_type == "color_scale":
                 self.rate_limited_request(
@@ -408,7 +461,17 @@ class EnhancedSheetsManager:
             return False
 
     def create_interactive_dashboard(self):
-        """Create an interactive dashboard with charts and formulas."""
+        """
+        Create an interactive dashboard with charts and formulas.
+        
+        Features:
+        - Real-time statistics
+        - Player leaderboards
+        - Team performance metrics
+        - Visual indicators
+        - Auto-updating formulas
+        - Professional styling
+        """
         if not self.is_connected():
             return False
 
@@ -515,7 +578,18 @@ class EnhancedSheetsManager:
             return False
 
     def get_comprehensive_stats(self):
-        """Get comprehensive statistics from all sheets."""
+        """
+        Get comprehensive statistics from all sheets.
+        
+        Returns:
+            dict containing:
+            - spreadsheet_url: URL to sheets
+            - last_updated: Timestamp
+            - worksheets: List of worksheet stats
+            - total_players: Player count
+            - total_teams: Team count
+            - system_health: Status indicator
+        """
         if not self.is_connected():
             return {"error": "Not connected to sheets"}
 
@@ -556,7 +630,22 @@ class EnhancedSheetsManager:
             return {"error": str(e)}
 
     async def full_enhanced_sync(self, bot, all_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Perform a full enhanced synchronization of all bot data."""
+        """
+        Perform a full enhanced synchronization of all bot data.
+        
+        Args:
+            bot: Discord bot instance
+            all_data: Dictionary containing all data to sync
+            
+        Returns:
+            dict containing:
+            - success: Overall success status
+            - synced_components: List of successful syncs
+            - failed_components: List of failed syncs
+            - performance_metrics: Timing data
+            - spreadsheet_url: URL to sheets
+            - final_stats: Comprehensive statistics
+        """
         if not self.is_connected():
             return {"success": False, "error": "Sheets not available"}
 

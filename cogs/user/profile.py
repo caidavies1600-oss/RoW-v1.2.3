@@ -1,4 +1,12 @@
-"""User profile management cog."""
+"""
+User profile management cog.
+
+Handles:
+- In-game name (IGN) storage and retrieval
+- IGN validation and verification
+- Profile data persistence
+- User identification mapping
+"""
 
 import discord
 from discord.ext import commands
@@ -12,30 +20,73 @@ logger = setup_logger("profile")
 
 
 class ProfileCog(commands.Cog, name="Profile"):
-    """Manages user profiles and IGN mappings."""
+    """
+    Manages user profiles and IGN mappings.
+    
+    Features:
+    - IGN storage and retrieval
+    - Data persistence with Google Sheets sync
+    - IGN validation and formatting
+    - Profile command handling
+    """
 
     def __init__(self, bot):
+        """
+        Initialize the profile cog.
+        
+        Args:
+            bot: The Discord bot instance
+        """
         self.bot = bot
         self.data_manager = DataManager()
         self.ign_map = self.data_manager.load_json(FILES["IGN_MAP"], {})
 
     def save_data(self) -> bool:
-        """Save IGN mappings to file."""
+        """
+        Save IGN mappings to file and sync to sheets.
+        
+        Returns:
+            bool: True if save was successful
+        """
         success = self.data_manager.save_json(FILES["IGN_MAP"], self.ign_map)
         if not success:
             logger.error("❌ Failed to save IGN mappings to ign_map.json")
         return success
 
     def get_ign(self, user: discord.User) -> str:
-        """Get user's IGN or fallback to display name."""
+        """
+        Get user's IGN or fallback to display name.
+        
+        Args:
+            user: Discord user to get IGN for
+            
+        Returns:
+            str: User's IGN or display name as fallback
+        """
         return self.ign_map.get(str(user.id), user.display_name)
 
     def has_ign(self, user: discord.User) -> bool:
-        """Check if user has set a custom IGN."""
+        """
+        Check if user has set a custom IGN.
+        
+        Args:
+            user: Discord user to check
+            
+        Returns:
+            bool: True if user has custom IGN set
+        """
         return str(user.id) in self.ign_map
 
     async def warn_if_no_ign(self, interaction: discord.Interaction):
-        """Warn user if they haven't set their IGN."""
+        """
+        Warn user if they haven't set their IGN.
+        
+        Args:
+            interaction: Discord interaction to respond to
+            
+        Returns:
+            bool: True if warning was sent (no IGN set)
+        """
         if not self.has_ign(interaction.user):
             await interaction.response.send_message(
                 f"{EMOJIS['WARNING']} You haven't set your IGN yet. Use `!setign YourName`.",
@@ -92,4 +143,10 @@ class ProfileCog(commands.Cog, name="Profile"):
 
 
 async def setup(bot):
+    """
+    Set up the Profile cog.
+    
+    Args:
+        bot: The Discord bot instance
+    """
     await bot.add_cog(ProfileCog(bot))

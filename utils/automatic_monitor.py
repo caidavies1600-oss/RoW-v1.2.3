@@ -1,3 +1,23 @@
+"""
+Automatic monitoring system for Discord bot activities.
+
+This module provides comprehensive monitoring:
+- Command execution tracking
+- File operation monitoring
+- Scheduled task tracking
+- Button interaction monitoring
+- Admin notifications
+- Error tracking and reporting
+
+Features:
+- Zero-configuration monitoring
+- Automatic command tracking
+- File operation validation
+- Real-time admin notifications
+- Error catching and reporting
+- Activity logging
+"""
+
 # utils/automatic_monitor.py
 
 import discord
@@ -9,14 +29,37 @@ from utils.admin_notifier import notify_activity, notify_error
 logger = setup_logger("auto_monitor")
 
 class AutomaticMonitor:
-    """Automatically monitors all commands and activities without code changes."""
-
+    """
+    Automatically monitors all commands and activities without code changes.
+    
+    Features:
+    - Command execution monitoring
+    - File operation tracking
+    - Scheduled task monitoring
+    - Button interaction tracking
+    - Admin notification integration
+    - Error handling and reporting
+    
+    Attributes:
+        bot: Discord bot instance
+        admin_commands: Dict of monitored admin commands
+        important_files: List of critical files to monitor
+    """
+    
     def __init__(self, bot):
         self.bot = bot
         self.setup_global_monitoring()
 
     def setup_global_monitoring(self):
-        """Setup automatic monitoring for all bot activities."""
+        """
+        Setup automatic monitoring for all bot activities.
+        
+        Configures:
+        - Admin command tracking
+        - Critical file monitoring
+        - Event hooks
+        - Notification settings
+        """
 
         # Monitor important admin commands
         self.admin_commands = {
@@ -211,17 +254,55 @@ def setup_automatic_monitoring(bot):
 
 # Convenience functions for manual monitoring
 async def monitor_file_save(file_path: str, success: bool):
-    """Monitor file save operations."""
+    """
+    Monitor file save operations.
+    
+    Args:
+        file_path: Path to file being saved
+        success: Whether save operation succeeded
+        
+    Features:
+        - Critical file tracking
+        - Save operation validation
+        - Error notifications
+        - Activity logging
+    """
     if auto_monitor:
         await auto_monitor.monitor_file_operation(file_path, "save", success)
 
 async def monitor_scheduled_task(task_name: str, success: bool, **details):
-    """Monitor scheduled task execution."""
+    """
+    Monitor scheduled task execution.
+    
+    Args:
+        task_name: Name of scheduled task
+        success: Whether task completed successfully
+        details: Additional task-specific details
+        
+    Monitors:
+        - Task completion status
+        - Execution timing
+        - Error conditions
+        - Performance metrics
+    """
     if auto_monitor:
         await auto_monitor.monitor_scheduler_task(task_name, success, details)
 
 async def monitor_button_interaction(interaction: discord.Interaction, action: str, success: bool):
-    """Monitor button interactions."""
+    """
+    Monitor button interactions.
+    
+    Args:
+        interaction: Discord interaction object
+        action: Type of button action
+        success: Whether interaction succeeded
+        
+    Tracks:
+        - Team join/leave actions
+        - User interactions
+        - Success/failure states
+        - Error conditions
+    """
     try:
         if auto_monitor and action in ["join_team", "leave_team"]:
             if success:

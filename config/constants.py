@@ -1,6 +1,12 @@
 """
 Bot constants and static configuration.
-Values that rarely change and are not environment-dependent.
+
+This module contains all static configuration values that rarely change
+and are not environment-dependent. Includes UI elements, file paths,
+team configurations, and validation rules.
+
+Note: Sensitive configuration should be stored in environment variables,
+not in this file.
 """
 
 import os
@@ -31,6 +37,8 @@ except ImportError:
 # =============================================================================
 # 🎨 UI & VISUAL CONSTANTS
 # =============================================================================
+"""Visual elements used throughout the bot for consistent styling.
+Includes colors for embeds and standard emojis for message formatting."""
 
 # Discord Embed Colors
 COLORS = {
@@ -81,6 +89,8 @@ EMOJIS = {
 # =============================================================================
 # 🏆 TEAM CONFIGURATION
 # =============================================================================
+"""Team-related configuration including display names, colors, and descriptions.
+Used for consistent team representation across all bot features."""
 
 # Team display names with emojis
 TEAM_DISPLAY = {
@@ -106,6 +116,8 @@ TEAM_DESCRIPTIONS = {
 # =============================================================================
 # 📁 FILE PATHS & DATA STRUCTURE
 # =============================================================================
+"""File path configurations for all data storage.
+Includes paths for event data, user data, logs, and system files."""
 
 # JSON data files
 FILES = {
@@ -143,6 +155,8 @@ ABSENT_FILE = FILES["ABSENT"]
 # =============================================================================
 # 📅 TIME & SCHEDULING CONSTANTS
 # =============================================================================
+"""Time-related constants for event scheduling and automation.
+Defines days, times, and configuration for automated tasks."""
 
 # Day of week constants (for scheduler)
 WEEKDAYS = {
@@ -168,6 +182,8 @@ SCHEDULER_CONFIG = {
 # =============================================================================
 # 🎮 GAME MECHANICS CONSTANTS
 # =============================================================================
+"""Game-specific constants for player roles and match outcomes.
+Includes specializations, result types, and moderation settings."""
 
 # Player specializations
 SPECIALIZATIONS = {
@@ -187,6 +203,8 @@ BAN_DURATION_OPTIONS = [1, 3, 7, 14, 30]
 # =============================================================================
 # 📝 MESSAGE TEMPLATES
 # =============================================================================
+"""Standard message templates for consistent bot responses.
+Includes error messages, command help, and common notifications."""
 
 # Common message templates
 MESSAGES = {
@@ -217,6 +235,8 @@ HELP_DESCRIPTIONS = {
 # =============================================================================
 # 🔧 VALIDATION RULES
 # =============================================================================
+"""Validation rules and constraints for user input and data.
+Defines acceptable formats for IGNs, user IDs, and team names."""
 
 # IGN validation
 IGN_RULES = {
@@ -252,6 +272,8 @@ TEAM_NAME_MAPPING = {
 # =============================================================================
 # 🎯 FEATURE FLAGS
 # =============================================================================
+"""Feature toggles for enabling/disabling bot functionality.
+Can be overridden by environment variables for deployment control."""
 
 # Feature toggles (can be overridden by environment variables)
 FEATURES = {

@@ -1,4 +1,3 @@
-
 import discord
 from discord.ui import View, Button
 from config.constants import EMOJIS, TEAM_DISPLAY, FILES
@@ -10,7 +9,23 @@ logger = setup_logger("signup_view")
 
 
 class EventSignupView(View):
+    """
+    View containing buttons for RoW event team signups.
+    
+    Features:
+    - Team joining buttons (Main Team, Team 2, Team 3)
+    - Team leaving functionality
+    - Role-based access control
+    - Player IGN validation
+    """
+
     def __init__(self, manager):
+        """
+        Initialize the signup view with team buttons.
+        
+        Args:
+            manager: EventManager instance for handling team data
+        """
         super().__init__(timeout=None)
         self.manager = manager
         self.data_manager = DataManager()
@@ -22,12 +37,50 @@ class EventSignupView(View):
 
 
 class JoinButton(Button):
+    """
+    Button for joining a specific RoW team.
+    
+    Features:
+    - Team capacity checking
+    - Role requirement validation
+    - Block status checking
+    - IGN validation
+    - Automatic team switching
+    """
+
     def __init__(self, team_key: str, label: str, requires_role: bool = False):
+        """
+        Initialize a team join button.
+        
+        Args:
+            team_key: Identifier for the team (main_team, team_2, team_3)
+            label: Display text for the button
+            requires_role: Whether the button requires a specific role
+        """
         super().__init__(style=discord.ButtonStyle.primary, label=label)
         self.team_key = team_key
         self.requires_role = requires_role
 
     async def callback(self, interaction: discord.Interaction):
+        """
+        Handle button click for team joining.
+        
+        Args:
+            interaction: Discord interaction event
+            
+        Checks:
+        - Signup lock status
+        - User block status
+        - Role requirements
+        - IGN setup
+        - Team capacity
+        
+        Effects:
+        - Removes user from other teams
+        - Adds user to selected team
+        - Saves changes
+        - Sends confirmation
+        """
         manager = self.view.manager
         data_manager = self.view.data_manager
 
@@ -109,10 +162,36 @@ class JoinButton(Button):
 
 
 class LeaveButton(Button):
+    """
+    Button for leaving current RoW team.
+    
+    Features:
+    - Removes player from any team
+    - Handles locked signup states
+    - Validates IGN status
+    """
+
     def __init__(self):
+        """Initialize the leave team button."""
         super().__init__(style=discord.ButtonStyle.danger, label="Leave Team")
 
     async def callback(self, interaction: discord.Interaction):
+        """
+        Handle button click for team leaving.
+        
+        Args:
+            interaction: Discord interaction event
+            
+        Checks:
+        - Signup lock status
+        - IGN status
+        - Current team membership
+        
+        Effects:
+        - Removes user from current team
+        - Saves changes
+        - Sends confirmation
+        """
         manager = self.view.manager
 
         # Check if signups are locked

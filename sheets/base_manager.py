@@ -1,3 +1,15 @@
+"""
+Base Google Sheets manager with rate limiting and error handling.
+
+Features:
+- Rate-limited API access with exponential backoff
+- Comprehensive error handling and recovery
+- Batch operation support
+- Worksheet management
+- Usage tracking and statistics
+- Auto-reconnection on failures
+"""
+
 import gspread
 from google.oauth2.service_account import Credentials
 import json
@@ -11,7 +23,17 @@ from utils.logger import setup_logger
 logger = setup_logger("sheets_base")
 
 class RateLimitedSheetsManager:
-    """Enhanced Google Sheets manager with comprehensive rate limiting and error recovery."""
+    """
+    Enhanced Google Sheets manager with comprehensive rate limiting and error recovery.
+
+    Features:
+    - Automatic retry with exponential backoff
+    - Request rate limiting and quota management
+    - Batch operations for large updates
+    - Usage statistics and monitoring
+    - Automatic worksheet creation/management
+    - Error handling with detailed logging
+    """
 
     def __init__(self):
         self.gc = None
@@ -72,7 +94,25 @@ class RateLimitedSheetsManager:
             self.spreadsheet = None
 
     def exponential_backoff_retry(self, func: Callable, max_retries: Optional[int] = None) -> Any:
-        """Execute function with exponential backoff on rate limit errors."""
+        """
+        Execute function with exponential backoff on rate limit errors.
+
+        Args:
+            func: Function to execute
+            max_retries: Maximum number of retry attempts
+
+        Returns:
+            Any: Result of the function execution
+
+        Raises:
+            Exception: If all retries fail or non-retryable error occurs
+            
+        Features:
+            - Exponential delay between retries
+            - Random jitter to prevent thundering herd
+            - Different handling for various error types
+            - Quota exceeded detection
+        """
         if max_retries is None:
             max_retries = self.max_retries
 
@@ -141,7 +181,23 @@ class RateLimitedSheetsManager:
             raise Exception(f"Request failed after {max_retries} attempts")
 
     def rate_limited_request(self, func: Callable, *args, **kwargs) -> Any:
-        """Execute request with rate limiting and comprehensive error handling."""
+        """
+        Execute request with rate limiting and comprehensive error handling.
+
+        Args:
+            func: Function to execute
+            args: Positional arguments for the function
+            kwargs: Keyword arguments for the function
+
+        Returns:
+            Any: Result of the function execution
+
+        Features:
+            - Enforces minimum interval between requests
+            - Tracks request count and rate limit hits
+            - Logs usage statistics periodically
+            - Handles API errors with retries
+        """
         # Enforce minimum interval between requests
         now = time.time()
         time_since_last = now - self.last_request_time
@@ -165,7 +221,20 @@ class RateLimitedSheetsManager:
             return self.exponential_backoff_retry(func)
 
     def batch_update_cells(self, worksheet, updates: list, batch_size: int = 50):
-        """Update multiple cells in batches with aggressive rate limiting."""
+        """
+        Update multiple cells in batches with aggressive rate limiting.
+
+        Args:
+            worksheet: Google Sheets worksheet object
+            updates: List of cell updates to perform
+            batch_size: Number of updates per batch
+
+        Features:
+            - Progressive delays between batches
+            - Progress tracking and logging
+            - Error handling per batch
+            - Rate limit compliance
+        """
         if not updates:
             return True
 
@@ -206,7 +275,22 @@ class RateLimitedSheetsManager:
             return False
 
     def safe_worksheet_operation(self, operation_name: str, operation_func: Callable) -> Any:
-        """Safely execute worksheet operations with comprehensive error handling."""
+        """
+        Safely execute worksheet operations with comprehensive error handling.
+
+        Args:
+            operation_name: Name of operation for logging
+            operation_func: Function performing the worksheet operation
+
+        Returns:
+            Any: Result of the operation or None on failure
+
+        Features:
+            - Detailed error context
+            - Helpful error hints
+            - Operation logging
+            - Rate limit compliance
+        """
         try:
             logger.debug(f"🔄 Executing {operation_name}...")
             result = self.rate_limited_request(operation_func)
@@ -229,7 +313,23 @@ class RateLimitedSheetsManager:
             return None
 
     def get_or_create_worksheet(self, title: str, rows: int = 100, cols: int = 10):
-        """Get existing worksheet or create new one with rate limiting."""
+        """
+        Get existing worksheet or create new one with rate limiting.
+
+        Args:
+            title: Name of the worksheet
+            rows: Initial number of rows
+            cols: Initial number of columns
+
+        Returns:
+            Worksheet object or None on failure
+
+        Features:
+            - Checks for existing worksheet
+            - Creates new if not found
+            - Rate limited operations
+            - Error handling and logging
+        """
         if not self.spreadsheet:
             logger.error("❌ No spreadsheet available")
             return None
@@ -274,7 +374,18 @@ class RateLimitedSheetsManager:
             return False
 
     def get_api_usage_stats(self) -> Dict[str, Any]:
-        """Get comprehensive API usage statistics."""
+        """
+        Get comprehensive API usage statistics.
+
+        Returns:
+            dict containing:
+            - total_requests: Total API requests made
+            - rate_limit_hits: Number of rate limit hits
+            - session_duration_minutes: Session duration
+            - requests_per_minute: Request rate
+            - quota_health: Health status of quota usage
+            - estimated_quota_used_percent: Estimated quota consumption
+        """
         session_duration = time.time() - self.session_start_time
 
         return {

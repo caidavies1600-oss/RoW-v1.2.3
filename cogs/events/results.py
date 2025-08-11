@@ -1,4 +1,3 @@
-
 import discord
 from discord.ext import commands
 from datetime import datetime
@@ -12,7 +11,24 @@ from utils.data_manager import DataManager
 logger = logging.getLogger("results")
 
 class Results(commands.Cog):
+    """
+    Manages RoW event results and player statistics.
+    
+    Features:
+    - Win/loss recording and tracking
+    - Player statistics management
+    - Results history display
+    - Google Sheets template creation
+    - Player performance tracking
+    """
+
     def __init__(self, bot):
+        """
+        Initialize the Results cog.
+
+        Args:
+            bot: The Discord bot instance
+        """
         self.bot = bot
         self.data_manager = DataManager()
         self.results = self.load_results()
@@ -34,7 +50,15 @@ class Results(commands.Cog):
         return success
 
     def get_current_team_players(self, team_key: str):
-        """Get current players signed up for a team."""
+        """
+        Get current players signed up for a team.
+        
+        Args:
+            team_key: Key identifying the team (main_team, team_2, team_3)
+            
+        Returns:
+            list: List of player IDs currently signed up
+        """
         try:
             # Get the current events from EventManager
             event_manager = self.bot.get_cog("EventManager")
@@ -49,7 +73,19 @@ class Results(commands.Cog):
             return []
 
     def update_player_stats_for_result(self, team_key: str, result: str, players: list):
-        """Update individual player statistics for the result."""
+        """
+        Update individual player statistics after a match.
+        
+        Args:
+            team_key: Key identifying the team
+            result: Match result ('win' or 'loss')
+            players: List of player IDs to update
+            
+        Updates:
+            - Individual win/loss records
+            - Team-specific statistics
+            - Player history
+        """
         try:
             # Get IGN map for player names
             ign_map = self.data_manager.load_json(FILES["IGN_MAP"], {})
@@ -68,7 +104,19 @@ class Results(commands.Cog):
     @commands.command(name="win")
     @commands.has_any_role(*ADMIN_ROLE_IDS)
     async def record_win(self, ctx, team_key: str):
-        """Record a win for a team with current player list."""
+        """
+        Record a win for a team with current player list.
+        
+        Args:
+            ctx: Command context
+            team_key: Team identifier (main_team, team_2, team_3)
+            
+        Effects:
+            - Updates team win count
+            - Records player participation
+            - Sends notifications
+            - Updates player statistics
+        """
         team_key = team_key.lower()
         if team_key not in TEAM_DISPLAY:
             await ctx.send("❌ Invalid team key. Use: main_team, team_2, or team_3")
@@ -123,7 +171,19 @@ class Results(commands.Cog):
     @commands.command(name="loss")
     @commands.has_any_role(*ADMIN_ROLE_IDS)
     async def record_loss(self, ctx, team_key: str):
-        """Record a loss for a team with current player list."""
+        """
+        Record a loss for a team with current player list.
+        
+        Args:
+            ctx: Command context
+            team_key: Team identifier (main_team, team_2, team_3)
+            
+        Effects:
+            - Updates team loss count
+            - Records player participation
+            - Sends notifications
+            - Updates player statistics
+        """
         team_key = team_key.lower()
         if team_key not in TEAM_DISPLAY:
             await ctx.send("❌ Invalid team key. Use: main_team, team_2, or team_3")
@@ -177,7 +237,15 @@ class Results(commands.Cog):
 
     @commands.command(name="results")
     async def show_results(self, ctx):
-        """Show overall and recent results summary."""
+        """
+        Show overall and recent results summary.
+        
+        Displays:
+            - Total wins and losses
+            - Win rate percentage
+            - Last 10 match results
+            - Results by team
+        """
         self.results = self.load_results()
         
         embed = discord.Embed(
@@ -224,7 +292,19 @@ class Results(commands.Cog):
 
     @commands.command(name="playerstats")
     async def show_player_stats(self, ctx, user: discord.User = None):
-        """Show detailed player statistics."""
+        """
+        Show detailed player statistics.
+        
+        Args:
+            ctx: Command context
+            user: Optional user to show stats for (defaults to command author)
+            
+        Displays:
+            - Overall win/loss record
+            - Team-specific performance
+            - Attendance record
+            - Block status
+        """
         if not user:
             user = ctx.author
         
@@ -319,4 +399,10 @@ class Results(commands.Cog):
             await ctx.send("❌ Failed to create Google Sheets templates. Check logs for details.")
 
 async def setup(bot):
+    """
+    Set up the Results cog.
+
+    Args:
+        bot: The Discord bot instance
+    """
     await bot.add_cog(Results(bot))

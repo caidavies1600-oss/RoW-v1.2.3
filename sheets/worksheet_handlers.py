@@ -1,4 +1,14 @@
-# sheets/worksheet_handlers.py
+"""
+Worksheet management module for Google Sheets integration.
+
+This module provides:
+- Individual worksheet operations
+- Team roster synchronization
+- Player statistics management
+- Results history tracking
+- Data loading and validation
+"""
+
 from datetime import datetime
 from .base_manager import BaseSheetsManager
 from .config import SHEET_CONFIGS, TEAM_MAPPING
@@ -7,10 +17,33 @@ from utils.logger import setup_logger
 logger = setup_logger("worksheet_handlers")
 
 class WorksheetHandlers(BaseSheetsManager):
-    """Handles individual worksheet operations."""
+    """
+    Handles individual worksheet operations and data management.
+    
+    Features:
+    - Worksheet creation and updates
+    - Data synchronization
+    - Template management
+    - Error handling and logging
+    - Data validation and formatting
+    """
 
     def sync_current_teams(self, events_data):
-        """Sync current team signups to Google Sheets."""
+        """
+        Sync current team signups to Google Sheets.
+
+        Args:
+            events_data: Dictionary containing team rosters
+
+        Features:
+        - Team roster updates
+        - Timestamp tracking
+        - Player list formatting
+        - Status indicators
+
+        Returns:
+            bool: Success status of sync operation
+        """
         if not self.is_connected():
             return False
 
@@ -146,7 +179,22 @@ class WorksheetHandlers(BaseSheetsManager):
             return False
 
     def sync_results_history(self, results_data):
-        """Sync detailed results history to Google Sheets."""
+        """
+        Sync detailed results history to Google Sheets.
+
+        Args:
+            results_data: Dictionary containing match history
+
+        Features:
+        - Match result tracking
+        - Player participation records
+        - Win/loss statistics
+        - Timestamp formatting
+        - Recorder tracking
+
+        Returns:
+            bool: Success status of sync operation
+        """
         if not self.is_connected():
             return False
 
@@ -190,7 +238,23 @@ class WorksheetHandlers(BaseSheetsManager):
             return False
 
     def load_player_stats_from_sheets(self):
-        """Load player stats specifically from sheets."""
+        """
+        Load player stats specifically from sheets.
+
+        Returns:
+            dict: Player statistics containing:
+                - Team-specific results
+                - Win/loss records
+                - Specializations
+                - Power ratings
+                - Status indicators
+
+        Features:
+        - Data validation
+        - Type conversion
+        - Error handling
+        - Boolean flag parsing
+        """
         if not self.is_connected():
             return {}
 

@@ -21,7 +21,17 @@ from cogs.events.signup_view import EventSignupView
 logger = setup_logger("event_manager")
 
 class EventManager(commands.Cog, name="EventManager"):
-    """Core event management functionality."""
+    """
+    Core event management functionality.
+    
+    Features:
+    - Event creation and signup management
+    - Team roster tracking and display
+    - User blocking system
+    - Signup locking controls
+    - Auto-posting and scheduling
+    - Event history tracking
+    """
 
     def __init__(self, bot):
         self.bot = bot
@@ -43,25 +53,35 @@ class EventManager(commands.Cog, name="EventManager"):
         self.signup_locked = self.data_manager.load_json(FILES["SIGNUP_LOCK"], False)
 
     def _default_events(self):
+        """
+        Create default empty event structure.
+        
+        Returns:
+            dict: Default event structure with empty teams
+        """
         return {"main_team": [], "team_2": [], "team_3": []}
 
     def save_events(self):
+        """Save event data to file and sync to Google Sheets."""
         if not self.data_manager.save_json(FILES["EVENTS"], self.events, sync_to_sheets=True):
             logger.error("❌ Failed to save events.json")
         else:
             logger.info("✅ Events saved and synced to Sheets")
 
     def save_blocked_users(self):
+        """Save blocked users data to file and sync to Google Sheets."""
         if not self.data_manager.save_json(FILES["BLOCKED"], self.blocked_users, sync_to_sheets=True):
             logger.error("❌ Failed to save blocked_users.json")
         else:
             logger.info("✅ Blocked users saved and synced to Sheets")
 
     def save_times(self):
+        """Save event times configuration to file."""
         if not self.data_manager.save_json(FILES["TIMES"], self.event_times):
             logger.error("❌ Failed to save row_times.json")
 
     def save_signup_lock(self):
+        """Save signup lock state to file."""
         if not self.data_manager.save_json(FILES["SIGNUP_LOCK"], self.signup_locked):
             logger.error("❌ Failed to save signup_lock.json")
 
@@ -82,6 +102,12 @@ class EventManager(commands.Cog, name="EventManager"):
         return self.signup_locked
 
     def save_history(self):
+        """
+        Save current event state to history.
+        
+        Maintains a rolling history of the last 50 events.
+        Each entry contains timestamp and team compositions.
+        """
         history = self.data_manager.load_json(FILES["HISTORY"], [])
         if not isinstance(history, list):
             logger.warning("⚠️ Event history file was not a list. Resetting.")
@@ -102,6 +128,15 @@ class EventManager(commands.Cog, name="EventManager"):
             logger.error("❌ Failed to save events_history.json")
 
     def is_user_blocked(self, user_id: int) -> bool:
+        """
+        Check if a user is currently blocked from signups.
+        
+        Args:
+            user_id: Discord user ID to check
+            
+        Returns:
+            bool: True if user is blocked and block hasn't expired
+        """
         entry = self.blocked_users.get(str(user_id))
         if not entry:
             return False
@@ -124,6 +159,14 @@ class EventManager(commands.Cog, name="EventManager"):
             return False
 
     def block_user(self, user_id: int, blocked_by: int, days: int):
+        """
+        Block a user from signing up for events.
+        
+        Args:
+            user_id: Discord ID of user to block
+            blocked_by: Discord ID of admin who blocked
+            days: Number of days to block for
+        """
         self.blocked_users[str(user_id)] = {
             "blocked_by": str(blocked_by),
             "blocked_at": datetime.utcnow().isoformat(),
@@ -133,6 +176,7 @@ class EventManager(commands.Cog, name="EventManager"):
         logger.info(f"🚫 User {user_id} blocked by {blocked_by} for {days} days")
 
     def unblock_user(self, user_id: int):
+        """Unblock a user, allowing them to sign up again."""
         if str(user_id) in self.blocked_users:
             del self.blocked_users[str(user_id)]
             self.save_blocked_users()
@@ -145,6 +189,12 @@ class EventManager(commands.Cog, name="EventManager"):
     @commands.command(name="startevent")
     @commands.check(lambda ctx: Validators.is_admin(ctx.author))
     async def start_event(self, ctx):
+        """
+        Start a new event, resetting signups and notifying users.
+        
+        Args:
+            ctx: Command context
+        """
         try:
             self.save_history()
             self.events = self._default_events()
@@ -175,6 +225,12 @@ class EventManager(commands.Cog, name="EventManager"):
             await ctx.send(f"{EMOJIS['ERROR']} Failed to start event.")
 
     def _create_event_description(self) -> str:
+        """
+        Create formatted event description with schedules.
+        
+        Returns:
+            str: Formatted event description with times and status
+        """
         lines = [
             f"Hey! Pick your team for this week's **RoW Event**.\n",
             f"{EMOJIS['CALENDAR']} **Schedule**:"
@@ -193,6 +249,14 @@ class EventManager(commands.Cog, name="EventManager"):
 
     @commands.command(name="showteams")
     async def show_teams(self, ctx):
+        """
+        Display current team signups to the user.
+        
+        If the user hasn't set their IGN, prompt them to do so.
+        
+        Args:
+            ctx: Command context
+        """
         profile_cog = self.bot.get_cog("Profile")
         if profile_cog and not profile_cog.has_ign(ctx.author):
             embed = discord.Embed(
@@ -236,7 +300,14 @@ class EventManager(commands.Cog, name="EventManager"):
     @commands.command(name="locksignups")
     @commands.check(lambda ctx: Validators.is_admin(ctx.author))
     async def lock_signups_command(self, ctx):
-        """Manually lock signups."""
+        """
+        Manually lock signups.
+        
+        Sends an alert to the designated channel.
+        
+        Args:
+            ctx: Command context
+        """
         if self.is_signup_locked():
             await ctx.send("🔒 Signups are already locked.")
             return
@@ -258,7 +329,14 @@ class EventManager(commands.Cog, name="EventManager"):
     @commands.command(name="unlocksignups")
     @commands.check(lambda ctx: Validators.is_admin(ctx.author))
     async def unlock_signups_command(self, ctx):
-        """Manually unlock signups."""
+        """
+        Manually unlock signups.
+        
+        Sends an alert to the designated channel.
+        
+        Args:
+            ctx: Command context
+        """
         if not self.is_signup_locked():
             await ctx.send("🔓 Signups are already unlocked.")
             return
@@ -278,7 +356,14 @@ class EventManager(commands.Cog, name="EventManager"):
         await ctx.send("✅ Signups have been unlocked.")
 
     async def auto_post_signup(self, ctx):
-        """Used by scheduler to auto-post a signup message."""
+        """
+        Automatically post signup message in specified channel.
+        
+        Used by scheduler for automated event creation.
+        
+        Args:
+            ctx: Context for message posting
+        """
         try:
             embed = discord.Embed(
                 title="📢 Weekly RoW Sign-Up",
@@ -298,7 +383,12 @@ class EventManager(commands.Cog, name="EventManager"):
             logger.exception("❌ Failed to auto-post signup")
 
     async def auto_show_teams_and_lock(self):
-        """Used by scheduler to show teams and lock signups on Thursday 23:59 UTC."""
+        """
+        Automatically display final teams and lock signups.
+        
+        Used by scheduler for Thursday night lockout.
+        Posts final roster to alert channel and locks further changes.
+        """
         try:
             # Lock signups first
             self.lock_signups()
@@ -343,6 +433,7 @@ class EventManager(commands.Cog, name="EventManager"):
             logger.exception("❌ Failed to auto-show teams and lock signups")
 
     async def reset_event_state(self):
+        """Reset all event-related state variables to defaults."""
         self.bot.event_active = False
         self.bot.event_team = None
         self.bot.attendance = {}

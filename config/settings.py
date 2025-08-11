@@ -1,6 +1,14 @@
 """
 Bot configuration settings.
-Environment-dependent values that may change between deployments.
+
+This module contains environment-dependent configuration values
+that may change between different deployments. Includes:
+- Authentication tokens and credentials
+- Server-specific IDs and roles
+- Team and event configurations
+- Directory paths and logging settings
+
+Note: Sensitive values should be set via environment variables.
 """
 
 import os
@@ -9,6 +17,8 @@ from typing import List
 # =============================================================================
 # 🔐 AUTHENTICATION & TOKENS
 # =============================================================================
+"""Authentication tokens and API credentials.
+These values should always be provided via environment variables."""
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 if not BOT_TOKEN:
@@ -24,6 +34,8 @@ GOOGLE_SHEETS_ID = os.getenv("GOOGLE_SHEETS_ID")
 # =============================================================================
 # 🏛️ DISCORD SERVER CONFIGURATION
 # =============================================================================
+"""Server-specific configuration including role and channel IDs.
+These values need to be updated for each Discord server deployment."""
 
 # Role IDs (these will be different per server)
 ADMIN_ROLE_IDS: List[int] = [
@@ -43,6 +55,8 @@ BOT_ADMIN_USER_ID: int = 1096858315826397354 # Discord User: ME
 # =============================================================================
 # ⚙️ BOT BEHAVIOR SETTINGS
 # =============================================================================
+"""Core bot behavior configuration including team sizes,
+event scheduling, rate limiting, and backup settings."""
 
 # Team Configuration
 MAX_TEAM_SIZE: int = 40
@@ -66,6 +80,8 @@ AUTO_BACKUP_INTERVAL_HOURS: int = 6
 # =============================================================================
 # 📁 DIRECTORY CONFIGURATION
 # =============================================================================
+"""File system paths and directory creation for bot data storage.
+Ensures required directories exist on startup."""
 
 # Base directories
 DATA_DIR = "data"
@@ -80,6 +96,8 @@ os.makedirs(BACKUP_DIR, exist_ok=True)
 # =============================================================================
 # 🐛 DEBUG & DEVELOPMENT
 # =============================================================================
+"""Debug and development settings controlled via environment variables.
+Includes logging levels and development server configuration."""
 
 # Debug settings (set via environment)
 DEBUG_MODE = os.getenv("DEBUG", "false").lower() == "true"

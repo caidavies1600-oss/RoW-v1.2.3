@@ -1,6 +1,9 @@
 """
 Discord RoW Bot - Main Entry Point
-A Discord bot for managing Roots of War events and team signups.
+
+Core bot initialization and startup management.
+Handles dependency validation, environment checks,
+and error recovery during startup process.
 """
 
 import asyncio
@@ -88,7 +91,7 @@ except Exception as e:
 print("DEBUG: All imports completed successfully!")
 
 async def main():
-    """Main entry point for the bot."""
+    """Main bot startup sequence with comprehensive error handling."""
     print("DEBUG: Entering main() function...")
 
     try:
