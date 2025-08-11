@@ -132,7 +132,7 @@ class EventManager(commands.Cog, name="EventManager"):
         else:
             logger.error("❌ Failed to save events_history.json")
 
-    def is_user_blocked(self, user_id: int) -> bool:
+    async def is_user_blocked(self, user_id: int) -> bool:
         """
         Check if a user is currently blocked from signups.
 

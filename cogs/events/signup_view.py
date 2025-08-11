@@ -94,7 +94,7 @@ class JoinButton(Button):
             return
 
         # Check if user is blocked
-        if manager.is_user_blocked(interaction.user.id):
+        if await manager.is_user_blocked(interaction.user.id):
             await interaction.response.send_message(
                 f"{EMOJIS['ERROR']} You are currently blocked from signing up.",
                 ephemeral=True,
