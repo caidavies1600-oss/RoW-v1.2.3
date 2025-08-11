@@ -1,0 +1,217 @@
+
+{% extends "base.html" %}
+
+{% block title %}Events - RoW Bot Dashboard{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="mb-3">
+            <i class="fas fa-calendar-alt text-primary"></i> 
+            Events Management
+            <small class="text-muted fs-6 timestamp"></small>
+        </h1>
+    </div>
+</div>
+
+<!-- Current Teams Overview -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-users text-primary"></i> 
+                    Current Team Signups
+                </h5>
+                <div>
+                    <span class="badge bg-primary me-2">
+                        Total: {{ data.current_teams.values() | map(attribute='count') | sum }}
+                    </span>
+                    <button class="btn btn-sm btn-outline-primary" onclick="refreshTeams()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for team_key, team_data in data.current_teams.items() %}
+                    <div class="col-md-4 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header text-center 
+                                {% if team_key == 'main_team' %}bg-warning text-dark
+                                {% elif team_key == 'team_2' %}bg-info
+                                {% else %}bg-secondary{% endif %}">
+                                <h6 class="mb-0">{{ team_data.display_name }}</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="text-center mb-3">
+                                    <div class="display-4 fw-bold">{{ team_data.count }}</div>
+                                    <div class="text-muted">/ {{ team_data.capacity }} members</div>
+                                    
+                                    <div class="progress mt-2" style="height: 12px;">
+                                        <div class="progress-bar 
+                                            {% if team_key == 'main_team' %}bg-warning
+                                            {% elif team_key == 'team_2' %}bg-info
+                                            {% else %}bg-secondary{% endif %}" 
+                                            style="width: {{ team_data.fill_percentage }}%">
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">{{ "%.1f"|format(team_data.fill_percentage) }}% Full</small>
+                                </div>
+                                
+                                <div class="mt-3">
+                                    <h6>Members:</h6>
+                                    {% if team_data.members %}
+                                        <div style="max-height: 200px; overflow-y: auto;">
+                                            <ul class="list-unstyled">
+                                                {% for member in team_data.members %}
+                                                <li class="mb-1">
+                                                    <i class="fas fa-user text-muted me-2"></i>
+                                                    {{ member }}
+                                                </li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                    {% else %}
+                                        <p class="text-muted fst-italic">No members signed up yet</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Event Statistics -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card metric-card">
+            <div class="card-body text-center">
+                <div class="metric-value text-primary">{{ data.statistics.total_events }}</div>
+                <div class="metric-label">Total Events</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card metric-card">
+            <div class="card-body text-center">
+                <div class="metric-value text-success">{{ data.statistics.this_month }}</div>
+                <div class="metric-label">This Month</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card metric-card">
+            <div class="card-body text-center">
+                <div class="metric-value text-info">{{ "%.1f"|format(data.statistics.average_participation) }}</div>
+                <div class="metric-label">Avg Participation</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Events History -->
+{% if data.history %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-history text-info"></i> 
+                    Recent Events History
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-dark table-striped" id="eventsTable">
+                        <thead>
+                            <tr>
+                                <th>
+                                    <i class="fas fa-calendar"></i> Date
+                                </th>
+                                <th>
+                                    <i class="fas fa-tag"></i> Event Type
+                                </th>
+                                <th>
+                                    <i class="fas fa-users"></i> Participants
+                                </th>
+                                <th>
+                                    <i class="fas fa-trophy"></i> Main Team
+                                </th>
+                                <th>
+                                    <i class="fas fa-info-circle"></i> Status
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for event in data.history %}
+                            <tr>
+                                <td>
+                                    {% if event.timestamp %}
+                                        {{ event.timestamp[:10] }}
+                                        <br>
+                                        <small class="text-muted">{{ event.timestamp[11:19] }}</small>
+                                    {% else %}
+                                        <span class="text-muted">Unknown</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary">
+                                        {{ event.event_type or 'Event' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <strong>{{ event.total_participants or 0 }}</strong> members
+                                </td>
+                                <td>
+                                    <strong>{{ event.main_team_count or 0 }}</strong> members
+                                </td>
+                                <td>
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check"></i> Completed
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No event history available</h5>
+                <p class="text-muted">Events will appear here once they are created and completed.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+function refreshTeams() {
+    fetch('/api/events/current')
+        .then(response => response.json())
+        .then(data => {
+            console.log('Teams refreshed:', data);
+            location.reload(); // Simple refresh for now
+        })
+        .catch(error => {
+            console.error('Error refreshing teams:', error);
+        });
+}
+
+// Auto-refresh teams every 30 seconds
+setInterval(refreshTeams, 30000);
+</script>
+{% endblock %}

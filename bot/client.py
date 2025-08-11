@@ -3,6 +3,7 @@
 import asyncio
 import os
 import time
+from datetime import datetime
 
 import discord
 from discord.ext import commands
@@ -40,7 +41,7 @@ except Exception as e:
 
 # Import monitoring systems
 try:
-    from config.constants import BOT_ADMIN_USER_ID
+    from config.constants import BOT_ADMIN_USER_ID, BOT_PREFIX
     from utils.admin_notifier import (
         notify_activity,
         notify_error,
@@ -84,17 +85,24 @@ class RowBot(commands.Bot):
     """
 
     def __init__(self):
-        """Initialize the RowBot with required intents and configuration."""
+        """Initialize the Discord bot with proper intents and configuration."""
         print("DEBUG: Initializing RowBot...")
 
+        # Set up intents for the bot
         intents = discord.Intents.default()
-        intents.members = True
-        intents.message_content = True
+        intents.members = True  # Required for member-related functionality
+        intents.message_content = True  # Required for command processing
         intents.guilds = True
         intents.messages = True
         intents.guild_reactions = True
 
-        super().__init__(command_prefix="!", intents=intents, help_command=None)
+
+        super().__init__(command_prefix=BOT_PREFIX, intents=intents, help_command=None)
+
+        # Initialize core systems
+        self.data_manager = None
+        self.sheets = None
+        self.start_time = None  # Will be set when bot is ready
 
         self.startup_completed = False
         self.startup_time = time.time()
@@ -254,7 +262,7 @@ class RowBot(commands.Bot):
                         print(f"DEBUG: Connection status: {connection_status}")
                         print(f"DEBUG: Has gc: {hasattr(self.sheets, 'gc') and self.sheets.gc is not None}")
                         print(f"DEBUG: Has spreadsheet: {hasattr(self.sheets, 'spreadsheet') and self.sheets.spreadsheet is not None}")
-                        
+
                         if connection_status:
                             logger.info(
                                 f"✅ Google Sheets connected successfully"
@@ -270,7 +278,7 @@ class RowBot(commands.Bot):
                             error_details = "Connection check returned False"
                             if not hasattr(self.sheets, 'gc') or not self.sheets.gc:
                                 error_details = "Failed to authorize Google Sheets client - check credentials format and permissions"
-                                
+
                                 # Additional debugging for credential issues
                                 creds_env = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
                                 if creds_env:
@@ -288,29 +296,29 @@ class RowBot(commands.Bot):
                                         creds_data = json.loads(creds_env)
                                         required_fields = ["type", "project_id", "private_key_id", "private_key", "client_email", "client_id", "auth_uri", "token_uri"]
                                         missing_fields = [field for field in required_fields if field not in creds_data]
-                                        
+
                                         if missing_fields:
                                             error_details += f" - Missing credential fields: {', '.join(missing_fields)}"
                                         elif creds_data.get("type") != "service_account":
                                             error_details += f" - Invalid credential type: {creds_data.get('type')} (expected 'service_account')"
                                         else:
                                             error_details += " - Credentials appear valid but authorization failed"
-                                            
+
                                     except json.JSONDecodeError:
                                         error_details += " - Invalid JSON format in GOOGLE_SHEETS_CREDENTIALS"
                                     except Exception as e:
                                         error_details += f" - Error analyzing credentials: {str(e)}"
                                 else:
                                     error_details += " - GOOGLE_SHEETS_CREDENTIALS not found"
-                                    
+
                             elif hasattr(self.sheets, 'spreadsheet') and not self.sheets.spreadsheet:
                                 error_details = "Failed to open spreadsheet - check GOOGLE_SHEETS_ID"
-                            
+
                             logger.warning(
                                 f"⚠️ Google Sheets connection failed: {error_details}"
                             )
                             print(f"DEBUG: Google Sheets connection failed: {error_details}")
-                            
+
                             # Keep the sheets manager for debugging but note the failure
                             if MONITORING_AVAILABLE:
                                 await notify_startup_milestone(
@@ -529,34 +537,61 @@ class RowBot(commands.Bot):
         - Tracks reconnection events
         """
         print("DEBUG: on_ready() called")
+        # Placeholder for total members calculation, which is now done in setup_hook for accuracy
+        total_members = 0
+
+        # Calculate total members if guild data is available
+        if self.guilds:
+            all_members = set()
+            for guild in self.guilds:
+                try:
+                    async for member in guild.fetch_members(limit=None):
+                        all_members.add(member.id)
+                except discord.Forbidden:
+                    logger.warning(f"Missing permissions to fetch members in {guild.name}")
+                except Exception as e:
+                    logger.error(f"Error fetching members for {guild.name}: {e}")
+            total_members = len(all_members)
+
+
+        # Calculate cog count
+        cog_count = len(self.cogs)
+
         if not self.startup_completed:
-            total_startup_time = time.time() - self.startup_time
+            startup_start = self.startup_time
+            # Set start time for uptime tracking
+            self.start_time = datetime.utcnow()
 
-            logger.info(f"{self.user} is online!")
-            print(f"DEBUG: Bot {self.user} is online!")
-            logger.info(f"Serving {len(self.guilds)} guild(s)")
-            print(f"DEBUG: Serving {len(self.guilds)} guild(s)")
+            logger.info("🤖 Bot logged in successfully!")
+            logger.info(f"📊 Bot Name: {self.user.name}")
+            logger.info(f"🆔 Bot ID: {self.user.id}")
 
-            health_stats = await self._final_health_check()
+            # Calculate startup time
+            startup_end = time.time()
+            startup_duration = startup_end - startup_start
+            uptime = f"{startup_duration:.2f} seconds"
 
-            # Send startup complete notification
-            if MONITORING_AVAILABLE:
-                stats = {
-                    "guilds": len(self.guilds),
-                    "cogs": len(self.cogs),
-                    "commands": len(self.commands),
-                    **health_stats,
-                }
+            logger.info("✅ Bot is ready and connected to Discord!")
+            logger.info(f"🏠 Connected to {len(self.guilds)} guild(s)")
+            logger.info(f"👥 Monitoring {total_members} members across all guilds")
 
-                await notify_startup_complete(True, total_startup_time, stats)
+            # Start dashboard integration
+            try:
+                from dashboard.run_dashboard import run_dashboard_with_bot
+                dashboard_thread = run_dashboard_with_bot(self, host='0.0.0.0', port=5000)
+                logger.info("🌐 Dashboard started successfully on port 5000")
+            except Exception as e:
+                logger.error(f"❌ Failed to start dashboard: {e}")
 
-                # Send activity notification
-                await notify_activity(
-                    "bot_online",
-                    status="Online and ready",
-                    guilds=len(self.guilds),
-                    startup_time=f"{total_startup_time:.2f}s",
-                )
+            # Notify admin of successful startup
+            await notify_startup_complete(
+                uptime=uptime,
+                guild_count=len(self.guilds),
+                member_count=total_members,
+                cog_count=cog_count,
+                sheets_status="✅ Connected" if self.sheets and self.sheets.is_connected() else "❌ Disconnected"
+            )
+
 
             self.startup_completed = True
         else:

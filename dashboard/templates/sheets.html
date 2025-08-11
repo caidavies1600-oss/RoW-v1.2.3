@@ -1,0 +1,315 @@
+
+{% extends "base.html" %}
+
+{% block title %}Google Sheets - RoW Bot Dashboard{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="mb-3">
+            <i class="fas fa-table text-primary"></i> 
+            Google Sheets Integration
+            <small class="text-muted fs-6 timestamp"></small>
+        </h1>
+    </div>
+</div>
+
+<!-- Connection Status -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-link text-primary"></i> 
+                    Connection Status
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <div class="d-flex align-items-center">
+                            <div class="me-3">
+                                {% if data.connected %}
+                                    <i class="fas fa-check-circle fa-3x text-success"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle fa-3x text-danger"></i>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <h4 class="mb-1">
+                                    {% if data.connected %}
+                                        <span class="text-success">Connected</span>
+                                    {% else %}
+                                        <span class="text-danger">Disconnected</span>
+                                    {% endif %}
+                                </h4>
+                                <p class="text-muted mb-0">
+                                    {% if data.connected %}
+                                        Google Sheets integration is active and functioning
+                                    {% else %}
+                                        Unable to connect to Google Sheets
+                                    {% endif %}
+                                </p>
+                                {% if data.error %}
+                                    <div class="alert alert-danger mt-2 mb-0">
+                                        <i class="fas fa-exclamation-triangle"></i> 
+                                        {{ data.error }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        {% if data.spreadsheet_url %}
+                            <a href="{{ data.spreadsheet_url }}" target="_blank" class="btn btn-primary">
+                                <i class="fas fa-external-link-alt"></i> 
+                                Open Spreadsheet
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if data.connected %}
+<!-- System Health & Performance -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-heartbeat text-danger"></i> 
+                    System Health
+                </h5>
+            </div>
+            <div class="card-body text-center">
+                {% if data.system_health %}
+                    {% if '🟢' in data.system_health %}
+                        <div class="metric-value text-success">
+                            <i class="fas fa-check-circle"></i> Operational
+                        </div>
+                        <div class="alert alert-success">All systems running smoothly</div>
+                    {% elif '🟡' in data.system_health %}
+                        <div class="metric-value text-warning">
+                            <i class="fas fa-exclamation-triangle"></i> Degraded
+                        </div>
+                        <div class="alert alert-warning">Performance issues detected</div>
+                    {% else %}
+                        <div class="metric-value text-danger">
+                            <i class="fas fa-times-circle"></i> Issues
+                        </div>
+                        <div class="alert alert-danger">System problems present</div>
+                    {% endif %}
+                {% else %}
+                    <div class="metric-value text-muted">
+                        <i class="fas fa-question-circle"></i> Unknown
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-sync-alt text-info"></i> 
+                    Last Synchronization
+                </h5>
+            </div>
+            <div class="card-body text-center">
+                <div class="metric-value text-info">
+                    {% if data.last_sync and data.last_sync != 'Never' %}
+                        {{ data.last_sync[:19] if data.last_sync|length > 19 else data.last_sync }}
+                    {% else %}
+                        Never
+                    {% endif %}
+                </div>
+                <div class="metric-label">Last Updated</div>
+                {% if data.last_sync and data.last_sync != 'Never' %}
+                    <button class="btn btn-sm btn-outline-info mt-2" onclick="triggerSync()">
+                        <i class="fas fa-sync-alt"></i> Sync Now
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Performance Metrics -->
+{% if data.performance_metrics %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-line text-success"></i> 
+                    Performance Metrics
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="metric-value text-primary">{{ data.performance_metrics.total_operations or 0 }}</div>
+                            <div class="metric-label">Total Operations</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="metric-value text-success">{{ data.performance_metrics.successful_operations or 0 }}</div>
+                            <div class="metric-label">Successful</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="metric-value text-warning">{{ "%.1f"|format(data.performance_metrics.success_rate_percent or 0) }}%</div>
+                            <div class="metric-label">Success Rate</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="metric-value text-info">{{ "%.3f"|format(data.performance_metrics.average_operation_time_seconds or 0) }}s</div>
+                            <div class="metric-label">Avg Response Time</div>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if data.performance_metrics.cache_hit_rate_percent is defined %}
+                <hr>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="text-center">
+                            <div class="metric-value text-success">{{ "%.1f"|format(data.performance_metrics.cache_hit_rate_percent) }}%</div>
+                            <div class="metric-label">Cache Hit Rate</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-center">
+                            <div class="metric-value text-warning">{{ data.performance_metrics.rate_limit_hits or 0 }}</div>
+                            <div class="metric-label">Rate Limit Hits</div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Worksheets Overview -->
+{% if data.worksheets %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-file-alt text-primary"></i> 
+                    Worksheets
+                </h5>
+                <span class="badge bg-primary">{{ data.worksheets|length }} sheets</span>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-dark table-striped">
+                        <thead>
+                            <tr>
+                                <th>
+                                    <i class="fas fa-file"></i> Name
+                                </th>
+                                <th>
+                                    <i class="fas fa-th"></i> Rows
+                                </th>
+                                <th>
+                                    <i class="fas fa-columns"></i> Columns
+                                </th>
+                                <th>
+                                    <i class="fas fa-database"></i> Data Status
+                                </th>
+                                <th>
+                                    <i class="fas fa-clock"></i> Last Modified
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for worksheet in data.worksheets %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-table text-primary me-2"></i>
+                                        <strong>{{ worksheet.name }}</strong>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">{{ worksheet.row_count }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ worksheet.col_count }}</span>
+                                </td>
+                                <td>
+                                    {% if worksheet.row_count > 1 %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check"></i> Has Data
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-warning">
+                                            <i class="fas fa-exclamation"></i> Empty
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small class="text-muted">{{ worksheet.last_modified or 'Unknown' }}</small>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% else %}
+<!-- Disconnected State -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-unlink fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Google Sheets Not Connected</h5>
+                <p class="text-muted">
+                    The bot is currently unable to connect to Google Sheets. 
+                    Please check the configuration and credentials.
+                </p>
+                {% if data.error %}
+                    <div class="alert alert-danger">
+                        <strong>Error Details:</strong> {{ data.error }}
+                    </div>
+                {% endif %}
+                <button class="btn btn-primary" onclick="location.reload()">
+                    <i class="fas fa-sync-alt"></i> Retry Connection
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+function triggerSync() {
+    // This would typically trigger a sync operation
+    console.log('Sync triggered');
+    alert('Sync operation requested. Check the logs for details.');
+}
+
+// Auto-refresh every 60 seconds for sheets status
+setInterval(() => {
+    location.reload();
+}, 60000);
+</script>
+{% endblock %}

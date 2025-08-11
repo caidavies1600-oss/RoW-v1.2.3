@@ -1,0 +1,319 @@
+
+{% extends "base.html" %}
+
+{% block title %}Players - RoW Bot Dashboard{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="mb-3">
+            <i class="fas fa-users text-primary"></i> 
+            Player Statistics
+            <small class="text-muted fs-6 timestamp"></small>
+        </h1>
+    </div>
+</div>
+
+<!-- Player Statistics Overview -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body text-center">
+                <div class="metric-value text-primary">{{ data.statistics.total_players }}</div>
+                <div class="metric-label">Total Players</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body text-center">
+                <div class="metric-value text-success">{{ data.statistics.active_players }}</div>
+                <div class="metric-label">Active Players</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body text-center">
+                <div class="metric-value text-warning">{{ data.statistics.average_games }}</div>
+                <div class="metric-label">Avg Games</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body text-center">
+                <div class="metric-value text-info">{{ data.statistics.average_win_rate }}%</div>
+                <div class="metric-label">Avg Win Rate</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Top Players Leaderboard -->
+{% if data.leaderboard %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-trophy text-warning"></i> 
+                    Top 10 Leaderboard
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-dark table-striped">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Player</th>
+                                <th>Win Rate</th>
+                                <th>Wins</th>
+                                <th>Losses</th>
+                                <th>Total Games</th>
+                                <th>Rating</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for player in data.leaderboard %}
+                            <tr>
+                                <td>
+                                    {% if player.position == 1 %}
+                                        <i class="fas fa-trophy text-warning"></i> #{{ player.position }}
+                                    {% elif player.position == 2 %}
+                                        <i class="fas fa-medal text-secondary"></i> #{{ player.position }}
+                                    {% elif player.position == 3 %}
+                                        <i class="fas fa-award text-warning"></i> #{{ player.position }}
+                                    {% else %}
+                                        #{{ player.position }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong>{{ player.username }}</strong>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="progress flex-grow-1 me-2" style="height: 8px;">
+                                            <div class="progress-bar 
+                                                {% if player.win_rate >= 80 %}bg-success
+                                                {% elif player.win_rate >= 60 %}bg-info
+                                                {% elif player.win_rate >= 40 %}bg-warning
+                                                {% else %}bg-danger{% endif %}" 
+                                                style="width: {{ player.win_rate }}%">
+                                            </div>
+                                        </div>
+                                        <span class="fw-bold">{{ player.win_rate }}%</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-success">{{ player.wins }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-danger">{{ player.losses }}</span>
+                                </td>
+                                <td>
+                                    <strong>{{ player.total_games }}</strong>
+                                </td>
+                                <td>
+                                    <span class="badge 
+                                        {% if player.rank == 'Elite' %}bg-warning
+                                        {% elif player.rank == 'Expert' %}bg-info
+                                        {% elif player.rank == 'Advanced' %}bg-success
+                                        {% elif player.rank == 'Intermediate' %}bg-primary
+                                        {% else %}bg-secondary{% endif %}">
+                                        {{ player.rank }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- All Players Table -->
+{% if data.players %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-list text-primary"></i> 
+                    All Players
+                </h5>
+                <div class="input-group" style="width: 300px;">
+                    <input type="text" class="form-control" id="playerSearch" placeholder="Search players...">
+                    <span class="input-group-text">
+                        <i class="fas fa-search"></i>
+                    </span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-dark table-striped" id="playersTable">
+                        <thead>
+                            <tr>
+                                <th>
+                                    <i class="fas fa-hashtag"></i> Rank
+                                </th>
+                                <th>
+                                    <i class="fas fa-user"></i> Player
+                                </th>
+                                <th>
+                                    <i class="fas fa-percentage"></i> Win Rate
+                                </th>
+                                <th>
+                                    <i class="fas fa-trophy"></i> Wins
+                                </th>
+                                <th>
+                                    <i class="fas fa-times"></i> Losses
+                                </th>
+                                <th>
+                                    <i class="fas fa-gamepad"></i> Games
+                                </th>
+                                <th>
+                                    <i class="fas fa-star"></i> Rating
+                                </th>
+                                <th>
+                                    <i class="fas fa-clock"></i> Last Active
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for player in data.players %}
+                            <tr class="player-row">
+                                <td>
+                                    <span class="rank-badge">#{{ player.position }}</span>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="me-2">
+                                            {% if player.position <= 3 %}
+                                                <i class="fas fa-crown text-warning"></i>
+                                            {% elif player.total_games == 0 %}
+                                                <i class="fas fa-user-clock text-muted"></i>
+                                            {% else %}
+                                                <i class="fas fa-user text-primary"></i>
+                                            {% endif %}
+                                        </div>
+                                        <strong class="player-name">{{ player.username }}</strong>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if player.total_games > 0 %}
+                                        <div class="d-flex align-items-center">
+                                            <div class="progress flex-grow-1 me-2" style="height: 6px; width: 60px;">
+                                                <div class="progress-bar 
+                                                    {% if player.win_rate >= 80 %}bg-success
+                                                    {% elif player.win_rate >= 60 %}bg-info
+                                                    {% elif player.win_rate >= 40 %}bg-warning
+                                                    {% else %}bg-danger{% endif %}" 
+                                                    style="width: {{ player.win_rate }}%">
+                                                </div>
+                                            </div>
+                                            <span class="fw-bold">{{ player.win_rate }}%</span>
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-success">{{ player.wins }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-danger">{{ player.losses }}</span>
+                                </td>
+                                <td>
+                                    <strong>{{ player.total_games }}</strong>
+                                </td>
+                                <td>
+                                    <span class="badge 
+                                        {% if player.rank == 'Elite' %}bg-warning
+                                        {% elif player.rank == 'Expert' %}bg-info
+                                        {% elif player.rank == 'Advanced' %}bg-success
+                                        {% elif player.rank == 'Intermediate' %}bg-primary
+                                        {% elif player.rank == 'Beginner' %}bg-secondary
+                                        {% else %}bg-dark{% endif %}">
+                                        {{ player.rank }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <small class="text-muted">{{ player.last_active }}</small>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-user-slash fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No players found</h5>
+                <p class="text-muted">Player statistics will appear here once games are played.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+// Player search functionality
+document.getElementById('playerSearch').addEventListener('input', function() {
+    const searchTerm = this.value.toLowerCase();
+    const rows = document.querySelectorAll('.player-row');
+    
+    rows.forEach(row => {
+        const playerName = row.querySelector('.player-name').textContent.toLowerCase();
+        if (playerName.includes(searchTerm)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+});
+
+// Sort table functionality
+function sortTable(columnIndex, type = 'string') {
+    const table = document.getElementById('playersTable');
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    
+    rows.sort((a, b) => {
+        const cellA = a.cells[columnIndex].textContent.trim();
+        const cellB = b.cells[columnIndex].textContent.trim();
+        
+        if (type === 'number') {
+            return parseFloat(cellB) - parseFloat(cellA);
+        } else {
+            return cellA.localeCompare(cellB);
+        }
+    });
+    
+    rows.forEach(row => tbody.appendChild(row));
+}
+
+// Add click handlers to column headers for sorting
+document.addEventListener('DOMContentLoaded', function() {
+    const headers = document.querySelectorAll('#playersTable th');
+    headers.forEach((header, index) => {
+        header.style.cursor = 'pointer';
+        header.addEventListener('click', () => {
+            const type = ['number', 'string', 'number', 'number', 'number', 'number', 'string', 'string'][index];
+            sortTable(index, type);
+        });
+    });
+});
+</script>
+{% endblock %}

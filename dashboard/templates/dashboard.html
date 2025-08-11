@@ -1,0 +1,303 @@
+
+{% extends "base.html" %}
+
+{% block title %}Dashboard Overview - RoW Bot{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="mb-3">
+            <i class="fas fa-tachometer-alt text-primary"></i> 
+            Dashboard Overview
+            <small class="text-muted fs-6 timestamp"></small>
+        </h1>
+    </div>
+</div>
+
+<!-- System Status Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="metric-value text-{{ 'success' if stats.bot_status == 'Online' else 'danger' }}">
+                            <span class="status-indicator status-{{ 'online' if stats.bot_status == 'Online' else 'offline' }}"></span>
+                            {{ stats.bot_status }}
+                        </div>
+                        <div class="metric-label">Bot Status</div>
+                    </div>
+                    <i class="fas fa-robot fa-2x text-{{ 'success' if stats.bot_status == 'Online' else 'danger' }}"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="metric-value text-info">{{ stats.uptime or 'Unknown' }}</div>
+                        <div class="metric-label">Uptime</div>
+                    </div>
+                    <i class="fas fa-clock fa-2x text-info"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="metric-value text-primary">{{ stats.guild_count }}</div>
+                        <div class="metric-label">Servers</div>
+                    </div>
+                    <i class="fas fa-server fa-2x text-primary"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="metric-value text-warning">{{ stats.member_count }}</div>
+                        <div class="metric-label">Total Members</div>
+                    </div>
+                    <i class="fas fa-users fa-2x text-warning"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Current Events Section -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-calendar-check text-primary"></i> 
+                    Current Event Signups
+                </h5>
+                <span class="badge bg-primary">{{ stats.current_events.total_signups }} Total</span>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <div class="position-relative d-inline-block">
+                                <svg class="progress-ring" width="80" height="80">
+                                    <circle class="progress-ring-circle" cx="40" cy="40" r="30"></circle>
+                                </svg>
+                                <div class="position-absolute top-50 start-50 translate-middle">
+                                    <div class="fw-bold">{{ stats.current_events.main_team_count }}</div>
+                                    <small>/40</small>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <h6 class="text-warning">🏆 Main Team</h6>
+                                <div class="progress" style="height: 8px;">
+                                    <div class="progress-bar bg-warning" style="width: {{ (stats.current_events.main_team_count / 40 * 100) }}%"></div>
+                                </div>
+                                <small class="text-muted">{{ "%.1f"|format(stats.current_events.main_team_count / 40 * 100) }}% Full</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <div class="position-relative d-inline-block">
+                                <svg class="progress-ring" width="80" height="80">
+                                    <circle class="progress-ring-circle" cx="40" cy="40" r="30"></circle>
+                                </svg>
+                                <div class="position-absolute top-50 start-50 translate-middle">
+                                    <div class="fw-bold">{{ stats.current_events.team_2_count }}</div>
+                                    <small>/40</small>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <h6 class="text-info">🔸 Team 2</h6>
+                                <div class="progress" style="height: 8px;">
+                                    <div class="progress-bar bg-info" style="width: {{ (stats.current_events.team_2_count / 40 * 100) }}%"></div>
+                                </div>
+                                <small class="text-muted">{{ "%.1f"|format(stats.current_events.team_2_count / 40 * 100) }}% Full</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <div class="position-relative d-inline-block">
+                                <svg class="progress-ring" width="80" height="80">
+                                    <circle class="progress-ring-circle" cx="40" cy="40" r="30"></circle>
+                                </svg>
+                                <div class="position-absolute top-50 start-50 translate-middle">
+                                    <div class="fw-bold">{{ stats.current_events.team_3_count }}</div>
+                                    <small>/40</small>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <h6 class="text-secondary">🔸 Team 3</h6>
+                                <div class="progress" style="height: 8px;">
+                                    <div class="progress-bar bg-secondary" style="width: {{ (stats.current_events.team_3_count / 40 * 100) }}%"></div>
+                                </div>
+                                <small class="text-muted">{{ "%.1f"|format(stats.current_events.team_3_count / 40 * 100) }}% Full</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Player Statistics & System Health -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-bar text-success"></i> 
+                    Player Statistics
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-6">
+                        <div class="text-center mb-3">
+                            <div class="metric-value text-success">{{ stats.player_summary.total_players }}</div>
+                            <div class="metric-label">Total Players</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center mb-3">
+                            <div class="metric-value text-info">{{ stats.player_summary.active_players }}</div>
+                            <div class="metric-label">Active Players</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center">
+                            <div class="metric-value text-warning">{{ stats.player_summary.total_matches }}</div>
+                            <div class="metric-label">Total Matches</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center">
+                            <div class="metric-value text-primary">{{ "%.1f"|format(stats.player_summary.average_win_rate) }}%</div>
+                            <div class="metric-label">Avg Win Rate</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-heartbeat text-danger"></i> 
+                    System Health
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="text-center">
+                    {% set health = stats.system_health %}
+                    {% if health.status == 'excellent' %}
+                        <div class="metric-value text-success">
+                            <i class="fas fa-check-circle"></i> Excellent
+                        </div>
+                        <div class="alert alert-success">All systems operational</div>
+                    {% elif health.status == 'good' %}
+                        <div class="metric-value text-info">
+                            <i class="fas fa-info-circle"></i> Good
+                        </div>
+                        <div class="alert alert-success">Systems running well</div>
+                    {% elif health.status == 'degraded' %}
+                        <div class="metric-value text-warning">
+                            <i class="fas fa-exclamation-triangle"></i> Degraded
+                        </div>
+                        <div class="alert alert-warning">Some issues detected</div>
+                    {% else %}
+                        <div class="metric-value text-danger">
+                            <i class="fas fa-times-circle"></i> Critical
+                        </div>
+                        <div class="alert alert-danger">System issues present</div>
+                    {% endif %}
+                    
+                    <div class="progress mt-3" style="height: 10px;">
+                        <div class="progress-bar 
+                            {% if health.score >= 90 %}bg-success
+                            {% elif health.score >= 70 %}bg-info
+                            {% elif health.score >= 50 %}bg-warning
+                            {% else %}bg-danger{% endif %}" 
+                            style="width: {{ health.score }}%">
+                        </div>
+                    </div>
+                    <small class="text-muted">Health Score: {{ health.score }}/100</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+{% if stats.recent_activity %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-history text-info"></i> 
+                    Recent Activity
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-dark table-striped">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Event</th>
+                                <th>Participants</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for activity in stats.recent_activity %}
+                            <tr>
+                                <td>{{ activity.timestamp[:19] if activity.timestamp else 'Unknown' }}</td>
+                                <td>{{ activity.event_type or 'Event' }}</td>
+                                <td>{{ activity.total_participants or 0 }}</td>
+                                <td>
+                                    <span class="badge bg-success">Completed</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Animate progress rings
+    const rings = document.querySelectorAll('.progress-ring');
+    rings.forEach((ring, index) => {
+        const counts = [{{ stats.current_events.main_team_count }}, {{ stats.current_events.team_2_count }}, {{ stats.current_events.team_3_count }}];
+        const percentage = (counts[index] / 40) * 100;
+        animateProgressRing(ring, percentage);
+    });
+});
+</script>
+{% endblock %}
