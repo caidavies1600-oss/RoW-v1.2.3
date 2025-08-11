@@ -142,6 +142,97 @@ class SheetsTest(commands.Cog):
             await ctx.send(f"❌ Test command failed: {e}")
             logger.exception("Sheets test command failed")
 
+    @commands.command(name="testconnection")
+    @commands.has_any_role(*ADMIN_ROLE_IDS)
+    async def test_connection(self, ctx):
+        """
+        Test basic Google Sheets connection step by step.
+        
+        This command helps debug connection issues by testing each step.
+        """
+        try:
+            import os
+            import json
+            import gspread
+            from google.oauth2.service_account import Credentials
+            
+            embed = discord.Embed(
+                title="🔧 Google Sheets Connection Test",
+                color=discord.Color.blue()
+            )
+            
+            # Step 1: Check environment variables
+            creds_env = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
+            sheets_id = os.getenv("GOOGLE_SHEETS_ID")
+            
+            if not creds_env:
+                embed.add_field(name="❌ Step 1", value="GOOGLE_SHEETS_CREDENTIALS not found", inline=False)
+                await ctx.send(embed=embed)
+                return
+            
+            if not sheets_id:
+                embed.add_field(name="❌ Step 1", value="GOOGLE_SHEETS_ID not found", inline=False)
+                await ctx.send(embed=embed)
+                return
+                
+            embed.add_field(name="✅ Step 1", value="Environment variables found", inline=False)
+            
+            # Step 2: Parse credentials
+            try:
+                creds_data = json.loads(creds_env)
+                embed.add_field(name="✅ Step 2", value="Credentials JSON parsed successfully", inline=False)
+            except json.JSONDecodeError as e:
+                embed.add_field(name="❌ Step 2", value=f"Invalid JSON: {str(e)[:100]}", inline=False)
+                await ctx.send(embed=embed)
+                return
+            
+            # Step 3: Check credential type
+            if creds_data.get("type") != "service_account":
+                embed.add_field(name="❌ Step 3", value=f"Wrong credential type: {creds_data.get('type', 'unknown')}", inline=False)
+                await ctx.send(embed=embed)
+                return
+            
+            embed.add_field(name="✅ Step 3", value="Service account credentials confirmed", inline=False)
+            
+            # Step 4: Create credentials object
+            try:
+                scope = [
+                    "https://www.googleapis.com/auth/spreadsheets",
+                    "https://www.googleapis.com/auth/drive.file"
+                ]
+                creds = Credentials.from_service_account_info(creds_data, scopes=scope)
+                embed.add_field(name="✅ Step 4", value="Credentials object created", inline=False)
+            except Exception as e:
+                embed.add_field(name="❌ Step 4", value=f"Credential creation failed: {str(e)[:100]}", inline=False)
+                await ctx.send(embed=embed)
+                return
+            
+            # Step 5: Authorize gspread client
+            try:
+                gc = gspread.authorize(creds)
+                embed.add_field(name="✅ Step 5", value="gspread client authorized", inline=False)
+            except Exception as e:
+                embed.add_field(name="❌ Step 5", value=f"Authorization failed: {str(e)[:100]}", inline=False)
+                await ctx.send(embed=embed)
+                return
+            
+            # Step 6: Open spreadsheet
+            try:
+                spreadsheet = gc.open_by_key(sheets_id)
+                embed.add_field(name="✅ Step 6", value=f"Spreadsheet opened: {spreadsheet.title}", inline=False)
+                embed.add_field(name="🔗 URL", value=f"[Open Spreadsheet]({spreadsheet.url})", inline=False)
+            except Exception as e:
+                embed.add_field(name="❌ Step 6", value=f"Failed to open spreadsheet: {str(e)[:100]}", inline=False)
+                await ctx.send(embed=embed)
+                return
+            
+            embed.color = discord.Color.green()
+            embed.title = "✅ Connection Test Successful"
+            await ctx.send(embed=embed)
+            
+        except Exception as e:
+            await ctx.send(f"❌ Connection test failed: {str(e)}")
+
     @commands.command(name="validatecreds")
     @commands.has_any_role(*ADMIN_ROLE_IDS)
     async def validate_credentials(self, ctx):

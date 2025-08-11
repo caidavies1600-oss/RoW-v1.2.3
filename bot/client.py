@@ -264,13 +264,22 @@ class RowBot(commands.Bot):
                             # Get more detailed error information
                             error_details = "Unknown connection issue"
                             if hasattr(self.sheets, 'gc') and not self.sheets.gc:
-                                error_details = "Failed to authorize Google Sheets client"
+                                error_details = "Failed to authorize Google Sheets client - check credentials format and permissions"
                                 
                                 # Additional debugging for credential issues
                                 creds_env = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
                                 if creds_env:
                                     try:
                                         import json
+                                        creds_data = json.loads(creds_env)
+                                        print(f"DEBUG: Credentials type: {creds_data.get('type', 'unknown')}")
+                                        print(f"DEBUG: Service account email: {creds_data.get('client_email', 'not found')}")
+                                        if creds_data.get('type') != 'service_account':
+                                            error_details = "Credentials are not service account type"
+                                    except json.JSONDecodeError:
+                                        error_details = "Invalid JSON in GOOGLE_SHEETS_CREDENTIALS"
+                                    except Exception as cred_error:
+                                        print(f"DEBUG: Credential parsing error: {cred_error}")
                                         creds_data = json.loads(creds_env)
                                         required_fields = ["type", "project_id", "private_key_id", "private_key", "client_email", "client_id", "auth_uri", "token_uri"]
                                         missing_fields = [field for field in required_fields if field not in creds_data]
