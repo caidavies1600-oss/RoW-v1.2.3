@@ -1,40 +1,13 @@
 {
-    "users": {
-        "999888777": {
-            "display_name": "TestUser_999888777",
-            "event_reminders": false,
-            "result_notifications": true,
-            "team_updates": true,
-            "error_alerts": false,
-            "method": "dm",
-            "reminder_times": [
-                60,
-                15
-            ],
-            "timezone_offset": 3
-        },
-        "1096858315826397354": {
-            "method": "dm",
-            "display_name": "Cai"
-        },
-        "1236396477853728865": {
-            "method": "dm",
-            "display_name": "Darkness 㞧"
-        }
-    },
-    "default_settings": {
-        "method": "channel",
-        "event_reminders": true,
-        "result_notifications": true,
-        "team_updates": true,
-        "reminder_times": [
-            60,
-            15
-        ],
-        "quiet_hours": {
-            "start": 22,
-            "end": 8
-        },
-        "timezone_offset": 0
+  "users": {},
+  "default_settings": {
+    "event_reminders": true,
+    "result_notifications": true,
+    "team_updates": true,
+    "reminder_times": ["30m", "5m"],
+    "quiet_hours": {
+      "start": "22:00",
+      "end": "08:00"
     }
+  }
 }
