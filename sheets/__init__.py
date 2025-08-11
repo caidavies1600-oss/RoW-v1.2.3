@@ -1,3 +1,4 @@
+
 """
 Google Sheets Integration Module for Discord RoW Bot.
 
@@ -15,7 +16,6 @@ Components:
 """
 
 from .base_manager import RateLimitedSheetsManager
-
 
 class SheetsManager(RateLimitedSheetsManager):
     """
@@ -40,14 +40,14 @@ class SheetsManager(RateLimitedSheetsManager):
     BACKOFF_FACTOR = 1.5
     REQUEST_TIMEOUT = 30
 
-    def __init__(self):
+    def __init__(self, spreadsheet_id=None):
         """
         Initialize sheets manager with rate limiting and error handling.
 
         Establishes connection to Google Sheets API and
         verifies credentials and permissions.
         """
-        super().__init__()
+        super().__init__(spreadsheet_id)
 
     async def full_sync_and_create_templates(self, bot, all_data, guild_id=None):
         """Enhanced full sync with all template creation and formatting."""
@@ -57,7 +57,7 @@ class SheetsManager(RateLimitedSheetsManager):
         try:
             # Create all templates with proper formatting
             success = self.create_all_templates(all_data)
-
+            
             result = {
                 "success": success,
                 "spreadsheet_url": self.spreadsheet.url if self.spreadsheet else None,
@@ -76,12 +76,12 @@ class SheetsManager(RateLimitedSheetsManager):
             return {"success": False, "error": str(e)}
 
 
-# For backward compatibility, export the main class
+# Export the main class
 __all__ = ["SheetsManager"]
 
-# Module metadata with descriptions
+# Module metadata
 __version__ = "2.0.2"
 __author__ = "RoW Bot Team"
-__description__ = "Google Sheets integration with MRO conflict resolved"
+__description__ = "Google Sheets integration with comprehensive features"
 __requirements__ = ["gspread", "google-auth", "google-auth-oauthlib"]
 __min_python_version__ = "3.8"

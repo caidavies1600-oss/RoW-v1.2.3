@@ -72,12 +72,13 @@ class SheetsManager:
 
 # Update the import section
 try:
-    from services.sheets_manager import SheetsManager as ExternalSheetsManager
-
+    from sheets import SheetsManager as ExternalSheetsManager
     SHEETS_AVAILABLE = True
+    logger.info("✅ Using main sheets/ directory for Google Sheets integration")
 except ImportError:
     SHEETS_AVAILABLE = False
     ExternalSheetsManager = SheetsManager  # Use local fallback
+    logger.warning("⚠️ Main sheets/ directory not available, using fallback")
 
 
 class DataManager:

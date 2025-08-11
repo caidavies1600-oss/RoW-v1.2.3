@@ -99,6 +99,7 @@ class RateLimitedSheetsManager:
 
         except Exception as e:
             logger.error(f"❌ Failed to initialize Google Sheets client: {e}")
+            logger.info("💡 Make sure GOOGLE_SHEETS_CREDENTIALS and GOOGLE_SHEETS_ID are set in environment")
             self.gc = None
             self.spreadsheet = None
 

@@ -5,9 +5,26 @@ from typing import Any
 
 from utils.file_ops import FileOps
 from utils.logger import setup_logger
-from utils.sheets_manager import SheetsManager
 
 logger = setup_logger("integrated_data")
+
+# Import from main sheets directory
+try:
+    from sheets import SheetsManager
+    SHEETS_AVAILABLE = True
+    logger.info("✅ Using main sheets/ directory for Google Sheets integration")
+except ImportError as e:
+    logger.warning(f"⚠️ Failed to import from sheets/: {e}")
+    SHEETS_AVAILABLE = False
+    
+    # Fallback to create a dummy manager
+    class SheetsManager:
+        def __init__(self, *args, **kwargs):
+            self.spreadsheet = None
+        def is_connected(self):
+            return False
+        async def sync_data(self, *args, **kwargs):
+            return False
 
 
 class IntegratedDataManager:
