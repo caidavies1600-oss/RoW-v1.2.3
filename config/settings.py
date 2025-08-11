@@ -60,6 +60,7 @@ event scheduling, rate limiting, and backup settings."""
 
 # Team Configuration
 MAX_TEAM_SIZE: int = 40
+MAX_BAN_DAYS: int = 365  # Maximum number of days for user blocks
 TEAMS = ["main_team", "team_2", "team_3"]
 
 # Event Scheduling (UTC times)
