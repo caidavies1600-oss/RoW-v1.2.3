@@ -1,38 +1,20 @@
 """
-Template creation module for Google Sheets integration.
+Template creator for Google Sheets.
 
-This module handles:
-- Creation of standardized sheet templates
-- Player statistics worksheet formatting
-- Match statistics tracking setup
-- Alliance tracking configuration
-- Template synchronization and validation
-
-Each template includes proper formatting, example data,
-and necessary formulas for data analysis.
+This module handles the creation of various sheet templates
+with proper formatting and example data.
 """
 
 from datetime import datetime
-
+from typing import Dict, Any
 from utils.logger import setup_logger
-
 from .worksheet_handlers import WorksheetHandlers
 
 logger = setup_logger("template_creator")
 
 
 class TemplateCreator(WorksheetHandlers):
-    """
-    Creates and manages Google Sheets templates for manual data entry.
-
-    Features:
-    - Standardized template creation
-    - Auto-formatting and styling
-    - Formula setup
-    - Example data population
-    - Header freezing and formatting
-    - Data validation rules
-    """
+    """Creates and manages sheet templates."""
 
     def create_player_stats_template(self, player_stats):
         """
@@ -366,23 +348,8 @@ class TemplateCreator(WorksheetHandlers):
             logger.error(f"❌ Failed to create alliance tracking sheet: {e}")
             return False
 
-    def create_all_templates(self, all_data):
-        """
-        Create all sheet templates for manual data entry.
-
-        Args:
-            all_data: Dictionary containing all template data
-
-        Creates:
-        - Player statistics template
-        - Match statistics tracking
-        - Alliance monitoring
-        - Current teams overview
-        - Results history
-
-        Returns:
-            bool: True if majority of templates created successfully
-        """
+    def create_all_templates(self, all_data: Dict[str, Any]) -> bool:
+        """Create all sheet templates for manual data entry."""
         if not self.is_connected():
             logger.warning("Google Sheets not initialized, skipping template creation")
             return False
@@ -393,31 +360,97 @@ class TemplateCreator(WorksheetHandlers):
             # Create current teams template
             if self.sync_current_teams(all_data.get("events", {})):
                 success_count += 1
-
-            # Create player stats template (MOST IMPORTANT - fix this one)
-            if self.create_player_stats_template(all_data.get("player_stats", {})):
-                success_count += 1
+                logger.info("✅ Current Teams template created")
 
             # Create results history template
             if self.sync_results_history(all_data.get("results", {})):
                 success_count += 1
+                logger.info("✅ Results History template created")
+
+            # Create player stats template
+            if self.create_player_stats_template(all_data.get("player_stats", {})):
+                success_count += 1
+                logger.info("✅ Player Stats template created")
 
             # Create match statistics template
             if self.create_match_statistics_template():
                 success_count += 1
+                logger.info("✅ Match Statistics template created")
 
             # Create alliance tracking template
             if self.create_alliance_tracking_sheet():
                 success_count += 1
+                logger.info("✅ Alliance Tracking template created")
 
-            # Skip dashboard creation since you have web interface
-            logger.info("Skipping dashboard creation - using web interface instead")
+            # Create events history template
+            if self.sync_events_history(all_data.get("events_history", [])):
+                success_count += 1
+                logger.info("✅ Events History template created")
 
-            logger.info(
-                f"✅ Template creation completed: {success_count}/5 operations successful"
-            )
-            return success_count >= 3  # Consider successful if most operations work
+            # Create blocked users template
+            if self.sync_blocked_users(all_data.get("blocked", {})):
+                success_count += 1
+                logger.info("✅ Blocked Users template created")
+
+            logger.info(f"✅ Template creation completed: {success_count} operations successful")
+            return success_count >= 5
 
         except Exception as e:
             logger.error(f"❌ Failed to create templates: {e}")
+            return False
+
+    def create_dashboard_summary_template(self) -> bool:
+        """Create dashboard summary worksheet for bot overview."""
+        try:
+            worksheet = self.get_or_create_worksheet("Dashboard Summary", 50, 10)
+            if not worksheet:
+                return False
+
+            # Clear and create overview section
+            self.rate_limited_request(worksheet.clear)
+
+            overview_headers = ["Metric", "Value", "Last Updated"]
+            self.rate_limited_request(worksheet.update, "A1:C1", [overview_headers])
+
+            # Format headers
+            self.rate_limited_request(
+                worksheet.format,
+                "A1:C1",
+                {
+                    "backgroundColor": {"red": 0.2, "green": 0.8, "blue": 0.2},
+                    "textFormat": {
+                        "bold": True,
+                        "foregroundColor": {"red": 1, "green": 1, "blue": 1},
+                    },
+                },
+            )
+
+            # Add dashboard metrics
+            dashboard_data = [
+                ["Total Players", "0", "2025-01-05"],
+                ["Total Wins", "0", "2025-01-05"],
+                ["Total Losses", "0", "2025-01-05"],
+                ["Win Rate", "0%", "2025-01-05"],
+                ["Active Teams", "3", "2025-01-05"],
+                ["Blocked Users", "0", "2025-01-05"],
+            ]
+
+            self.rate_limited_request(worksheet.update, "A2:C7", dashboard_data)
+
+            # Add team status section
+            self.rate_limited_request(worksheet.update, "E1:G1", [["Team", "Members", "Status"]])
+
+            team_data = [
+                ["Main Team", "0", "Active"],
+                ["Team 2", "0", "Active"],
+                ["Team 3", "0", "Active"],
+            ]
+
+            self.rate_limited_request(worksheet.update, "E2:G4", team_data)
+
+            logger.info("✅ Dashboard Summary worksheet created successfully")
+            return True
+
+        except Exception as e:
+            logger.error(f"❌ Failed to create Dashboard Summary worksheet: {e}")
             return False

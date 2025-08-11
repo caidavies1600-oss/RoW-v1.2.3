@@ -16,12 +16,12 @@ import gspread
 
 from utils.logger import setup_logger
 
-from .enhanced_sheets_manager import EnhancedSheetsManager
+from .template_creator import TemplateCreator
 
 logger = setup_logger("enhanced_data_sync")
 
 
-class EnhancedDataSync(EnhancedSheetsManager):
+class EnhancedDataSync(TemplateCreator):
     """
     Enhanced data loading and syncing operations with advanced rate limiting.
 
@@ -837,13 +837,12 @@ class EnhancedDataSyncManager(EnhancedDataSync):
 
 
 from utils.logger import setup_logger
-
-from .worksheet_handlers import WorksheetHandlers
+from .template_creator import TemplateCreator
 
 logger = setup_logger("data_sync")
 
 
-class DataSync(WorksheetHandlers):
+class DataSync(TemplateCreator):
     """
     Handles core data synchronization operations.
 

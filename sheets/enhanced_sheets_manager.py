@@ -3,29 +3,18 @@
 """
 Enhanced Google Sheets Manager - Advanced features for Discord RoW Bot.
 
-This module provides:
-- Advanced rate limiting and error handling
-- Enhanced data synchronization
-- Professional sheet formatting
-- Interactive dashboard creation
-- Real-time analytics and metrics
-- Comprehensive error recovery
+This module provides additional advanced features beyond the base manager.
 """
 
-import json
-import os
 from datetime import datetime
 from typing import Any, Dict
-
-import gspread
-from google.oauth2.service_account import Credentials
-
 from utils.logger import setup_logger
+from .template_creator import TemplateCreator
 
 logger = setup_logger("enhanced_sheets_manager")
 
 
-class EnhancedSheetsManager:
+class EnhancedSheetsManager(TemplateCreator):
     """
     Enhanced Google Sheets Manager with comprehensive features.
 
@@ -38,52 +27,9 @@ class EnhancedSheetsManager:
     - Error recovery and logging
     """
 
-    def __init__(self):
-        self.gc = None
-        self.spreadsheet = None
-        self.rate_limit_delay = 1.0  # seconds between API calls
-        self.last_api_call = 0
-        self.connected = False
-        self.initialize_client()
-
-    def initialize_client(self):
-        """Initialize Google Sheets client with enhanced error handling."""
-        try:
-            scope = [
-                "https://www.googleapis.com/auth/spreadsheets",
-                "https://www.googleapis.com/auth/drive",
-            ]
-
-            creds_json = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
-            if creds_json:
-                creds_dict = json.loads(creds_json)
-                creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
-            else:
-                creds = Credentials.from_service_account_file(
-                    "credentials.json", scopes=scope
-                )
-
-            self.gc = gspread.authorize(creds)
-
-            spreadsheet_id = os.getenv("GOOGLE_SHEETS_ID")
-            if spreadsheet_id:
-                self.spreadsheet = self.gc.open_by_key(spreadsheet_id)
-            else:
-                self.spreadsheet = self.gc.create("Discord RoW Bot Data - Enhanced")
-                logger.info(f"Created new enhanced spreadsheet: {self.spreadsheet.url}")
-
-            self.connected = True
-            logger.info("✅ Enhanced Sheets Manager initialized successfully")
-
-        except Exception as e:
-            logger.error(f"Failed to initialize Enhanced Google Sheets: {e}")
-            self.gc = None
-            self.spreadsheet = None
-            self.connected = False
-
-    def is_connected(self):
-        """Check if sheets client is connected and ready."""
-        return self.connected and self.spreadsheet is not None
+    def __init__(self, spreadsheet_id=None):
+        super().__init__(spreadsheet_id)
+        self.rate_limit_delay = 1.0  # Additional delay for enhanced operations
 
     def rate_limited_request(self, func, *args, **kwargs):
         """Execute a function with rate limiting."""
