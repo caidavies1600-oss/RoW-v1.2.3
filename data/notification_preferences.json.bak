@@ -18,7 +18,7 @@
                 "start": 4,
                 "end": 10
             },
-            "event_reminders": true
+            "event_reminders": false
         }
     },
     "default_settings": {}
