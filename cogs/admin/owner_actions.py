@@ -9,6 +9,7 @@ from config.constants import COLORS, EMOJIS, FILES
 from config.settings import BOT_ADMIN_USER_ID
 from utils.data_manager import DataManager
 from utils.logger import setup_logger
+from utils.log_cleaner import LogCleaner
 
 logger = setup_logger("owner_actions")
 
@@ -27,6 +28,7 @@ class OwnerActions(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.data_manager = DataManager()
+        self.log_cleaner = LogCleaner()
 
     def _is_owner(self, user_id: int) -> bool:
         """
@@ -249,10 +251,10 @@ class OwnerActions(commands.Cog):
 
                 # Test method availability
                 methods_to_test = [
-                    'sync_player_stats', 'sync_results_history', 
+                    'sync_player_stats', 'sync_results_history',
                     'sync_notification_preferences', 'create_all_templates'
                 ]
-                
+
                 method_status = []
                 for method in methods_to_test:
                     has_method = hasattr(self.bot.sheets, method)
@@ -865,6 +867,62 @@ class OwnerActions(commands.Cog):
 
         await ctx.send(embed=embed)
         logger.info(f"{ctx.author} migrated {converted_count} user IDs to IGNs")
+
+    @commands.command(name="clearcache", help="Clear bot's cache and temporary files.")
+    @commands.check(lambda ctx: ctx.author.id == BOT_ADMIN_USER_ID)
+    async def clear_cache(self, ctx: commands.Context):
+        """Clear bot's cache and temporary files."""
+        await ctx.send("🗑️ **Clearing bot cache and temporary files...**")
+        try:
+            # Clear log files
+            log_cleanup_result = self.log_cleaner.clean_logs("data/logs/")
+            if log_cleanup_result["success"]:
+                await ctx.send(
+                    f"✅ **Logs cleaned:** Removed {log_cleanup_result['files_removed']} old log files."
+                )
+            else:
+                await ctx.send(f"❌ **Log cleanup failed:** {log_cleanup_result['error']}")
+
+            # Add other cache clearing mechanisms here if needed
+            # e.g., clearing temporary image files, database cache, etc.
+
+            await ctx.send("✅ **Cache cleared successfully.**")
+            logger.info(f"{ctx.author} cleared bot cache.")
+
+        except Exception as e:
+            logger.exception("Error in clear_cache")
+            await ctx.send(f"❌ **Error during cache clearing:** {str(e)}")
+
+    @commands.command(
+        name="cleanslogs", help="Cleans up old log files from the logs directory."
+    )
+    @commands.check(lambda ctx: ctx.author.id == BOT_ADMIN_USER_ID)
+    async def clean_logs(self, ctx: commands.Context):
+        """Cleans up old log files from the logs directory."""
+        await ctx.send("🧹 **Cleaning up old log files...**")
+        try:
+            log_dir = "data/logs/"
+            result = self.log_cleaner.clean_logs(log_dir)
+
+            if result["success"]:
+                message = (
+                    f"✅ **Log cleanup successful!**\n"
+                    f"Removed {result['files_removed']} old log files."
+                )
+                logger.info(
+                    f"{ctx.author} cleaned logs in {log_dir}, removed {result['files_removed']} files."
+                )
+            else:
+                message = f"❌ **Log cleanup failed:** {result['error']}"
+                logger.error(
+                    f"{ctx.author} failed to clean logs in {log_dir}: {result['error']}"
+                )
+
+            await ctx.send(message)
+
+        except Exception as e:
+            logger.exception("Error in clean_logs command")
+            await ctx.send(f"❌ **An error occurred during log cleanup:** {str(e)}")
 
 
 async def setup(bot: commands.Bot):

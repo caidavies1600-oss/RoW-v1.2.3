@@ -286,6 +286,19 @@ class HealthCommands(commands.Cog):
                 score = report["health_score"]
                 logger.info(f"🏥 Health check: {status.upper()} (score: {score}/100)")
 
+                # Check log directory size and clean if needed
+                try:
+                    from utils.log_cleaner import get_log_stats, cleanup_logs
+
+                    log_stats = get_log_stats()
+                    if log_stats.get("total_size_mb", 0) > 100:  # If logs > 100MB
+                        logger.info(f"🧹 Log directory large ({log_stats['total_size_mb']:.1f} MB), running cleanup...")
+                        cleanup_result = cleanup_logs(force=False)
+                        if cleanup_result.get("success"):
+                            logger.info(f"✅ Auto log cleanup saved {cleanup_result.get('size_saved_mb', 0):.1f} MB")
+                except Exception as e:
+                    logger.debug(f"Auto log cleanup failed: {e}")
+
                 # Alert on critical issues
                 if status == "critical":
                     logger.error(f"🚨 Bot health critical! Score: {score}/100")
