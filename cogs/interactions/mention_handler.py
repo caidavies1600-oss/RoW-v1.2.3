@@ -385,12 +385,16 @@ class MentionHandler(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message):
         """Handle @ mentions to the bot."""
-        # Ignore bot messages and messages without mentions
+        # Ignore bot messages
         if message.author.bot:
             return
 
-        # Check if bot is mentioned
-        if not self.bot.user.mentioned_in(message):
+        # Ignore @everyone/@here mentions
+        if message.mention_everyone:
+            return
+
+        # Check if bot is specifically mentioned
+        if not any(mention.id == self.bot.user.id for mention in message.mentions):
             return
 
         # Don't respond to commands (they start with !)
